@@ -1,0 +1,187 @@
+# Installation: Docker
+
+Docker Compose is the fastest path to a complete CoreRouter: the gateway, four
+datastores, the intelligence workers, the dashboard and an observability stack.
+This page covers the whole stack; for a host install see
+[Installation: native](native.md).
+
+## Prerequisites
+
+- Docker with Compose v2
+- A provider API key, for real answers
+- Ports free on your host: `8080` (gateway), `3000` (dashboard), `3001`
+  (Grafana), `9090` (Prometheus), `9101` (worker metrics)
+
+## Services
+
+`docker-compose.yml` starts eleven services:
+
+| Service | Role | Default URL |
+| --- | --- | --- |
+| `gateway` | The Go gateway: inference, health, admin | `http://127.0.0.1:8080` |
+| `workers` | Python intelligence tier | metrics on `:9101/metrics` |
+| `dashboard` | Next.js operator console | `http://127.0.0.1:3000` |
+| `postgres` | System of record | internal |
+| `redis` | Limits, budgets, credential cache, response cache | internal |
+| `clickhouse` | Traces and analytics | internal |
+| `nats` | JetStream event bus | internal |
+| `prometheus`, `grafana`, `loki`, `promtail`, `otel-collector` | Observability | Grafana `:3001`, Prometheus `:9090` |
+
+The datastores are not published to the host by default. Compose brings them up
+for you with health checks and dependency ordering, and the gateway waits for
+Postgres and Redis to report healthy before it starts serving.
+
+## Start
+
+```bash
+cp .env.example .env
+openssl rand -hex 24    # paste the result into CR_ADMIN_KEY in .env
+$EDITOR .env            # add CR_ADMIN_KEY and your provider key
+
+docker compose up -d --build
+docker compose ps
+```
+
+The first build compiles the Go binary, installs the dashboard and builds a
+Python virtualenv, so expect it to take a few minutes. Subsequent starts reuse
+the images.
+
+### Port conflicts
+
+Move the host port, not the container port — gateway configuration is unchanged:
+
+```dotenv
+GATEWAY_PORT=18080
+NEXT_PUBLIC_COREROUTER_API_URL=http://localhost:18080
+```
+
+```bash
+GATEWAY=http://127.0.0.1:18080
+```
+
+## Verify
+
+```bash
+curl -s $GATEWAY/health | jq    # liveness; does not touch dependencies
+curl -s $GATEWAY/ready  | jq    # readiness; what a load balancer asks
+```
+
+```json
+{
+  "status": "ready",
+  "components": {
+    "clickhouse": true, "nats": true, "postgres": true, "redis": true, "tracing": true
+  }
+}
+```
+
+Then run the smoke suite, which checks the admin surface, the dashboard proxy,
+worker metrics, a full management cycle and the tool plane without needing a
+provider key:
+
+```bash
+bash scripts/smoke.sh
+# or on Windows:
+powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+```
+
+## Configuration
+
+Three layers, lowest precedence first:
+
+1. Built-in defaults — the stack boots with no config file at all.
+2. A config file — `config.example.yaml` documents every setting.
+3. Environment variables — every `CR_*` variable wins.
+
+`docker-compose.yml` passes the file in and lets the environment override it. To
+see what the gateway actually resolved, with secrets redacted:
+
+```bash
+docker compose exec gateway corerouter config
+```
+
+Secrets are referenced, never embedded. A provider record names an environment
+variable (`api_key_env`) rather than carrying a key, which keeps the config file
+committable.
+
+To use a configuration file other than the example:
+
+```dotenv
+CR_CONFIG_FILE=/etc/corerouter/config.yaml
+```
+
+and mount it into the container in `docker-compose.yml`.
+
+## Migrations
+
+Compose sets `CR_POSTGRES_AUTO_MIGRATE=true`, so the gateway applies pending
+migrations at startup — convenient for a single host.
+
+Under change control, turn it off and migrate as an explicit release step:
+
+```dotenv
+CR_POSTGRES_AUTO_MIGRATE=false
+```
+
+```bash
+docker compose run --rm gateway corerouter migrate
+```
+
+Migrations are applied in order, recorded with a checksum, and a mismatch on an
+already-applied migration is an error rather than a silent re-run.
+
+## Day-to-day operations
+
+```bash
+docker compose ps                        # status
+docker compose logs -f gateway          # tail the gateway
+docker compose logs -f workers          # tail the workers
+docker compose restart gateway          # restart one service
+docker compose down                     # stop, keep volumes
+docker compose down -v                  # stop and delete data
+```
+
+### Upgrading
+
+```bash
+git pull
+docker compose up -d --build
+docker compose ps
+curl -s $GATEWAY/ready | jq
+```
+
+The gateway drains on `SIGTERM`: it stops accepting, finishes in-flight streaming
+responses, flushes the telemetry buffer, then exits. Compose gives it
+`stop_grace_period` for that.
+
+### Secrets
+
+`CR_ADMIN_KEY` is not optional in production: with `admin.require_scope: true`,
+validation refuses to start without it. That is deliberate — a production install
+that cannot be administered is a worse outcome than one that refuses to boot.
+
+```bash
+openssl rand -hex 24
+```
+
+Set `CR_CREDENTIALS_KEY` (32 bytes, raw/hex/base64) for serious deployments so
+stored provider credentials do not derive from the admin key. Otherwise the data
+key is derived via HKDF-SHA256 from `CR_ADMIN_KEY`, which means rotating the admin
+key orphans stored secrets and they must be re-saved.
+
+## Exposing it outside your host
+
+Compose publishes ports on the host's loopback interface only. To reach the
+gateway from elsewhere:
+
+- **[Cloudflare tunnel](cloudflare-tunnel.md)** — a temporary public URL, no
+  port forwarding, no DNS. Best for demos and phones.
+- A reverse proxy (nginx, Caddy, Traefik) terminating TLS in front of the
+  published port, for a permanent deployment.
+
+The tunnel feature is disabled by default and needs two opt-ins: the feature flag
+and an explicit create action.
+
+---
+
+Related: [Getting started](../getting-started.md) · [Installation: native](native.md) · [Cloudflare tunnel](cloudflare-tunnel.md) · [Troubleshooting](../troubleshooting.md) · [Back to README](../../README.md)

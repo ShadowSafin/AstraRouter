@@ -1,6 +1,6 @@
-﻿# API reference
+# API reference
 
-CoreRouter exposes three surfaces:
+Every endpoint CoreRouter exposes, on three surfaces:
 
 | Surface | Prefix | Credential |
 | --- | --- | --- |
@@ -11,6 +11,19 @@ CoreRouter exposes three surfaces:
 The inference surface is OpenAI-compatible: an existing OpenAI SDK works by
 changing the base URL. Responses carry additional namespaced fields, which
 OpenAI clients ignore.
+
+**Related:** [Routing](routing.md) explains the `X-CoreRouter-*` headers ·
+[Providers](providers.md) covers the management endpoints in detail ·
+[Tools](tools.md) covers the tool plane.
+
+## Contents
+
+- [Authentication](#authentication)
+- [Error envelope](#error-envelope)
+- [Routing intent](#routing-intent)
+- [Inference](#inference)
+- [Operations](#operations)
+- [Administration](#administration)
 
 ## Authentication
 
@@ -34,7 +47,7 @@ A valid credential without the required scope returns `403` with
 
 ## Error envelope
 
-Every failure â€” inference, admin, even a 404 on an unknown path â€” returns:
+Every failure — inference, admin, even a 404 on an unknown path — returns:
 
 ```json
 {
@@ -45,9 +58,9 @@ Every failure â€” inference, admin, even a 404 on an unknown path â€” 
     "code": "context_length_exceeded"
   },
   "corerouter": {
-    "request_id": "req_01HXâ€¦",
-    "trace_id": "4f1câ€¦",
-    "policy_id": "pol_â€¦",
+    "request_id": "req_01HX…",
+    "trace_id": "4f1c…",
+    "policy_id": "pol_…",
     "policy_name": "default-chat",
     "provider": "anthropic",
     "requested_model": "gpt-4o-mini",
@@ -130,7 +143,7 @@ target fails rather than a slow success from another provider.
 ### `POST /v1/chat/completions`
 
 The body is the OpenAI chat completions body. CoreRouter forwards only what the
-client sent â€” an absent field is not filled in, because inventing a value the
+client sent — an absent field is not filled in, because inventing a value the
 provider treats differently is a subtle correctness bug.
 
 | Field | Notes |
@@ -140,7 +153,7 @@ provider treats differently is a subtle correctness bug.
 | `prompt` | Shorthand for a single user message. Mutually exclusive with `messages`. |
 | `system` | Shorthand for a leading system message; prepended when `messages` are also sent. |
 | `stream` | `true` returns SSE. |
-| `top_k` / `min_p` / `repetition_penalty` | Extended sampling controls (â‰¥1, 0â€“1, â‰¥0). Accepted by the gateway and forwarded only to upstreams that implement them: Anthropic (`top_k`), Ollama (`top_k`, `min_p`, `repeat_penalty`), vLLM and OpenAI-compatible servers (all three). Never sent to OpenAI proper, whose API has none of them. |
+| `top_k` / `min_p` / `repetition_penalty` | Extended sampling controls (≥1, 0–1, ≥0). Accepted by the gateway and forwarded only to upstreams that implement them: Anthropic (`top_k`), Ollama (`top_k`, `min_p`, `repeat_penalty`), vLLM and OpenAI-compatible servers (all three). Never sent to OpenAI proper, whose API has none of them. |
 | `stream_options.include_usage` | `true` emits a terminal chunk carrying token usage and the final provider attribution. |
 | `tools`, `tool_choice`, `parallel_tool_calls` | Requires the `tools` capability; `parallel_tool_calls` requires `parallel_tool`. Tools are validated before routing: a malformed declaration is a `400` naming the tool, and an unknown `tool_choice` name is a `400`. |
 | `tool_execution` | `{"mode": "manual"}` (default: the model's tool calls reach the client untouched -- this is how OpenCode, Claude Code and other agentic apps run their own tools) or `{"mode": "automatic"}` (safe tools run inside the gateway in a bounded loop, **only when `tools.gateway_execution: true`**; otherwise automatic is clamped to manual rather than rejected). The request may only narrow the policy, never widen it. With gateway execution enabled, automatic execution with `stream: true` is a `400` -- streamed frames cannot be un-sent. |
@@ -157,7 +170,7 @@ selected model cannot read.
 
 ```json
 {
-  "id": "chatcmpl_01HXâ€¦",
+  "id": "chatcmpl_01HX…",
   "object": "chat.completion",
   "created": 1767225600,
   "model": "gpt-4o-mini",
@@ -165,7 +178,7 @@ selected model cannot read.
     { "index": 0, "message": { "role": "assistant", "content": "hello" }, "finish_reason": "stop" }
   ],
   "usage": { "prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11 },
-  "corerouter": { "request_id": "req_01HXâ€¦", "provider": "openai", "requested_model": "gpt-4o-mini", "routed_model": "gpt-4o-mini", "fallback_used": false, "latency_ms": 912, "estimated_cost_usd": 0.0000026 }
+  "corerouter": { "request_id": "req_01HX…", "provider": "openai", "requested_model": "gpt-4o-mini", "routed_model": "gpt-4o-mini", "fallback_used": false, "latency_ms": 912, "estimated_cost_usd": 0.0000026 }
 }
 ```
 
@@ -173,8 +186,8 @@ The default `corerouter` block is stable attribution only
 (`request_id`, `provider`, `requested_model`, `routed_model`,
 `fallback_used`, `cache_hit`, `latency_ms`, `estimated_cost_usd`).
 `X-CoreRouter-Debug: true` restores policy names, strategy, attempts, task,
-shaping and route reasons. The full walkthrough with curl and SDK samples
-lives in `docs/universal-endpoint.md`.
+shaping and route reasons. For worked curl and SDK examples, see
+[Getting started](getting-started.md#5-make-a-call).
 
 **Streaming**
 
@@ -261,7 +274,7 @@ failing to route it would leave the client unable to tell whose problem it is.
 ### `GET /v1/models/{model}`
 
 One model object, resolving aliases case-insensitively. `404` with code
-`not_found` if unregistered. Requires the `inference` scope â€” listing models is
+`not_found` if unregistered. Requires the `inference` scope — listing models is
 part of the standard client handshake, so it is not gated behind a separate read
 scope.
 
@@ -286,11 +299,11 @@ answer rather than a 404 that reads as a misconfigured base URL.
 ```json
 {
   "status": "ready",
-  "checks": { "postgres": "ok", "redis": "degraded: dial tcp â€¦", "providers": "2 configured" }
+  "checks": { "postgres": "ok", "redis": "degraded: dial tcp …", "providers": "2 configured" }
 }
 ```
 
-Redis being degraded does **not** fail readiness â€” rate limiting falls back to a
+Redis being degraded does **not** fail readiness — rate limiting falls back to a
 per-process limiter and the gateway can still serve.
 
 ## Administration
@@ -305,7 +318,7 @@ Common query parameters:
 | Parameter | Applies to | Meaning |
 | --- | --- | --- |
 | `tenant_id` | most reads | Scope to one tenant. |
-| `from`, `to` | windowed reads | RFC 3339, `2006-01-02`, or a Go duration (`24h`, `168h`). **There is no day unit** â€” `7d` is rejected; send `168h`. |
+| `from`, `to` | windowed reads | RFC 3339, `2006-01-02`, or a Go duration (`24h`, `168h`). **There is no day unit** — `7d` is rejected; send `168h`. |
 | `interval` | series reads | Bucket width: `1m`, `5m`, `1h`, `1d`, `1w`. Chosen from the window width when omitted. |
 | `limit`, `offset` | list reads | Pagination. |
 | `outcome`, `provider`, `model`, `error_code`, `search`, `status_min` | request and error logs | Filters. |
@@ -349,7 +362,7 @@ Common query parameters:
 | `GET` | `/replay/{id}` | One replay job. |
 | `GET` | `/evaluations` | List evaluation runs. |
 | `GET` | `/evaluations/{id}` | One run plus scored results with regression flags. |
-| `POST` | `/providers/{id}/kill` | Kill switch (`{"kill":true,"reason":"â€¦"}`) or revive (`{"kill":false}`). |
+| `POST` | `/providers/{id}/kill` | Kill switch (`{"kill":true,"reason":"…"}`) or revive (`{"kill":false}`). |
 | `GET` | `/guardrails` | Recent overrides (kill switches, caps, blocks). |
 | `GET` | `/endpoints` | Endpoint scopes with routing overrides. |
 | `PUT` | `/endpoints` | Upsert an endpoint by slug. |
@@ -367,11 +380,11 @@ Common query parameters:
 curl -s localhost:8080/admin/v1/keys \
   -H "Authorization: Bearer $CR_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"tenant_id":"â€¦","name":"payments-service","scopes":["inference"],"expires_in_hours":720}' | jq
+  -d '{"tenant_id":"…","name":"payments-service","scopes":["inference"],"expires_in_hours":720}' | jq
 ```
 
 Key creation returns the plaintext exactly once and stores only its digest, which
-is the reason a leaked database yields no usable credential â€” and the reason an
+is the reason a leaked database yields no usable credential — and the reason an
 existing key can never be re-displayed.
 
 **Audit**
@@ -384,7 +397,7 @@ the system matching neither the operator's intent nor the audit log.
 
 ### Phase 3: management
 
-Full CRUD for the catalogue â€” providers, models, tenants and keys â€” plus
+Full CRUD for the catalogue — providers, models, tenants and keys — plus
 sealed credentials, connectivity tests and generic overrides. Every route below
 lives under `/admin/v1` and requires an admin key; the scope narrows further by
 path and method. An unknown id returns `404` with code `not_found`.
@@ -416,7 +429,7 @@ operator to hold two scopes for one workflow.
 | `PATCH` | `/providers/{id}` | Partial update, including `status` to enable or disable. |
 | `DELETE` | `/providers/{id}` | Delete a provider. Models cascade; returns `{deleted, models_removed}`. |
 
-An inline `api_key` on create or update is discarded â€” secrets travel only
+An inline `api_key` on create or update is discarded — secrets travel only
 through the credential endpoint, where they are sealed before storage. Every
 response is the provider detail: full configuration plus `has_credential` and,
 when present, a `credential` metadata object. The secret itself is never
@@ -437,7 +450,7 @@ turned it back on directly. Disabling audits `disable` the same way.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `PUT` | `/providers/{id}/credential` | Seal `{"secret":"â€¦","name?":"primary"}` with AES-256-GCM. |
+| `PUT` | `/providers/{id}/credential` | Seal `{"secret":"…","name?":"primary"}` with AES-256-GCM. |
 | `GET` | `/providers/{id}/credential` | Metadata only: `{has_credential, credential?}`. |
 | `DELETE` | `/providers/{id}/credential` | Remove the stored secret. |
 
@@ -445,12 +458,12 @@ turned it back on directly. Disabling audits `disable` the same way.
 PUT /admin/v1/providers/{id}/credential
 Content-Type: application/json
 
-{"secret": "sk-â€¦", "name": "primary"}
+{"secret": "sk-…", "name": "primary"}
 ```
 
 A first write audits `create` on resource `credential`; overwriting an existing
 secret audits `rotate`. Either way the response is `{provider_id,
-has_credential, credential}` â€” metadata, never plaintext. A credential write
+has_credential, credential}` — metadata, never plaintext. A credential write
 also marks the provider `api`-managed, so the bootstrapper never reverts the
 setup it belongs to. Passing `"sync_models": true` discovers the provider's
 remote models into the registry in the same call; the response then carries a
@@ -520,7 +533,7 @@ Content-Type: application/json
 {"slug": "acme", "name": "Acme Inc", "plan": "scale"}
 ```
 
-A delete is refused with `400` while the tenant still holds active API keys â€”
+A delete is refused with `400` while the tenant still holds active API keys —
 deleting it would orphan client configurations with no error pointing at the
 cause. Revoke the keys first, or retry with `?force=true`.
 
@@ -540,7 +553,7 @@ Content-Type: application/json
 
 Rotation keeps the key's identity, tenant, name and scopes; only the secret
 changes. The response is `{key, plaintext, warning}` and the plaintext appears
-exactly once, like creation â€” a leaked database still yields no usable
+exactly once, like creation — a leaked database still yields no usable
 credential. The credential cache is invalidated as part of the rotation, so the
 old secret stops working now rather than after the cache TTL. Rotation audits
 `rotate` on resource `api_key`.
@@ -573,7 +586,7 @@ Content-Type: application/json
 
 `kind` is required; `target`, `tenant_id`, `reason` and RFC 3339 `expires_at`
 are optional. An override is an event row, so revocation means writing the
-inverse row (`enabled:false`) rather than editing history â€” the log keeps what
+inverse row (`enabled:false`) rather than editing history — the log keeps what
 was true and when.
 
 **Ownership, audit and reload**
@@ -590,8 +603,8 @@ Phase 3 adds audit actions `test`, `enable` and `disable`, and resources
 rather than `update`; credential creation audits `create` and replacement
 audits `rotate`. Reads and test-history listing are not audited.
 
-Every write above triggers a runtime reload â€” catalogue plus adapter plus
-policy refresh â€” so an operator's save applies immediately. A failed reload is
+Every write above triggers a runtime reload — catalogue plus adapter plus
+policy refresh — so an operator's save applies immediately. A failed reload is
 logged, never returned: the background refresh loop converges anyway and acts
 as the backstop.
 
@@ -626,11 +639,11 @@ look enforced. `owner: tenant` requires `tenant_id`, which must exist.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/tool-policies` | `{policies: [...]}`. |
-| `PUT` | `/tool-policies` | Upsert by name + tenant. Bounds are clamped (`max_steps` 1â€“10, `max_tool_calls` 1â€“64, `max_run_seconds` 1â€“600). |
+| `PUT` | `/tool-policies` | Upsert by name + tenant. Bounds are clamped (`max_steps` 1–10, `max_tool_calls` 1–64, `max_run_seconds` 1–600). |
 | `DELETE` | `/tool-policies/{id}` | Delete a policy. Requests fall back to the built-in manual default. |
 
 Omitting `enabled` means enabled on create, and leaves the value alone on
-update â€” creating a policy with only a mode and bounds stores a policy that
+update — creating a policy with only a mode and bounds stores a policy that
 takes effect, not a silently inert one.
 
 **History**
@@ -650,7 +663,7 @@ A request that involved tools carries `corerouter.tool_run`:
 "tool_run": {
   "mode": "automatic",
   "status": "gateway_executed",
-  "run_id": "731b8540-â€¦",
+  "run_id": "731b8540-…",
   "steps": 3, "calls": 3, "executed": 3,
   "stop_reason": "stopped at the 3-step limit",
   "tools": ["now", "now", "now"],
@@ -669,3 +682,7 @@ A request with `response_format` carries `corerouter.structured`
 (`requested`, `valid`, `schema`, `error`, `repaired`): the gateway extracts a
 fenced JSON object when it is unambiguous and says so, rather than failing a
 response the caller could have used.
+
+---
+
+Related: [Getting started](getting-started.md) · [Routing](routing.md) · [Providers](providers.md) · [Tools](tools.md) · [Dashboard](dashboard.md) · [Troubleshooting](troubleshooting.md) · [Back to README](../README.md)
