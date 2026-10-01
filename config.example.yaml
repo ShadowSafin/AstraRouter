@@ -1,0 +1,364 @@
+﻿# CoreRouter example configuration.
+#
+# Copy to /etc/corerouter/config.yaml for a native install, or to
+# corerouter.yaml in the working directory for local development.
+#
+# Precedence, lowest to highest:
+#
+#   1. built-in defaults  (a config file is optional: the defaults boot)
+#   2. this file          (--config / CR_CONFIG_FILE)
+#   3. environment vars   (CR_* -- always win, which is what makes a container
+#                          override of one value possible without a second file)
+#
+# Secrets are referenced, never embedded: every credential below names an
+# environment variable via `*_env`. That keeps this file safe to commit and keeps
+# `corerouter config` (which prints the resolved configuration with secrets
+# redacted) from becoming the leak.
+#
+# Durations accept a string ("30s", "5m", "2h") or a bare number of seconds.
+#
+# This example is `environment: production`, which refuses to start until a
+# bootstrap admin key is exported. Verify it with:
+#
+#   CR_ADMIN_KEY=$(openssl rand -hex 24) corerouter config -config config.example.yaml
+
+app:
+  name: corerouter
+  # development | staging | production. `production` tightens validation: a
+  # scoped admin surface without a bootstrap key refuses to start, and a CORS
+  # wildcard is rejected.
+  environment: production
+  # Defaults to the hostname; set it explicitly when several replicas share a host.
+  instance_id: ""
+  region: ""
+  # Created on first boot so a fresh install is usable without manual seeding.
+  default_tenant_slug: default
+  default_tenant_name: Default Tenant
+  # Apply the providers/policies below on every startup, upserting by name. The
+  # database is the runtime source of truth afterwards.
+  bootstrap_from_config: true
+
+http:
+  # Bind to all interfaces inside a container; bind to 127.0.0.1:8080 on a host
+  # that sits behind a reverse proxy.
+  addr: ":8080"
+  read_header_timeout: 10s
+  read_timeout: 30s
+  # Must exceed the longest streaming response. A streaming completion can
+  # legitimately run for minutes, so this is generous on purpose.
+  write_timeout: 15m
+  idle_timeout: 90s
+  # Bounds graceful drain on SIGTERM.
+  shutdown_timeout: 30s
+  max_body_bytes: 8388608
+  # CIDRs whose X-Forwarded-For is trusted. Leave empty unless the gateway is
+  # genuinely behind these proxies: honouring the header from anywhere lets a
+  # client forge its own source address in logs and rate limits.
+  trusted_proxies: []
+  # The dashboard's origin. A wildcard is refused in production.
+  cors_allowed_origins:
+    - http://localhost:3000
+  # /debug/pprof is unauthenticated and must stay off in production.
+  enable_pprof: false
+
+database:
+  # Prefer the discrete fields for a systemd drop-in, or set a full DSN. When
+  # dsn is non-empty the fields below are ignored.
+  # dsn: postgres://corerouter:corerouter@localhost:5432/corerouter?sslmode=disable
+  host: localhost
+  port: 5432
+  user: corerouter
+  password: corerouter
+  name: corerouter
+  ssl_mode: disable
+  max_conns: 20
+  min_conns: 2
+  max_conn_lifetime: 1h
+  max_conn_idle_time: 30m
+  connect_timeout: 10s
+  statement_timeout: 30s
+  # Convenient for self-hosting. Under strict change control, set this false and
+  # run `corerouter migrate` as a release step instead.
+  auto_migrate: true
+  migrations_dir: migrations
+
+redis:
+  addr: localhost:6379
+  username: ""
+  password: ""
+  db: 0
+  # Sentinel-based failover. When set, master_name is required.
+  # sentinel_addrs: ["sentinel-1:26379", "sentinel-2:26379"]
+  # master_name: mymaster
+  pool_size: 20
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  # Namespaces every key, so one Redis can serve several deployments.
+  key_prefix: corerouter
+  tls: false
+  # false degrades rate limiting and caching to in-process rather than failing
+  # startup. Rate limits are then per-replica, not global.
+  required: false
+
+clickhouse:
+  addr: localhost:9000
+  database: corerouter
+  username: corerouter
+  password: corerouter
+  tls: false
+  # ClickHouse performs poorly with one INSERT per row; batching is essential.
+  batch_size: 500
+  flush_interval: 2s
+  max_retries: 3
+  # false drops analytics writes (counted in corerouter_async_dropped_total)
+  # instead of failing startup. Inference never depends on ClickHouse.
+  required: false
+
+nats:
+  url: nats://localhost:4222
+  # urls allows a cluster seed list; url is used when this is empty.
+  urls: []
+  name: corerouter-gateway
+  credentials_file: ""
+  nkey_seed_file: ""
+  token: ""
+  # JetStream is required for durable eval and replay jobs: a worker restart
+  # resumes rather than losing work.
+  jetstream: true
+  stream_replicas: 1
+  # -1 retries forever, which is correct for a long-lived service.
+  max_reconnects: -1
+  reconnect_wait: 2s
+  required: false
+
+auth:
+  # Override the Authorization header if a fronting proxy reserves it.
+  header_name: ""
+  # Rejects short keys early; real minted keys are longer.
+  min_key_length: 20
+  key_prefix: "cr_live_"
+  # How long a validated key is cached. This bounds the window in which a revoked
+  # key still works, so keep it short.
+  cache_ttl: 30s
+  # Names an environment variable holding a bootstrap admin key. This is how a
+  # fresh install is administered before any key exists in the database.
+  admin_key_env: CR_ADMIN_KEY
+  # Development convenience only: attribute unauthenticated calls to one tenant.
+  # allow_anonymous_tenant: ""
+
+routing:
+  default_strategy: priority # priority | weighted | lowest_cost | lowest_latency
+  default_max_attempts: 2
+  default_retry:
+    max_attempts: 2
+    initial_backoff: 150ms
+    max_backoff: 2s
+    multiplier: 2.0
+    # jitter: true
+    # retry_on: ["rate_limited", "timeout", "upstream"]
+    # honor_retry_after: true
+  default_timeout:
+    # These are hard budgets: an attempt is cancelled when it expires, so a
+    # value shorter than a long generation truncates the answer mid-sentence.
+    # They are generous by default on purpose. They are NOT derived from
+    # latency_target_ms, which is a soft ranking signal only.
+    total: 10m
+    per_attempt: 5m
+    connect: 10s
+    stream_idle: 90s
+    first_token: 60s
+  default_limits:
+    # A ceiling on completion length, not a target.
+    #
+    # It bounds what a client may request and what the gateway budgets for; it is
+    # not sent upstream when the client asked for no limit, so a silent client
+    # still gets the provider's own default. A request above this value is clamped
+    # to it. Whenever a ceiling does bound generation, the response carries
+    # corerouter.completion with applied_tokens and truncated, so a shortened
+    # answer is never mistaken for a finished one.
+    max_output_tokens: 32768
+    max_prompt_tokens: 0 # 0 means unlimited
+    requests_per_minute: 600
+    tokens_per_minute: 0
+    max_cost_per_request_usd: 0
+    daily_budget_usd: 0
+    monthly_budget_usd: 0
+  fallback_on_all_providers_failed: false
+  health_check_enabled: true
+  health_check_interval: 30s
+  health_check_timeout: 10s
+  health_window: 5m
+  # Static latency priors (milliseconds) used before real observations exist.
+  latency_priors:
+    gpt-4o-mini: 400
+    claude-3-5-haiku-latest: 350
+
+cache:
+  response_cache: false
+  response_ttl: 5m
+  max_response_bytes: 262144
+  provider_health_ttl: 90s
+  policy_cache_ttl: 30s
+  registry_cache_ttl: 30s
+  # Phase 2: prefix + semantic tiers. Exact is gated by response_cache;
+  # semantic/prefix enable independently so analytics can run without serving hits.
+  semantic_enabled: true
+  prefix_enabled: true
+  semantic_threshold: 0.92
+  prefix_length: 256
+  # Phase 5: layered switches and safety defaults.
+  # Exact reuse needs both response_cache and exact_enabled.
+  exact_enabled: true
+  # Skip tool-carrying requests by default; only deterministic safe built-ins
+  # (now/echo or registry-verified safe tools) are reusable.
+  bypass_tool_requests: true
+  # Never reuse temp>0 unseeded or n>1 requests unless explicitly allowed.
+  allow_nondeterministic: false
+  # Skip prompts that look like live-data questions (stale facts are worse
+  # than one more provider call).
+  bypass_live_data: true
+  # Bounds the in-process semantic embedding index.
+  max_semantic_entries: 2000
+
+# Phase 4: tool calling. The gateway forwards tool definitions and returns the
+# model's tool calls untouched (manual mode), so agentic apps such as OpenCode
+# or Claude Code run their own tools. Gateway-side execution is opt-in: only
+# enable it when no streaming client needs automatic runs, because a streamed
+# automatic run is rejected (frames cannot be un-sent once delivered).
+tools:
+  gateway_execution: false # or CR_TOOLS_GATEWAY_EXECUTION=true to opt in
+
+# Temporary public tunnels (Cloudflare quick tunnels). Off by default: nothing
+# is exposed until an operator creates a tunnel from the dashboard (/tunnels)
+# or POST /admin/v1/tunnels/create. Every request through a tunnel still
+# passes CoreRouter auth, policy and rate limits.
+tunnel:
+  enabled: false # or CR_TUNNEL_ENABLED=true to allow creation
+  binary: cloudflared # absolute path also works; or CR_TUNNEL_BINARY
+  default_target: gateway # gateway | dashboard | 127.0.0.1:port
+  # Where the "dashboard" target points. In Docker use the compose service
+  # name (CR_TUNNEL_DASHBOARD_TARGET=http://dashboard:3000); natively the
+  # default http://127.0.0.1:3000 is usually right.
+  dashboard_target: http://127.0.0.1:3000
+  allow_custom_targets: true # explicit loopback host:port only, never remote hosts
+  auto_restart: true # respawn cloudflared on unexpected exit
+  stop_on_shutdown: true # never leave a public URL behind
+  startup_timeout: 60s # how long to wait for the public URL
+
+# Phase 2: intelligence and control plane.
+classifier:
+  enabled: true
+  long_context_tokens: 32000
+  batch_tokens: 64000
+shaping:
+  enabled: true
+  max_history_messages: 50
+  max_prompt_tokens: 0 # 0 means unlimited
+  # system_prefix: ""
+  # system_suffix: ""
+  # guardrails: []
+scoring:
+  enabled: true
+  window: 1h
+  success_weight: 0.5
+  latency_weight: 0.25
+  cost_weight: 0.15
+  feedback_weight: 0.1
+guardrails:
+  enabled: true
+eval:
+  enabled: true
+  max_requests: 100
+  worker_pool: 4
+
+telemetry:
+  # Overrides app.name for the OTel resource.
+  service_name: ""
+  # Required whenever traces_enabled is true. Point at the collector.
+  otlp_endpoint: localhost:4318
+  # Correct for a sidecar or a local collector without TLS.
+  otlp_insecure: true
+  otlp_headers: {}
+  traces_enabled: true
+  metrics_enabled: true
+  logs_enabled: false
+  # Head sampling ratio in [0,1]. 1.0 samples everything.
+  trace_sample_ratio: 1.0
+  # Exposes /metrics for Prometheus to scrape. Independent of the OTLP path: a
+  # deployment may use either or both.
+  prometheus_enabled: true
+  prometheus_path: /metrics
+  export_interval: 15s
+  trace_buffer_size: 1024
+  persist_traces: true
+
+logging:
+  level: info # debug | info | warn | error
+  format: json # json | console
+  add_source: false
+  redact_headers:
+    - authorization
+    - x-api-key
+    - cookie
+    - set-cookie
+    - proxy-authorization
+  # Must stay off by default: prompts routinely contain personal data.
+  log_request_bodies: false
+  slow_request_threshold: 10s
+
+admin:
+  enabled: true
+  # Enforce ScopeAdminAll on every admin route. With this true, production
+  # validation requires a bootstrap admin key to be configured.
+  require_scope: true
+  usage_retention_days: 90
+  trace_retention_days: 30
+  log_retention_days: 30
+
+# ---------------------------------------------------------------------------
+# Declarative bootstrap catalogue
+#
+# Applied on startup when app.bootstrap_from_config is true, then maintained
+# through the dashboard. Credentials are always referenced by environment
+# variable so this file stays committable.
+#
+# This file intentionally seeds NO providers and NO policies. A provider row
+# without a working credential looks configured while serving nothing, which
+# is worse than an empty catalogue with a clear setup call to action. Add a
+# real provider through the dashboard (/providers) or by uncommenting the
+# template below and setting its credential.
+# ---------------------------------------------------------------------------
+providers: []
+# Template (commented so it never seeds):
+# providers:
+#   - name: openai-prod
+#     kind: openai
+#     base_url: https://api.openai.com/v1
+#     api_key_env: OPENAI_API_KEY
+#     priority: 1
+#     status: active
+#     models:
+#       - name: gpt-4o-mini
+#         display_name: GPT-4o mini
+#         context_window: 128000
+#         max_output_tokens: 16384
+#         capabilities: [chat, streaming, tools, json_mode]
+#         input_cost_per_million: 0.15
+#         output_cost_per_million: 0.6
+#         quality_tier: 3
+
+# Policies reference providers by name, so they are written after at least
+# one real provider exists. An example catch-all (commented so it never
+# seeds against providers that do not exist):
+# policies:
+#   - name: default-chat
+#     priority: 100
+#     enabled: true
+#     match:
+#       request_types: [chat.completions]
+#     strategy: priority
+#     targets:
+#       - provider: openai-prod
+#         model: gpt-4o-mini
+policies: []
