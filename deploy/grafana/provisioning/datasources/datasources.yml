@@ -1,0 +1,46 @@
+# Provisioned Grafana datasources.
+#
+# The UIDs are pinned deliberately. The overview dashboard references them by UID
+# rather than by an interpolated template variable, so the shipped dashboard draws
+# correctly on first boot with no "pick a datasource" step. Renaming one of these
+# means updating deploy/grafana/dashboards/corerouter-overview.json in the same
+# change; a mismatched UID renders every panel empty.
+
+apiVersion: 1
+
+# Re-apply the definitions on every start so an operator cannot drift the
+# datasource away from what the dashboards and alert rules expect.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+  - name: Loki
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    # Grafana reaches Prometheus over the compose network, not through the browser.
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s
+      # Matches prometheus.yml's evaluation_interval so a dashboard refresh and a
+      # rule evaluation see the same series.
+      prometheusType: Prometheus
+      prometheusVersion: 2.54.0
+      # $__rate_interval is only meaningful with this hint set.
+      manageAlerts: true
+      incrementalQueryOverlapWindow: 30s
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
