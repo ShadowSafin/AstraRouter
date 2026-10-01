@@ -34,8 +34,10 @@ dev = [
 corerouter-worker = "corerouter_workers.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/corerouter/corerouter"
-Documentation = "https://github.com/corerouter/corerouter/blob/main/docs/architecture.md"
+Homepage = "https://github.com/shadowsafin/corerouter"
+Documentation = "https://github.com/shadowsafin/corerouter/blob/main/documentation/README.md"
+Source = "https://github.com/shadowsafin/corerouter"
+Issues = "https://github.com/shadowsafin/corerouter/issues"
 
 [tool.setuptools]
 packages = ["corerouter_workers"]

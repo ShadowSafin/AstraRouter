@@ -23,7 +23,7 @@
 
 [Unit]
 Description=CoreRouter inference gateway
-Documentation=https://github.com/corerouter/corerouter
+Documentation=https://github.com/shadowsafin/corerouter
 # Requires only what it cannot function without. The datastores are declared as
 # After= rather than Requires= because the gateway is designed to start before
 # them and report itself unready: a hard dependency here turns a database restart
