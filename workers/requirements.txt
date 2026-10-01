@@ -1,0 +1,9 @@
+# Runtime dependencies for the CoreRouter intelligence workers.
+#
+# The core scoring and analysis modules need nothing from this file; only the
+# message bus, the optional judge client and the metrics exporter do. The bounds
+# are upper-limited because a major version of any of these has changed behaviour
+# in ways that would be silent here.
+nats-py>=2.6,<3
+httpx>=0.27,<1
+prometheus-client>=0.20,<1

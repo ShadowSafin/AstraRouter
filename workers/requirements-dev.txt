@@ -1,0 +1,12 @@
+# Development and CI dependencies.
+#
+# The test suite itself runs on the standard library alone -- `python -m unittest
+# discover -s tests -t .` -- so these add tooling rather than making the tests
+# runnable. That split is deliberate: a contributor can verify the scoring and
+# analysis logic with no install at all.
+-r requirements.txt
+pytest>=8.0,<9
+pytest-asyncio>=0.23,<1
+ruff>=0.5,<1
+mypy>=1.10,<2
+PyYAML>=6.0,<7
