@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — "quiet control plane".
+ *
+ * Three surfaces, each one step lighter: the outer page, the app shell, and
+ * the card. Borders do the separation work; shadows are reserved for floating
+ * layers (menus, drawers, dialogs). Values are raw HSL triplets so Tailwind's
+ * `hsl(var(--x))` keeps working with opacity modifiers.
+ *
+ * Dark is the product's home. The light variables stay valid, but the shell
+ * always renders dark: an ops console is read under office light and in
+ * darkened NOCs alike, and one committed theme beats two half-kept ones.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 33% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 33% 12%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 33% 18%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 42%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 33% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    --success: 142 71% 35%;
+    --warning: 32 95% 44%;
+    --danger: 0 72% 51%;
+    --info: 199 89% 42%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Near-black canvas, neutral — the panels do the structuring. */
+    --background: 0 0% 3.5%;
+    /* Cards lift one step off the canvas. */
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+
+    --foreground: 0 0% 96%;
+
+    --primary: 221 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 9%;
+    --muted-foreground: 0 0% 62%;
+
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 68% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Hairlines: visible enough to structure, quiet enough to disappear. */
+    --border: 0 0% 12%;
+    --input: 0 0% 14%;
+    --ring: 221 83% 62%;
+
+    --success: 142 60% 52%;
+    --warning: 38 92% 60%;
+    --danger: 0 74% 64%;
+    --info: 199 90% 60%;
+
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Browser surfaces carry the design too: selection, caret, scrollbars and
+     focus rings ship with defaults that belong to no system. */
+  ::selection {
+    background: hsl(var(--primary) / 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Thin scrollbars that stay out of the way until used. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  input,
+  textarea,
+  select {
+    caret-color: hsl(var(--primary));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground) / 0.75);
+  }
+
+  /* Tabular numerals keep columns of figures aligned, which is the whole point
+     of a metrics table. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
