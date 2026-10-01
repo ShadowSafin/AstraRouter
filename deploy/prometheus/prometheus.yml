@@ -1,0 +1,54 @@
+# Prometheus configuration for the CoreRouter stack.
+#
+# The gateway exposes its own metrics on /metrics. The OpenTelemetry collector is
+# scraped too, because a pipeline that drops spans is invisible in the gateway's
+# own numbers and is a common cause of "the traces are missing".
+
+global:
+  # 15s matches the gateway's OTLP export interval, so a scrape and an export do
+  # not interleave into a graph that looks jittery for no reason.
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: corerouter
+    environment: ${CR_ENVIRONMENT:-local}
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: corerouter-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:8080"]
+        labels:
+          service: corerouter-gateway
+          component: control-plane
+
+  - job_name: corerouter-workers
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["workers:9101"]
+        labels:
+          service: corerouter-workers
+          component: intelligence
+
+  - job_name: otel-collector
+    # The collector's own telemetry answers "is the pipeline healthy?", which the
+    # application metrics cannot: a collector dropping data still looks idle.
+    static_configs:
+      - targets: ["otel-collector:8889"]
+        labels:
+          service: otel-collector
+          component: observability
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+        labels:
+          service: loki
