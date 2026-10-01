@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Next.js build output
+.next
+out
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Vercel / local env
+.env
+.env.local
+.env*.local
+
+# Logs and coverage
+*.log
+coverage
+
+# Editor and OS noise
+.DS_Store
+.idea
+.vscode
