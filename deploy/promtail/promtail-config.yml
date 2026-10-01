@@ -1,0 +1,104 @@
+# Promtail configuration for CoreRouter.
+#
+# Promtail discovers containers through the Docker API and ships their stdout to
+# Loki. This is what turns the gateway's and workers' structured JSON logs into
+# something queryable by request id or tenant, which is the difference between
+# "the logs" and "the log for this one failing request".
+#
+# The pipeline deliberately extracts very few labels. Every promoted label becomes
+# an index stream, and indexing a request id would create one stream per request
+# and destroy Loki. High-cardinality fields stay in the line and are queried with
+# a filter expression instead.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  # Survives a container restart, so shipping resumes rather than re-reading from
+  # the start of every log file.
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    # A short timeout with a bounded backoff means a Loki outage makes promtail
+    # lag, not block.
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    batchwait: 1s
+    batchsize: 1048576
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      # Only ship CoreRouter's own containers. The observability stack's logs are
+      # noise here, and Loki's own logs would be circular.
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        regex: "corerouter"
+        action: keep
+      # The compose service name is the useful identity: "gateway", "workers",
+      # "dashboard". The container name has a replica suffix that would create a
+      # new stream on every recreate.
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: service
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: container
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: container_name
+      - source_labels: ["__meta_docker_container_log_stream"]
+        target_label: stream
+
+    pipeline_stages:
+      # The Go control plane renames the three standard slog keys in
+      # internal/logging: level -> severity, msg -> message, time -> timestamp.
+      # The workers' Python formatter emits plain `level`/`msg`. The two stages
+      # below keep that difference in one place instead of normalising it and
+      # losing the ability to tell a Go line from a Python one.
+      - match:
+          selector: '{service="gateway"}'
+          stages:
+            - json:
+                expressions:
+                  level: severity
+                  msg: message
+                  trace_id: trace_id
+                  request_id: request_id
+            # Only level is promoted: it is the one bounded, low-cardinality field
+            # every line has. trace_id and request_id stay in the structured line
+            # for `| json | trace_id = "..."` queries, because indexing them would
+            # create one stream per request.
+            - labels:
+                level:
+            - output:
+                source: msg
+
+      - match:
+          selector: '{service="workers"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  logger: logger
+                  msg: msg
+            - labels:
+                level:
+                logger:
+            - output:
+                source: msg
+
+      - match:
+          selector: '{service="dashboard"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  msg: msg
+            - labels:
+                level:

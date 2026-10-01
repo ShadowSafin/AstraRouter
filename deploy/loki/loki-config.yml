@@ -1,0 +1,90 @@
+# Loki configuration for CoreRouter.
+#
+# Single-binary, filesystem-backed: the smallest Loki that is still correct. A
+# real deployment swaps `filesystem` for object storage and moves to distributed
+# mode, but nothing else in this file changes.
+#
+# Retention is explicit. Loki's default is to keep everything forever, and an
+# observability stack that fills its own disk is the second-most-common way a
+# self-hosted install falls over after an unbounded gateway.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  # One replica: there is one Loki process. This is the value the ring must agree
+  # on, not a tunable.
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    # `tsdb` with schema v13 is the current store. boltdb-shipper is deliberately
+    # not used: it is deprecated and only present for upgrades.
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+  filesystem:
+    directory: /loki/chunks
+
+limits_config:
+  # 30 days matches the usual trace-retention window, so a log line and the span
+  # it belongs to can be correlated by timestamp.
+  retention_period: 720h
+  # Out-of-order writes are rejected rather than silently accepted; promtail
+  # resumes from a checkpoint after a restart, so this only fires on a clock jump.
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  # Per-tenant cardinality guard. A burst of unique label values is how one
+  # misconfigured client takes down Loki for everyone.
+  max_streams_per_user: 10000
+  max_global_streams_per_user: 10000
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  # A single log line larger than this is truncated rather than dropped, because a
+  # dropped line is invisible and a truncated one is not.
+  max_line_size: 256kb
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  # Required whenever retention is enabled: the compactor must know where deleted
+  # chunks are recorded.
+  delete_request_store: filesystem
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  alertmanager_url: http://localhost:9093
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+
+analytics:
+  # No phone-home from a self-hosted install.
+  reporting_enabled: false
