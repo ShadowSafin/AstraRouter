@@ -1,0 +1,51 @@
+# Local environment and secrets -- never commit these.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.creds
+.smoke_key
+.smoke_reqid
+# Written by scripts/smoke.sh at run time: the model it picked for the run.
+.smoke_model
+
+# Go build output and test artifacts
+/bin/
+/dist/
+*.test
+*.out
+coverage.out
+
+# Node
+node_modules/
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/coverage/
+npm-debug.log*
+*.tsbuildinfo
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local runtime state
+*.log
+tmp/
+.data/
