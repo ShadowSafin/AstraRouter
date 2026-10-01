@@ -1,0 +1,23 @@
+# Provisioned dashboard providers.
+#
+# Dashboards are loaded from disk on every start and left uneditable. The shipped
+# definition stays the source of truth: an operator who wants a variant saves a
+# copy, which is the behaviour that keeps a redeploy from silently reverting
+# someone's debugging session -- and the other way round.
+
+apiVersion: 1
+
+providers:
+  - name: corerouter
+    orgId: 1
+    folder: CoreRouter
+    folderUid: corerouter
+    type: file
+    disableDeletion: true
+    # A dashboard removed from disk is removed from Grafana. With
+    # disableDeletion true this only applies to files this provider owns.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
