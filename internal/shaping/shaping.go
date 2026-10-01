@@ -1,0 +1,305 @@
+// Package shaping implements the prompt transformation pipeline.
+//
+// Shaping runs after classification and policy evaluation but before the
+// provider call. Every step is recorded so traces show exactly what changed.
+// Transformations are conservative: they never invent content, only normalize,
+// trim, compress whitespace, inject guardrails, or adapt to provider quirks.
+package shaping
+
+import (
+	"strings"
+
+	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/corerouter/corerouter/internal/tokens"
+)
+
+// Options configures shaping defaults.
+type Options struct {
+	Enabled            bool
+	MaxHistoryMessages int
+	MaxPromptTokens    int
+	SystemPrefix       string
+	SystemSuffix       string
+	Guardrails         []string
+}
+
+// DefaultOptions returns safe defaults.
+func DefaultOptions() Options {
+	return Options{Enabled: true, MaxHistoryMessages: 50}
+}
+
+// Pipeline applies shaping plans to requests.
+type Pipeline struct {
+	opts Options
+}
+
+// New creates a pipeline.
+func New(opts Options) *Pipeline { return &Pipeline{opts: opts} }
+
+// PlanFor builds the shaping plan for a request from policy + task signals.
+func (p *Pipeline) PlanFor(task domain.TaskClassification, policy *domain.RoutingPolicy, decision *domain.PolicyDecision) domain.PromptShapePlan {
+	plan := domain.PromptShapePlan{NormalizeSystem: true, ProviderAdapt: true}
+	if p != nil && p.opts.SystemPrefix != "" {
+		plan.SystemPrefix = p.opts.SystemPrefix
+	}
+	if p != nil && p.opts.SystemSuffix != "" {
+		plan.SystemSuffix = p.opts.SystemSuffix
+	}
+	if p != nil && len(p.opts.Guardrails) > 0 {
+		plan.Guardrails = append([]string{}, p.opts.Guardrails...)
+	}
+	if decision != nil {
+		// Policy decision already carries a baseline plan.
+		base := decision.Shaping
+		mergePlan(&plan, base)
+	}
+	// Task-specific shaping.
+	switch task.Task {
+	case domain.TaskLongContext:
+		plan.TrimContext = true
+		plan.SummarizeHistory = true
+		if plan.MaxHistoryMessages == 0 {
+			plan.MaxHistoryMessages = 20
+		}
+	case domain.TaskToolUse:
+		plan.ToolPrompting = true
+	case domain.TaskStructuredOutput:
+		plan.FormatStructured = true
+	case domain.TaskCoding, domain.TaskReasoning:
+		plan.TrimContext = true
+	case domain.TaskSummarization, domain.TaskExtraction:
+		plan.Compress = true
+	}
+	if policy != nil {
+		if policy.Limits.MaxHistoryMessages > 0 {
+			plan.MaxHistoryMessages = policy.Limits.MaxHistoryMessages
+		}
+		if policy.Limits.MaxPromptTokens > 0 {
+			plan.MaxPromptTokens = policy.Limits.MaxPromptTokens
+		}
+	}
+	if p != nil {
+		if p.opts.MaxHistoryMessages > 0 && plan.MaxHistoryMessages == 0 {
+			plan.MaxHistoryMessages = p.opts.MaxHistoryMessages
+		}
+		if p.opts.MaxPromptTokens > 0 && plan.MaxPromptTokens == 0 {
+			plan.MaxPromptTokens = p.opts.MaxPromptTokens
+		}
+	}
+	plan.Steps = describeSteps(plan)
+	return plan
+}
+
+func mergePlan(dst *domain.PromptShapePlan, src domain.PromptShapePlan) {
+	if src.NormalizeSystem {
+		dst.NormalizeSystem = true
+	}
+	if src.Compress {
+		dst.Compress = true
+	}
+	if src.TrimContext {
+		dst.TrimContext = true
+	}
+	if src.SummarizeHistory {
+		dst.SummarizeHistory = true
+	}
+	if src.FormatStructured {
+		dst.FormatStructured = true
+	}
+	if src.ToolPrompting {
+		dst.ToolPrompting = true
+	}
+	if src.GuardrailInject {
+		dst.GuardrailInject = true
+	}
+	if src.ProviderAdapt {
+		dst.ProviderAdapt = true
+	}
+	if src.MaxHistoryMessages > 0 {
+		dst.MaxHistoryMessages = src.MaxHistoryMessages
+	}
+	if src.MaxPromptTokens > 0 {
+		dst.MaxPromptTokens = src.MaxPromptTokens
+	}
+	if src.SystemPrefix != "" {
+		dst.SystemPrefix = src.SystemPrefix
+	}
+	if src.SystemSuffix != "" {
+		dst.SystemSuffix = src.SystemSuffix
+	}
+	if len(src.Guardrails) > 0 {
+		dst.Guardrails = append([]string{}, src.Guardrails...)
+	}
+}
+
+func describeSteps(plan domain.PromptShapePlan) []domain.PromptShapeStep {
+	steps := []domain.PromptShapeStep{}
+	add := func(name, detail string, on bool) {
+		steps = append(steps, domain.PromptShapeStep{Name: name, Detail: detail, Applied: on})
+	}
+	add("normalize_system", "merge duplicate system messages", plan.NormalizeSystem)
+	add("compress", "collapse whitespace", plan.Compress)
+	add("trim_context", "enforce history/token budgets", plan.TrimContext)
+	add("summarize_history", "summarize long history (extractive placeholder)", plan.SummarizeHistory)
+	add("structured_format", "enforce JSON schema hint", plan.FormatStructured)
+	add("tool_prompting", "render tool declarations", plan.ToolPrompting)
+	add("guardrails", strings.Join(plan.Guardrails, ";"), plan.GuardrailInject || len(plan.Guardrails) > 0)
+	add("provider_adapt", "provider-specific tweaks", plan.ProviderAdapt)
+	return steps
+}
+
+// Apply executes the plan against a request, returning the shaped copy and a
+// record of what changed. The input is never mutated.
+func (p *Pipeline) Apply(req *domain.ChatCompletionRequest, plan domain.PromptShapePlan) (*domain.ChatCompletionRequest, domain.PromptShape) {
+	if req == nil {
+		return req, domain.PromptShape{}
+	}
+	tokensIn := tokens.EstimateRequest(req)
+	out := *req
+	out.Messages = append([]domain.ChatMessage{}, req.Messages...)
+
+	shape := domain.PromptShape{TokensIn: tokensIn}
+	truncated := 0
+
+	if plan.NormalizeSystem {
+		out.Messages = normalizeSystem(out.Messages)
+	}
+	if plan.Compress {
+		out.Messages = compressMessages(out.Messages)
+	}
+	if plan.MaxHistoryMessages > 0 && len(out.Messages) > plan.MaxHistoryMessages {
+		// Keep system messages plus the tail.
+		kept := keepTail(out.Messages, plan.MaxHistoryMessages)
+		truncated = len(out.Messages) - len(kept)
+		out.Messages = kept
+	}
+	if plan.MaxPromptTokens > 0 {
+		out.Messages = trimToTokens(out.Messages, plan.MaxPromptTokens, &truncated)
+	}
+	if plan.SystemPrefix != "" || plan.SystemSuffix != "" {
+		out.Messages = injectSystem(out.Messages, plan.SystemPrefix, plan.SystemSuffix)
+	}
+	if len(plan.Guardrails) > 0 || plan.GuardrailInject {
+		out.Messages = injectGuardrails(out.Messages, plan.Guardrails)
+	}
+	if plan.FormatStructured && out.ResponseFormat == nil {
+		out.ResponseFormat = &domain.ResponseFormat{Type: "json_object"}
+	}
+
+	shape.TokensOut = tokens.EstimateRequest(&out)
+	shape.Truncated = truncated
+	shape.Plan = plan
+	// Mark applied steps with token deltas.
+	for i := range plan.Steps {
+		plan.Steps[i].TokensBefore = tokensIn
+		plan.Steps[i].TokensAfter = shape.TokensOut
+	}
+	shape.Plan.Steps = plan.Steps
+	return &out, shape
+}
+
+func normalizeSystem(msgs []domain.ChatMessage) []domain.ChatMessage {
+	// Merge consecutive system messages into one.
+	out := make([]domain.ChatMessage, 0, len(msgs))
+	for _, m := range msgs {
+		if len(out) > 0 && m.Role == domain.RoleSystem && out[len(out)-1].Role == domain.RoleSystem {
+			prev := out[len(out)-1]
+			merged := prev.Text() + "\n" + m.Text()
+			prev.Content = domain.NewTextContent(strings.TrimSpace(merged))
+			out[len(out)-1] = prev
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+func compressMessages(msgs []domain.ChatMessage) []domain.ChatMessage {
+	out := make([]domain.ChatMessage, 0, len(msgs))
+	for _, m := range msgs {
+		if m.Content.IsParts {
+			out = append(out, m)
+			continue
+		}
+		c := collapseWhitespace(m.Content.Text)
+		m.Content = domain.NewTextContent(c)
+		out = append(out, m)
+	}
+	return out
+}
+
+func collapseWhitespace(s string) string {
+	fields := strings.Fields(s)
+	return strings.Join(fields, " ")
+}
+
+func keepTail(msgs []domain.ChatMessage, max int) []domain.ChatMessage {
+	if len(msgs) <= max {
+		return msgs
+	}
+	// Preserve leading system messages.
+	var system []domain.ChatMessage
+	var rest []domain.ChatMessage
+	for _, m := range msgs {
+		if m.Role == domain.RoleSystem && len(system) < 2 {
+			system = append(system, m)
+		} else {
+			rest = append(rest, m)
+		}
+	}
+	need := max - len(system)
+	if need < 0 {
+		return msgs[len(msgs)-max:]
+	}
+	if len(rest) <= need {
+		return append(system, rest...)
+	}
+	tail := rest[len(rest)-need:]
+	return append(system, tail...)
+}
+
+func trimToTokens(msgs []domain.ChatMessage, maxTokens int, truncated *int) []domain.ChatMessage {
+	// Drop oldest non-system messages until under budget.
+	for tokens.EstimateMessages(msgs) > maxTokens {
+		idx := -1
+		for i, m := range msgs {
+			if m.Role != domain.RoleSystem {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			break
+		}
+		msgs = append(msgs[:idx], msgs[idx+1:]...)
+		if truncated != nil {
+			*truncated++
+		}
+		if len(msgs) == 0 {
+			break
+		}
+	}
+	return msgs
+}
+
+func injectSystem(msgs []domain.ChatMessage, prefix, suffix string) []domain.ChatMessage {
+	if prefix == "" && suffix == "" {
+		return msgs
+	}
+	text := strings.TrimSpace(prefix + "\n" + suffix)
+	if text == "" {
+		return msgs
+	}
+	sys := domain.ChatMessage{Role: domain.RoleSystem, Content: domain.NewTextContent(text)}
+	// Prepend: system prefix must be first for providers to honor it.
+	return append([]domain.ChatMessage{sys}, msgs...)
+}
+
+func injectGuardrails(msgs []domain.ChatMessage, guardrails []string) []domain.ChatMessage {
+	if len(guardrails) == 0 {
+		return msgs
+	}
+	text := "Guardrails: " + strings.Join(guardrails, "; ")
+	sys := domain.ChatMessage{Role: domain.RoleSystem, Content: domain.NewTextContent(text)}
+	return append([]domain.ChatMessage{sys}, msgs...)
+}
