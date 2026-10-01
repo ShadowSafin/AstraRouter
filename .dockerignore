@@ -1,0 +1,60 @@
+# Build context exclusions.
+#
+# The gateway and dashboard images copy from the repository root, so this file
+# is load-bearing: it is what keeps node_modules (hundreds of megabytes), the
+# Go build cache and, most importantly, a developer's local `.env` out of an
+# image layer. A secret copied into a layer stays in that layer even after a
+# later instruction deletes the file.
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Local environment and secrets -- never ship these.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.creds
+
+# Node
+node_modules
+dashboard/node_modules
+dashboard/.next
+dashboard/out
+dashboard/coverage
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Go build output and test artifacts
+/bin
+/dist
+*.test
+*.out
+coverage.out
+
+# Editor and OS noise
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local runtime state
+*.log
+tmp
+.data
