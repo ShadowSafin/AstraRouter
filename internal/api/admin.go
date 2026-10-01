@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/storage"
 )
 
 // storageFilter is a local alias so the handler signatures stay readable.

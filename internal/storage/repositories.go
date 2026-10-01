@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Repositories bundles the durable stores so a service can be constructed with a

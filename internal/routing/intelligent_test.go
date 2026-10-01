@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // TestIntelligentRoutingTaskAware verifies score/task hooks influence order

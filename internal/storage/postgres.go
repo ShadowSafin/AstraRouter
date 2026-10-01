@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // timeDuration aliases time.Duration so MigrationResult can be declared before

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/schema"
-	"github.com/corerouter/corerouter/internal/storage"
-	"github.com/corerouter/corerouter/internal/tools"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/schema"
+	"github.com/shadowsafin/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/tools"
 )
 
 // Phase 4 administrative surface: the tool registry, tool policies, invocation

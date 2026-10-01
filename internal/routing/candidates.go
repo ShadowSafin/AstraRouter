@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // candidateBuilder turns a policy's target list into concrete, evaluated

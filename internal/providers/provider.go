@@ -29,7 +29,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Request is a single completion request bound to a concrete model.

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/storage"
-	"github.com/corerouter/corerouter/internal/tools"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/tools"
 )
 
 // SeedBuiltinTools registers the gateway's built-in tools.

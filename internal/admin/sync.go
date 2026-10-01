@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // ModelStore is the persistence surface model sync needs. The storage model

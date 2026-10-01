@@ -26,8 +26,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/schema"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/schema"
 )
 
 // RegistrySource reads registered tools. The storage repository satisfies it

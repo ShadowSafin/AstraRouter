@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 func testPolicy() *domain.RoutingPolicy {

@@ -10,7 +10,7 @@ import (
 
 // Build-time variables, set with -ldflags, for example:
 //
-//	go build -ldflags "-X github.com/corerouter/corerouter/internal/version.Version=1.2.3"
+//	go build -ldflags "-X github.com/shadowsafin/corerouter/internal/version.Version=1.2.3"
 //
 // The defaults deliberately describe an unstamped local build rather than
 // pretending to be a release, so an operator can tell at a glance that a binary

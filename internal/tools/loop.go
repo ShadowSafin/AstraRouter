@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Completer performs one model round-trip.

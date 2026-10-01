@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/routing"
-	"github.com/corerouter/corerouter/internal/telemetry"
-	"github.com/corerouter/corerouter/internal/tokens"
-	"github.com/corerouter/corerouter/internal/tools"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/routing"
+	"github.com/shadowsafin/corerouter/internal/telemetry"
+	"github.com/shadowsafin/corerouter/internal/tokens"
+	"github.com/shadowsafin/corerouter/internal/tools"
 )
 
 // Header names a client can use to express routing intent.

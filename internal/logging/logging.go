@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/config"
 )
 
 // Level parses a configuration level into a slog level.

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 func TestParseURL(t *testing.T) {

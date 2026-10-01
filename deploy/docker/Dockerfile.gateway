@@ -38,10 +38,10 @@ ARG DIRTY=""
 RUN go build \
       -trimpath \
       -ldflags "-s -w \
-        -X github.com/corerouter/corerouter/internal/version.Version=${VERSION} \
-        -X github.com/corerouter/corerouter/internal/version.Commit=${COMMIT} \
-        -X github.com/corerouter/corerouter/internal/version.BuildDate=${BUILD_DATE} \
-        -X github.com/corerouter/corerouter/internal/version.Dirty=${DIRTY}" \
+        -X github.com/shadowsafin/corerouter/internal/version.Version=${VERSION} \
+        -X github.com/shadowsafin/corerouter/internal/version.Commit=${COMMIT} \
+        -X github.com/shadowsafin/corerouter/internal/version.BuildDate=${BUILD_DATE} \
+        -X github.com/shadowsafin/corerouter/internal/version.Dirty=${DIRTY}" \
       -o /out/corerouter ./cmd/corerouter
 
 # Vet runs in the build stage so an obvious mistake fails the image build rather

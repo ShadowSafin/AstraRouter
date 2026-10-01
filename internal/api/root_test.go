@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/version"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/version"
 )
 
 // getRoot issues GET / with the given Accept header against a minimal server.

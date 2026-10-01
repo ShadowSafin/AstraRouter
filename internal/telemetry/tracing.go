@@ -18,11 +18,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/corerouter/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/config"
 )
 
 // TracerName is the instrumentation scope name for spans CoreRouter creates.
-const TracerName = "github.com/corerouter/corerouter"
+const TracerName = "github.com/shadowsafin/corerouter"
 
 // Tracer bundles the tracing and metering providers so a single Shutdown releases
 // both. The OTel SDK requires the same treatment for each signal, and a

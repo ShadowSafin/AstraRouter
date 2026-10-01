@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	adminsvc "github.com/corerouter/corerouter/internal/admin"
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/domain"
+	adminsvc "github.com/shadowsafin/corerouter/internal/admin"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // This file implements the Phase 3 management surface: full CRUD for

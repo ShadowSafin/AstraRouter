@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Migrations are embedded so a binary is self-contained. That matters for the

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
 )
 
 // These tests pin the two defects that made long answers stop mid-sentence:

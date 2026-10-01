@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/policy"
-	"github.com/corerouter/corerouter/internal/routing"
-	"github.com/corerouter/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/policy"
+	"github.com/shadowsafin/corerouter/internal/routing"
+	"github.com/shadowsafin/corerouter/internal/storage"
 )
 
 // startCatalogueRefresh periodically reloads the registry from the database.

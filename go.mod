@@ -1,4 +1,4 @@
-module github.com/corerouter/corerouter
+module github.com/shadowsafin/corerouter
 
 go 1.27.1
 

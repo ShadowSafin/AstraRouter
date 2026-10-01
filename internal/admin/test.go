@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
 )
 
 // TestAdapter is the surface the connectivity test needs. It mirrors the

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/version"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/version"
 )
 
 // healthResponse is the body of GET /health.

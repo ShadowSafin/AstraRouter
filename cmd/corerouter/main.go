@@ -26,9 +26,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/logging"
-	"github.com/corerouter/corerouter/internal/version"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/logging"
+	"github.com/shadowsafin/corerouter/internal/version"
 )
 
 // exit codes

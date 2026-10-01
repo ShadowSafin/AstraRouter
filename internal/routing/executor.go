@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
 )
 
 // StreamStartedError reports a failure that occurred after response bytes had

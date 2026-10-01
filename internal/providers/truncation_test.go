@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // These tests cover the provider side of the truncation bug: the field that

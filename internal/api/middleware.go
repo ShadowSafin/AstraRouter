@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/logging"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/logging"
 )
 
 // contextKey is an unexported type so no other package can collide with the keys

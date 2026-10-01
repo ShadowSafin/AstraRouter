@@ -3,7 +3,7 @@ package providers
 import (
 	"fmt"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // NewAdapter constructs the adapter for a provider's kind.

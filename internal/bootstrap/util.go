@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/routing"
+	"github.com/shadowsafin/corerouter/internal/routing"
 )
 
 // osGetenv reads an environment variable.

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // writeJSON renders a response body.

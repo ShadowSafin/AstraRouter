@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/bootstrap"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/bootstrap"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/storage"
 )
 
 // runMigrate applies database migrations and exits.

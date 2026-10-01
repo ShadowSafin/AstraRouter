@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // TunnelService manages temporary public tunnels. It is an interface defined

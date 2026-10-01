@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/schema"
-	"github.com/corerouter/corerouter/internal/tools"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/schema"
+	"github.com/shadowsafin/corerouter/internal/tools"
 )
 
 // This file is the Phase 4 glue between the HTTP layer and the tool pipeline.

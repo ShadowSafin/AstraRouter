@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/admin"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/storage"
-	"github.com/corerouter/corerouter/internal/telemetry"
+	"github.com/shadowsafin/corerouter/internal/admin"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/telemetry"
 )
 
 // AdapterOptions builds provider options from configuration.

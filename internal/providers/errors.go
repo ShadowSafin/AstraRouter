@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // NormalizeHTTPError converts an upstream HTTP failure into a domain.Error.

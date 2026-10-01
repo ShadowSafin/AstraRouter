@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Repository supplies stored policies.

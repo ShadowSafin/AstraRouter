@@ -23,16 +23,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/logging"
-	"github.com/corerouter/corerouter/internal/policy"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/routing"
-	"github.com/corerouter/corerouter/internal/storage"
-	"github.com/corerouter/corerouter/internal/telemetry"
-	"github.com/corerouter/corerouter/internal/version"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/logging"
+	"github.com/shadowsafin/corerouter/internal/policy"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/routing"
+	"github.com/shadowsafin/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/telemetry"
+	"github.com/shadowsafin/corerouter/internal/version"
 )
 
 // pathMetrics is the Prometheus scrape path, referenced by the span namer.

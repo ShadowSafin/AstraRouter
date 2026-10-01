@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // cachedPrincipal is the wire form of a cached authentication result.

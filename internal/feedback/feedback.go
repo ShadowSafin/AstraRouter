@@ -4,7 +4,7 @@ package feedback
 import (
 	"sync"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Store persists feedback events.

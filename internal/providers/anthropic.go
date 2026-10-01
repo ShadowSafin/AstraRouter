@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // anthropicVersion is the API version header Anthropic requires. It is pinned

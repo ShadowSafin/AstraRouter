@@ -3,7 +3,7 @@ package classifier
 import (
 	"testing"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 func TestClassifyChatDefault(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // applyEndpointOverride folds an admin-managed endpoint scope into a copy of

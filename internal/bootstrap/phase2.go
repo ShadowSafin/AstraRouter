@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/cache"
-	"github.com/corerouter/corerouter/internal/classifier"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/guardrails"
-	"github.com/corerouter/corerouter/internal/policy"
-	"github.com/corerouter/corerouter/internal/scoring"
-	"github.com/corerouter/corerouter/internal/shaping"
-	"github.com/corerouter/corerouter/internal/storage"
+	"github.com/shadowsafin/corerouter/internal/cache"
+	"github.com/shadowsafin/corerouter/internal/classifier"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/guardrails"
+	"github.com/shadowsafin/corerouter/internal/policy"
+	"github.com/shadowsafin/corerouter/internal/scoring"
+	"github.com/shadowsafin/corerouter/internal/shaping"
+	"github.com/shadowsafin/corerouter/internal/storage"
 )
 
 // Phase2Services bundles intelligence services.

@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Catalogue supplies the provider and model registry to the engine.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Defaults holds engine-wide fallbacks applied when a policy is silent. They are

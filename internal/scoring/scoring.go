@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Observation is one request outcome fed into scoring.

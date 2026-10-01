@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // defaultLatencyPriorMS is the latency assumed for a provider with no history.

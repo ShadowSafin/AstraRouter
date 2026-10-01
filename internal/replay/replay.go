@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // RequestSource reads captured requests.

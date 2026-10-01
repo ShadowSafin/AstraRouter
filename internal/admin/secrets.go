@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/crypto/hkdf"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // CredentialsKeyEnv names the environment variable carrying the explicit data

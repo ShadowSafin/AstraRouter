@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // baseAdapter holds the behaviour every adapter shares: credentials, request

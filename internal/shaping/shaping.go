@@ -9,8 +9,8 @@ package shaping
 import (
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/tokens"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/tokens"
 )
 
 // Options configures shaping defaults.

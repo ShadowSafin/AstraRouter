@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // Store is the fast body backend (Redis in production, memory in tests).

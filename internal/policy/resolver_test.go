@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // fakeRepository is an in-memory policy store.

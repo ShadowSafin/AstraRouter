@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/corerouter/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/domain"
 )
 
 // KeyInput is everything that distinguishes cacheable requests.

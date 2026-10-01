@@ -10,7 +10,7 @@
 
 SHELL := /bin/bash
 
-MODULE      := github.com/corerouter/corerouter
+MODULE      := github.com/shadowsafin/corerouter
 CMD         := ./cmd/corerouter
 BIN_DIR     := bin
 GO          ?= go

@@ -1,4 +1,4 @@
-﻿package api
+package api
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/corerouter/corerouter/internal/auth"
-	"github.com/corerouter/corerouter/internal/config"
-	"github.com/corerouter/corerouter/internal/domain"
-	"github.com/corerouter/corerouter/internal/policy"
-	"github.com/corerouter/corerouter/internal/providers"
-	"github.com/corerouter/corerouter/internal/routing"
-	"github.com/corerouter/corerouter/internal/tools"
-	"github.com/corerouter/corerouter/internal/version"
+	"github.com/shadowsafin/corerouter/internal/auth"
+	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/corerouter/internal/policy"
+	"github.com/shadowsafin/corerouter/internal/providers"
+	"github.com/shadowsafin/corerouter/internal/routing"
+	"github.com/shadowsafin/corerouter/internal/tools"
+	"github.com/shadowsafin/corerouter/internal/version"
 )
 
 // ---------------------------------------------------------------------------
