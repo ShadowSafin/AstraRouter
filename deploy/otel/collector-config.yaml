@@ -1,0 +1,120 @@
+# OpenTelemetry collector configuration for CoreRouter.
+#
+# The collector is the seam between the gateway and whatever backend an operator
+# chooses. The gateway speaks OTLP and nothing else; swapping a Jaeger for a
+# Tempo, or adding a second exporter for a second team, is a change here rather
+# than a change in the Go code.
+#
+# Two things are deliberately true of this configuration:
+#
+#   * Receivers are exposed on the container's network, not the host, except where
+#     docker-compose publishes a port. Collection is internal to the deployment.
+#   * The `prometheus` exporter is always present, because the gateway's own
+#     /metrics endpoint and the collector's queue metrics answer different
+#     questions and Prometheus scrapes both (see prometheus.yml).
+#
+# Environment substitution uses the collector's `${env:VAR:-default}` syntax, so a
+# deployment can point traces at a real backend without editing this file.
+
+extensions:
+  # Answers liveness from the container orchestrator without touching the
+  # pipelines.
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        # 1 MiB per request is enough for a full trace batch and small enough that
+        # a misbehaving client cannot hold a large buffer open.
+        max_request_body_size: 1048576
+
+processors:
+  # memory_limiter must be first in every pipeline. Without it the collector OOMs
+  # under a trace burst and takes the whole observability chain down with it,
+  # which is exactly when an operator needs it most.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  # Identity stamped onto every span, so a dashboard can filter without trusting
+  # the client to have set it.
+  resource:
+    attributes:
+      - key: deployment.environment.name
+        value: ${env:CR_ENVIRONMENT}
+        action: upsert
+      - key: service.namespace
+        value: corerouter
+        action: upsert
+
+  # Batching is what makes the collector worth running at all: it converts a
+  # per-request trickle into a small number of network calls.
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+exporters:
+  # Always on. The collector's own logs are the record of last resort when no
+  # trace backend is configured, and `verbosity: basic` keeps them to one line per
+  # batch rather than per span.
+  debug:
+    verbosity: basic
+
+  # Writes accepted traces to a rotating file. This is the default trace sink for a
+  # self-hosted install: it needs no extra service and survives a restart, and a
+  # real backend is added by uncommenting the OTLP exporter below.
+  file:
+    path: /var/log/otel/traces.json
+    rotation:
+      max_megabytes: 64
+      max_days: 7
+      max_backups: 5
+      localtime: true
+
+  # Collector self-telemetry, scraped by prometheus.yml. This is what makes
+  # CoreRouterSpanExporterFailing and CoreRouterCollectorQueueSaturated possible:
+  # a collector dropping data still looks idle from the application's side.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Point traces at a real backend (Tempo, Jaeger, another collector) by setting
+  # CR_OTEL_TRACES_ENDPOINT and enabling this exporter in the pipeline below.
+  # otlp/traces:
+  #   endpoint: ${env:CR_OTEL_TRACES_ENDPOINT:-localhost:4317}
+  #   tls:
+  #     insecure: ${env:CR_OTEL_TRACES_INSECURE:-true}
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      # The collector exposes its own Prometheus metrics on the same port as the
+      # `prometheus` exporter above.
+      level: basic
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [debug, file]
+    # The gateway can also emit its OTLP metrics here; Prometheus scrapes the
+    # gateway directly, so this path exists for a deployment that ships metrics
+    # over OTLP instead of pulling them.
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [debug]
