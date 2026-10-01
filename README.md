@@ -6,102 +6,136 @@
 
 Routing · failover · caching · policy · budgets · full request lineage
 
-[Quick start](#quick-start) · [Documentation](documentation/) · [Troubleshooting](documentation/troubleshooting.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Go 1.27](https://img.shields.io/badge/go-1.27-00ADD8.svg)](go.mod)
+[![Docs](https://img.shields.io/badge/docs-documentation%2F-informational.svg)](documentation/README.md)
+
+[Quick start](#quick-start) · [Documentation](documentation/README.md) · [Troubleshooting](documentation/troubleshooting.md)
 
 </div>
 
 ---
 
-## The problem
+## What CoreRouter does
+
+CoreRouter is an **inference gateway** and **control plane**. It sits between your
+applications and your model providers, presents a single OpenAI-compatible
+endpoint, and decides — per request, under policy — which provider serves it,
+what happens when that provider fails, and what it cost.
+
+It is also where providers, models, policies, tenants, keys, tools and caches are
+managed. Changing which model answers production traffic is a dashboard edit
+rather than a deployment.
+
+Any client that speaks OpenAI works by changing its base URL. The extra response
+fields are namespaced under `corerouter`, so OpenAI SDKs ignore them.
+
+## Why it exists
 
 Inference stacks rarely get chosen. They accrete. By the time a few applications
-are live you have SDK integrations per service, no failover when an upstream has a
-bad hour, no answer to "what did we spend, and which model produced the bad
-answers?", and a bill that arrives after the runaway loop rather than before it.
+are live you have:
 
-## What CoreRouter is
+- **A provider integration per service**, each with its own error handling, so a
+  `429` means something slightly different everywhere.
+- **No failover.** One upstream hiccup becomes an outage, because nothing knows a
+  second provider exists.
+- **Routing logic in application code** — a `if model == "gpt-4o"` here, a
+  provider SDK there, copied into every service.
+- **No cost control.** A runaway loop produces a bill nobody notices until it
+  arrives.
+- **No central answer** to "what did we spend, and which model produced the bad
+  answers?"
 
-A gateway and control plane that sits between your applications and your model
-providers. It presents **one OpenAI-compatible endpoint** and decides, per request
-and per policy, which provider serves it, what happens when that provider fails,
-and what it cost.
-
-Changing providers is a dashboard edit instead of a deployment.
-
-```
-                    ┌─────────────────────────────────────────────────────────────┐
-    client ─────────▶  gateway  :8080      │  workers              │  dashboard    │
-    OpenAI SDK       │  · auth / API keys   │  · scoring / eval     │  · usage      │
-    curl             │  · policy resolution │  · prompt analysis    │  · providers  │
-                     │  · routing + retry   │  · telemetry rollups  │  · policies   │
-                     │  · fallback chains   │  · judge (optional)   │  · budgets    │
-                     │  · rate + budgets    │                       │  · keys       │
-                     └───────┬──────────────┴───────────┬───────────┴───────────────┘
-                             │                          │
-               ┌─────────────┴────────────┐             │
-               ▼                          ▼             ▼
-         PostgreSQL                   Redis           NATS (JetStream)
-         system of record        limits, cache,       usage events, eval jobs,
-                                 health state         audit stream
-               │
-               ▼
-         ClickHouse  ── usage, traces, request logs ──▶ OTel collector ──▶ Prometheus / Loki / Grafana
-```
+Each is small. Together they are an operating burden that competes with the
+product. CoreRouter moves all of it into one layer you can operate.
 
 ## Key features
 
-**Routing** — Five strategies (`priority`, `weighted`, `lowest_cost`,
-`lowest_latency`, `highest_quality`) over a registry that knows each model's real
-context window, capabilities and price. Policies match on model, tenant, key,
-task, size, region, sensitivity and endpoint, resolved by specificity so a
-specific rule always beats a broad one.
+| | |
+| --- | --- |
+| **OpenAI-compatible API** | `POST /v1/chat/completions`, streaming and buffered, plus `/v1/models`. An SDK swap, not a rewrite. |
+| **Multi-provider routing** | Five strategies — `priority`, `weighted`, `lowest_cost`, `lowest_latency`, `highest_quality` — over a registry that knows each model's real context window, capabilities and price. |
+| **Fallback chains** | Ordered failover with bounded retry and deterministic jitter. A started stream is never appended to; it is reported instead. |
+| **Policy engine** | Match on model, tenant, key, task, size, region, sensitivity and endpoint. Resolved by specificity, so a specific rule always beats a broad one. |
+| **Cost control** | Per-request ceilings checked against projected cost *before* the call, token and request rate limits, daily and monthly budgets. |
+| **Provider & model management** | Add, test, probe, kill and revive providers. Discover remote models while preserving your local pricing, aliases and disables. |
+| **Tool calling** | Client-executed by default. Optional bounded gateway-side execution with operator-owned limits and a durable step trace per run. |
+| **Local caching** | Exact, prefix and semantic tiers, tenant-isolated by construction, invalidatable by scope with an audit trail. Off by default. |
+| **Observability** | Task classification, policy verdict, cache decision and routing reason on every request. Prometheus, OTLP traces, JSON logs, Grafana dashboards and alert rules. |
+| **Dashboard** | A full control plane for providers, models, policies, tenants, keys, tools, cache and tunnels. |
+| **Deployment** | Docker Compose, native systemd, and temporary Cloudflare tunnels. One configuration model across all three. |
 
-**Reliability** — Bounded retry with deterministic jitter, ordered fallback chains,
-per-provider circuit breakers fed by active probes and live traffic, and separate
-budgets for connect, first-token, stream-idle, per-attempt and total time.
+## Tech stack
 
-**Policy and cost** — Per-request ceilings checked against projected cost *before*
-the call, request and token rate limits, and daily and monthly budgets. Dials, not
-invoices.
+| Layer | Technology |
+| --- | --- |
+| Gateway | Go 1.27 |
+| Dashboard | Next.js, React, TypeScript, Tailwind |
+| Intelligence workers | Python 3.11+ |
+| System of record | PostgreSQL 16 |
+| Limits, budgets, cache | Redis 7 |
+| Traces and analytics | ClickHouse 24.8 |
+| Event bus | NATS with JetStream |
+| Telemetry | OpenTelemetry, Prometheus, Grafana, Loki |
 
-**Caching** — Exact, prefix and semantic tiers that are tenant-isolated by
-construction, policy-aware about what may be reused, and invalidatable by scope
-with an audit trail. Off by default.
+Each store was chosen for the shape of what it holds — see
+[documentation/database.md](documentation/database.md).
 
-**Tools** — Client-executed by default, which is what agentic applications expect.
-Optional bounded gateway-side execution with operator-owned limits, an allow-listed
-schema subset, and a durable step trace per run.
+## Architecture
 
-**Observability** — Every request carries a task classification, policy verdict,
-cache decision, shaping plan and routing reason, readable at
-`/admin/v1/requests/{id}/explain`. Prometheus metrics, OTLP traces, JSON logs,
-Grafana dashboards and alert rules ship in the box.
+The request path, end to end:
 
-**Control plane** — Providers, models, tenants, keys, policies, endpoints,
-budgets, overrides, tools and tunnels, all managed through the dashboard or the
-admin API, all effective without a restart, all audited.
+```
+   client
+     │  OpenAI SDK · curl · any OpenAI-compatible client
+     ▼
+┌──────────────────────────────────────────────┐
+│  POST /v1/chat/completions                   │
+│                                              │
+│  1  authenticate      API key → tenant        │
+│  2  resolve policy    most specific match     │
+│  3  enforce budgets   rate limits, ceilings   │
+│  4  check cache       exact → prefix → semantic
+│  5  classify task     rules-first             │
+│  6  shape prompt      normalize, trim         │
+│  7  route             filter → order → pick   │
+│  8  execute           retry · fail over      │
+│  9  tools loop        bounded, when allowed   │
+└──────────────────────────────────────────────┘
+     │                          │
+     ▼                          ▼
+  provider                response + corerouter
+  adapter call            metadata block
+        │
+        └──────────────────────────────────────┐
+                                               ▼
+                              telemetry · asynchronously
+                              usage · traces · metrics · logs
+```
 
-## Deployment modes
+The deployment topology:
 
-| Mode | Best for | Start here |
-| --- | --- | --- |
-| **Docker Compose** | Trying it, demos, a single host | [docker.md](documentation/installation/docker.md) |
-| **Native + systemd** | A machine you intend to operate | [native.md](documentation/installation/native.md) |
-| **Cloudflare tunnel** | Temporary public access from elsewhere | [cloudflare-tunnel.md](documentation/installation/cloudflare-tunnel.md) |
+```
+   client ──▶ gateway :8080 ──┬──▶ PostgreSQL   system of record
+        ▲     │              ├──▶ Redis         limits, cache, credentials
+        │     ▼              ├──▶ NATS          usage, eval jobs, audit
+   dashboard  └──▶ workers ──┴──▶ ClickHouse ──▶ OTel ──▶ Prometheus · Loki · Grafana
+```
 
-All three share one configuration model and the same code.
+Every request records why it was routed the way it was. Read it back with
+`GET /admin/v1/requests/{id}/explain`.
 
 ## Quick start
 
-**Prerequisites:** Docker with Compose v2, and a provider API key.
+### Docker
 
 ```bash
 git clone https://github.com/shadowsafin/corerouter.git
 cd corerouter
 
 cp .env.example .env
-openssl rand -hex 24        # paste into CR_ADMIN_KEY in .env
-$EDITOR .env                # add CR_ADMIN_KEY and your provider key
+openssl rand -hex 24        # paste into CR_ADMIN_KEY, then add your provider key
+$EDITOR .env
 
 docker compose up -d --build
 ```
@@ -111,7 +145,6 @@ docker compose up -d --build
 | Gateway | <http://127.0.0.1:8080> |
 | Dashboard | <http://127.0.0.1:3000> |
 | Grafana | <http://127.0.0.1:3001> |
-| Prometheus | <http://127.0.0.1:9090> |
 
 If port 8080 is taken, move the host port rather than the container port — gateway
 configuration does not change:
@@ -121,51 +154,56 @@ GATEWAY_PORT=18080
 NEXT_PUBLIC_COREROUTER_API_URL=http://localhost:18080
 ```
 
-Check it came up, then mint a key and make a call:
+### Native
 
 ```bash
-export GATEWAY=http://127.0.0.1:8080
-curl -s $GATEWAY/ready | jq
-
-export CR_ADMIN_KEY=<from .env>
-TENANT=$(curl -s $GATEWAY/admin/v1/tenants -H "Authorization: Bearer $CR_ADMIN_KEY" | jq -r '.tenants[0].id')
-export CR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
-  -H "Authorization: Bearer $CR_ADMIN_KEY" -H 'Content-Type: application/json' \
-  -d "{\"tenant_id\":\"$TENANT\",\"name\":\"first-key\",\"scopes\":[\"inference\"]}" | jq -r .plaintext)
-
-curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $CR_KEY" -H 'Content-Type: application/json' \
-  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hello"}]}' | jq
+make build
+sudo install -m 0755 bin/corerouter /usr/local/bin/corerouter
+sudo install -m 0640 config.example.yaml /etc/corerouter/config.yaml
+sudo systemctl enable --now corerouter
 ```
 
-Verify the whole stack end to end — no provider key needed:
+Full walkthroughs: **[Docker](documentation/installation/docker.md)** ·
+**[Native](documentation/installation/native.md)** ·
+**[Tunnel](documentation/installation/cloudflare-tunnel.md)** ·
+**[Getting started](documentation/getting-started.md)**
+
+Verify a running stack end to end — no provider key needed:
 
 ```bash
 bash scripts/smoke.sh                                        # Linux / macOS
 powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1  # Windows
 ```
 
-Full walkthrough: **[documentation/getting-started.md](documentation/getting-started.md)**
+## Example request
 
-## API
+Mint a tenant key, then call the public endpoint:
 
-Any OpenAI client works by changing the base URL.
+```bash
+export GATEWAY=http://127.0.0.1:8080
+export CR_ADMIN_KEY=<from .env>
 
-```python
-from openai import OpenAI
+TENANT=$(curl -s $GATEWAY/admin/v1/tenants \
+  -H "Authorization: Bearer $CR_ADMIN_KEY" | jq -r '.tenants[0].id')
 
-client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="cr_live_...")
-
-answer = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": "Summarize refunds in one line."}],
-    max_tokens=256,
-)
-print(answer.choices[0].message.content)
+export CR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
+  -H "Authorization: Bearer $CR_ADMIN_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{\"tenant_id\":\"$TENANT\",\"name\":\"first-key\",\"scopes\":[\"inference\"]}" \
+  | jq -r .plaintext)
 ```
 
-Every response carries a namespaced `corerouter` block. OpenAI SDKs ignore it; you
-can read it to know what actually happened:
+```bash
+curl -s $GATEWAY/v1/chat/completions \
+  -H "Authorization: Bearer $CR_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Summarize refunds in one line."}],
+    "max_tokens": 256,
+    "temperature": 0.3
+  }' | jq
+```
 
 ```json
 {
@@ -183,33 +221,14 @@ can read it to know what actually happened:
 }
 ```
 
-`provider` is who **answered**, not who was chosen first — the two differ exactly
-on the requests you most need to trace. An answer that was cut short says so:
+`provider` is who **answered**, not who was chosen first. An answer cut short by a
+limit says so rather than looking short:
 
 ```json
-"completion": {
-  "finish_reason": "length",
-  "truncated": true,
-  "reason": "max_tokens",
-  "requested_tokens": 256,
-  "applied_tokens": 256,
-  "budget_ms": 300000
-}
+"completion": { "truncated": true, "reason": "max_tokens", "budget_ms": 300000 }
 ```
 
-Callers can steer a single request without an operator editing a policy:
-
-```bash
-curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $CR_KEY" \
-  -H "X-CoreRouter-No-Fallback: true" \
-  -H "X-CoreRouter-Max-Cost-USD: 0.05" \
-  -H "X-CoreRouter-Debug: true" \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}'
-```
-
-Complete reference: **[documentation/api.md](documentation/api.md)**
+Reference: **[documentation/api.md](documentation/api.md)**
 
 ## Dashboard
 
@@ -222,62 +241,23 @@ Complete reference: **[documentation/api.md](documentation/api.md)**
 | **Errors** | Failures with a `by_code` rollup |
 | **Providers** | Add, test, sync models, probe, kill or revive |
 | **Models** | Context window, pricing, capabilities, priority |
-| **Policies** | Routing rules, targets, limits, timeouts, fallback |
+| **Policies** | Targets, limits, timeouts, retry, fallback |
 | **Endpoints** | Named routing scopes with copy-paste examples |
+| **Tenants** | Create, edit and remove tenants |
+| **API keys** | Mint, rotate and revoke |
 | **Budgets** | Daily and monthly ceilings, hard per-request caps |
-| **Keys** | Mint, rotate and revoke |
 | **Scores** | Provider and model quality with explanations |
 | **Cache** | Hit rates, bypass reasons, per-scope rules, scoped flushes |
-| **Tools** | Registry, policies, and agent runs with step traces |
+| **Tools** | Registry, policies, agent runs with step traces |
+| **Analytics** | Throughput, latency percentiles, spend over time |
 | **Tunnels** | Temporary public access |
 
-The browser never holds the admin key: Next route handlers proxy `/admin/v1/*`
-server-side.
-
-Details: **[documentation/dashboard.md](documentation/dashboard.md)**
-
-## Providers
-
-Five kinds ship built in. Adding one is a form submission or an API call.
-
-| Kind | Base URL | Extra sampling controls |
-| --- | --- | --- |
-| `openai` | `https://api.openai.com/v1` | — |
-| `anthropic` | `https://api.anthropic.com` | `top_k` |
-| `ollama` | `http://host:11434` | `top_k`, `min_p`, `repeat_penalty` |
-| `vllm` | your server | `seed`, `top_k`, `min_p`, `repeat_penalty` |
-| `openai_compatible` | your server | `top_k`, `min_p`, `repetition_penalty` |
-
-```bash
-curl -s $GATEWAY/admin/v1/providers \
-  -H "Authorization: Bearer $CR_ADMIN_KEY" -H 'Content-Type: application/json' \
-  -d '{"name":"openai-prod","kind":"openai","base_url":"https://api.openai.com/v1",
-       "api_key_env":"OPENAI_API_KEY","sync_models":true}' | jq
-```
-
-Secrets are referenced, never embedded: a provider names an environment variable,
-or holds an AES-256-GCM sealed credential you write through a dedicated endpoint.
-Model discovery fills the registry from the provider's remote catalogue while
-preserving your local pricing, aliases and disables.
-
-Details: **[documentation/providers.md](documentation/providers.md)**
-
-## Configuration
-
-Three layers, lowest precedence first:
-
-1. **Built-in defaults** — the stack boots with no config file.
-2. **A config file** — [`config.example.yaml`](config.example.yaml) documents every setting.
-3. **Environment variables** — every `CR_*` variable wins.
-
-```bash
-corerouter config        # print the resolved configuration, secrets redacted
-```
-
-Redaction is applied to a copy, so printing the configuration never mutates the
-running one.
+The browser never holds the admin key — Next route handlers proxy `/admin/v1/*`
+server-side. Details: **[documentation/dashboard.md](documentation/dashboard.md)**
 
 ## Documentation
+
+Everything deeper lives in [`documentation/`](documentation/README.md).
 
 | | |
 | --- | --- |
@@ -298,56 +278,56 @@ running one.
 | **[Glossary](documentation/glossary.md)** | What each term means here |
 | **[Changelog](documentation/changelog.md)** | What each delivery phase added |
 
-## Troubleshooting
+Stuck? Start at **[documentation/troubleshooting.md](documentation/troubleshooting.md)**.
 
-Start here when something misbehaves:
+## Security
 
-| Symptom | Look at |
-| --- | --- |
-| Gateway will not start | The refusal message in the log; validation is specific |
-| `/ready` is 503 | `checks` names the dependency; `providers: 0 configured` means no usable adapter |
-| All requests fail `401` | The provider credential; run `POST /admin/v1/providers/{id}/test` |
-| A provider gets no traffic | `explain` on the request, or `corerouter_provider_health` |
-| Answers stop mid-sentence | `corerouter.completion` — `reason` and `budget_ms` say which limit |
-| Failover did not happen | The policy's `on_error_codes` list |
-| Latency is high | `corerouter_routing_candidates` — one candidate means no choice |
-| Dashboard panels empty | `COREROUTER_API_URL` from the dashboard **server** |
+- **API key authentication.** Keys are stored as a SHA-256 digest; the plaintext is
+  returned exactly once and never again. Scopes narrow further by method and path.
+- **Tenant isolation.** It is structural, not conventional — in routing, in the
+  cache key and in the Redis namespace. A cache hit never crosses tenants.
+- **Policy enforcement.** Denials return `403`/`429` with an explaining message
+  and zero provider calls. The rule that fired is named.
+- **Secret handling.** Provider credentials are referenced by environment variable
+  or sealed with AES-256-GCM. An inline `api_key` on a write is discarded. The
+  gateway refuses to start on unsafe production configuration — a CORS wildcard,
+  a missing admin key, tracing with no OTLP endpoint.
+- **Audit logging.** Every control-plane mutation is recorded with before and
+  after values. Inference traffic is not audited; usage records serve that need.
 
-Full guide: **[documentation/troubleshooting.md](documentation/troubleshooting.md)**
+Report vulnerabilities privately — see **[SECURITY.md](SECURITY.md)**.
 
-## Development
+## Contributing
+
+Pull requests are welcome. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first: it
+covers the commit style, which test suite to expect for which kind of change, and
+which document owns which kind of fact.
 
 ```bash
-make help              # every target
-make test              # Go + Python suites
+make test              # Go + Python
 make lint              # go vet, golangci-lint, ruff, mypy
-make dashboard-install dashboard-typecheck
-make up                # the whole stack, if Docker is available
+make dashboard-typecheck
 ```
-
-| Suite | Command |
-| --- | --- |
-| Go | `go test ./internal/...` |
-| Python | `cd workers && python -m unittest discover -s tests -t .` |
-| Dashboard | `cd dashboard && npm run typecheck` |
 
 Start reading at `internal/api/chat.go` for the request path, `internal/routing`
 for the decision logic, `internal/domain` for the vocabulary.
 
-## Contributing
+## Code of conduct
 
-Issues and pull requests are welcome. Please read
-**[CONTRIBUTING.md](CONTRIBUTING.md)** first — it covers the commit style, the
-test expectations, and the documentation requirement for behaviour changes.
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), which
+sets expectations for technical disagreement as well as conduct.
 
-Security reports go through **[SECURITY.md](SECURITY.md)**, not the issue tracker.
+## Support
 
-Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+| | |
+| --- | --- |
+| Questions | [FAQ](documentation/faq.md), then [GitHub Issues](https://github.com/shadowsafin/corerouter/issues) |
+| Something broken | [Troubleshooting](documentation/troubleshooting.md) — start with the `request_id` from the failing response |
+| Security | **Do not open an issue.** See [SECURITY.md](SECURITY.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
-
-Contributions are accepted under the same terms. Apache 2.0 over MIT because it
-includes an express patent grant and a patent-termination clause, which matters
-for infrastructure software that companies deploy and redistribute.
+[Apache License 2.0](LICENSE). Apache 2.0 rather than MIT because it includes an
+express patent grant and a patent-termination clause, which matters for
+infrastructure software that companies deploy and redistribute.
