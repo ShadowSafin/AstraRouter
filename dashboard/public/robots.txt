@@ -1,0 +1,5 @@
+# The dashboard is an internal operator console. It must never be indexed:
+# a search result revealing a customer name or a model inventory is a leak with
+# no upside.
+User-agent: *
+Disallow: /
