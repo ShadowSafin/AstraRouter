@@ -47,11 +47,20 @@ desktop/
   internal/payload/        go:embed tree staged by build.ps1 (runtime + app exe)
   pkg/dbembed/             embedded PostgreSQL lifecycle, DSN handoff
   pkg/supervisor/          child processes, readiness, dotenv parsing
-  assets/                  icon.png + icon.ico
+  assets/                  icon.png + icon.ico (shipped; exe, tray, shortcuts)
+  branding/icon-source.png the icon master; go run ./cmd/icongen re-skins everything
   templates/               config.yaml + native.env.template
   build.ps1                builds both executables into dist/
   install.ps1              opens the installer
 ```
+
+The icon is generated, not hand-edited. `go run ./cmd/icongen` crops
+`branding/icon-source.png` to its tile, rounds the corners into a real alpha
+mask and writes every surface that shows the mark: `assets/icon.png` and
+`assets/icon.ico` (executable icon, tray, shortcuts, Add/Remove Programs),
+`cmd/installer/brand.png` (embedded in the wizard, which renders before anything
+is installed), `dashboard/public/icon.png` (the auth screens) and
+`dashboard/src/app/favicon.ico` (the browser tab).
 
 ## Build & test
 

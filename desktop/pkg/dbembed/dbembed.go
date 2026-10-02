@@ -161,8 +161,14 @@ func (s *Server) Stop() error {
 func hint(err error) error {
 	msg := err.Error()
 	switch {
-	case strings.Contains(msg, "address already in use") || strings.Contains(msg, "Only one usage of each socket address"):
-		return fmt.Errorf("%v (another program already listens on this port; pick a free AR_POSTGRES_PORT)", err)
+	case strings.Contains(msg, "address already in use") ||
+		strings.Contains(msg, "Only one usage of each socket address") ||
+		// The library's own preflight reports this exact wording, so matching
+		// only the OS messages left the most common failure unhinted.
+		strings.Contains(msg, "process already listening on port"):
+		return fmt.Errorf("%v (something already listens on this port: another copy of AstraRouter is running, "+
+			"or a previous one was killed and left its database behind; quit it from the tray icon, "+
+			"or stop the leftover database, then try again)", err)
 	case strings.Contains(msg, "MSVCR") || strings.Contains(msg, "VCRUNTIME") || strings.Contains(msg, "0xc0000135"):
 		return fmt.Errorf("%v (the Microsoft Visual C++ Redistributable is missing; install it from https://aka.ms/vs/17/release/vc_redist.x64.exe)", err)
 	default:

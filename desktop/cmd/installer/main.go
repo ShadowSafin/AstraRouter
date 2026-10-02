@@ -15,10 +15,12 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -42,6 +44,13 @@ var installerHTML string
 //
 //go:embed fonts/*.woff2
 var installerFonts embed.FS
+
+// brand.png is the product icon shown next to the wordmark. It is embedded
+// because the wizard renders before anything is installed, so the file the
+// installer would otherwise extract does not exist yet. `cmd/icongen` writes it.
+//
+//go:embed brand.png
+var installerBrand []byte
 
 //go:embed uninstall.ps1
 var uninstallScript []byte
@@ -144,7 +153,9 @@ type installOptions struct {
 // installerPage returns the wizard HTML with the embedded fonts inlined as
 // @font-face data URIs, so the page is one self-contained document.
 func installerPage() string {
-	return strings.Replace(installerHTML, "/*__FONT_FACE__*/", fontFaceCSS(), 1)
+	page := strings.Replace(installerHTML, "/*__FONT_FACE__*/", fontFaceCSS(), 1)
+	return strings.Replace(page, `src="__BRAND_ICON__"`,
+		`src="data:image/png;base64,`+base64.StdEncoding.EncodeToString(installerBrand)+`"`, 1)
 }
 
 // fontFaceCSS builds the @font-face block from the woff2 files compiled into
@@ -332,6 +343,17 @@ func (a *installerApp) runInstall(opts installOptions) {
 
 	// 4) Database, migrations and the first administrator, all while the
 	// embedded database is up.
+	//
+	// Check the ports first. A copy that is still open — or one that was killed
+	// and left its embedded database behind — holds these ports, and without a
+	// preflight the install dies deep in the pipeline on a bare "port already
+	// in use", after copying files and with nothing to act on.
+	stage(46, "Checking the local services")
+	if busy := busyPort(cfg.pgPort, cfg.gwPort, cfg.dashPort); busy != "" {
+		a.fail("AstraRouter is already running.",
+			fmt.Errorf("%s is still in use; quit AstraRouter from its tray icon, then run setup again", busy))
+		return
+	}
 	stage(50, "Setting up the local database")
 	passwordFile := ""
 	if strings.TrimSpace(opts.AdminUser) != "" && opts.AdminPassword != "" {
@@ -710,12 +732,74 @@ func writeExecutable(path string, data []byte) error {
 	return os.Rename(tmp, path)
 }
 
+// desktopFolderGUID is the Desktop known folder. Explorer stores the resolved
+// location under this GUID; most installs also keep the legacy "Desktop" name.
+const desktopFolderGUID = `{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}`
+
+// desktopDir returns the user's real Desktop folder.
+//
+// It deliberately does not assume %USERPROFILE%\Desktop: Known Folder Move
+// relocates the desktop to OneDrive on most accounts, and then that path does
+// not exist at all, so a shortcut built from it is silently skipped and the
+// user gets no desktop icon. The registry value is what Explorer itself
+// resolves, so read that instead.
 func desktopDir() string {
-	if up := os.Getenv("USERPROFILE"); up != "" {
-		p := filepath.Join(up, "Desktop")
-		if _, err := os.Stat(p); err == nil {
-			return p
+	const key = `Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders`
+	if k, err := registry.OpenKey(registry.CURRENT_USER, key, registry.QUERY_VALUE); err == nil {
+		defer k.Close()
+		for _, name := range []string{desktopFolderGUID, "Desktop"} {
+			if v, _, err := k.GetStringValue(name); err == nil {
+				if dir := resolveDesktop(v); dir != "" {
+					return dir
+				}
+			}
 		}
+	}
+	return resolveDesktop(filepath.Join(os.Getenv("USERPROFILE"), "Desktop"))
+}
+
+// resolveDesktop expands the environment variables Windows stores in shell
+// folder values and returns the path only when it names a folder that exists.
+func resolveDesktop(raw string) string {
+	p := strings.TrimSpace(expandEnv(raw))
+	if p == "" {
+		return ""
+	}
+	if st, err := os.Stat(p); err == nil && st.IsDir() {
+		return p
+	}
+	return ""
+}
+
+// envRef matches the %VAR% form these values use. Go's os.ExpandEnv only
+// understands $VAR and ${VAR}, so using it here would leave the reference
+// literal and the folder would look missing.
+var envRef = regexp.MustCompile(`%([^%]+)%`)
+
+// expandEnv resolves both Windows (%VAR%) and shell ($VAR) references.
+func expandEnv(s string) string {
+	s = envRef.ReplaceAllStringFunc(s, func(ref string) string {
+		if v, ok := os.LookupEnv(ref[1 : len(ref)-1]); ok {
+			return v
+		}
+		return ref
+	})
+	return os.Expand(s, os.Getenv)
+}
+
+// busyPort names the first of the given ports that already accepts
+// connections, or "" when all are free.
+func busyPort(ports ...int) string {
+	for _, p := range ports {
+		if p <= 0 {
+			continue
+		}
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", p), 500*time.Millisecond)
+		if err != nil {
+			continue
+		}
+		_ = conn.Close()
+		return fmt.Sprintf("port %d", p)
 	}
 	return ""
 }

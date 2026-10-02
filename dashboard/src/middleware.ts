@@ -29,7 +29,12 @@ function isExcluded(pathname: string): boolean {
   ) {
     return true;
   }
-  return false;
+  // A file extension means a static asset rather than an application route.
+  // Redirecting one to the login page does not protect anything, it breaks the
+  // page that references it: an image on the auth screen would arrive as login
+  // markup. Application routes here are extensionless, so this leaves them all
+  // gated.
+  return /\.[a-z0-9]+$/i.test(pathname);
 }
 
 export async function middleware(request: NextRequest) {

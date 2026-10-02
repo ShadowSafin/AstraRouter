@@ -32,6 +32,21 @@ func TestInstallerPageInlinesFonts(t *testing.T) {
 	}
 }
 
+// The wizard renders before the runtime is extracted, so the brand mark has to
+// travel inside the executable.
+func TestInstallerPageInlinesBrandIcon(t *testing.T) {
+	page := installerPage()
+	if strings.Contains(page, "__BRAND_ICON__") {
+		t.Fatal("brand icon placeholder was not replaced")
+	}
+	if !strings.Contains(page, `src="data:image/png;base64,`) {
+		t.Fatal("brand icon is not an embedded data URI")
+	}
+	if len(installerBrand) == 0 {
+		t.Fatal("brand.png is empty")
+	}
+}
+
 // An upgrade must reuse the ports and secrets from the existing native.env.
 // Returning a zeroed config made provisioning start postgres on port 0.
 func TestLoadExistingConfig(t *testing.T) {
@@ -68,4 +83,44 @@ func TestLoadExistingConfigRejectsIncomplete(t *testing.T) {
 	if _, err := loadExistingConfig(dir, dir); err == nil {
 		t.Fatal("want error for a native.env without a postgres port/password")
 	}
+}
+
+// Known Folder Move puts the desktop under OneDrive, so %USERPROFILE%\Desktop
+// is not it. The registry value arrives with environment variables still
+// unexpanded, and a shortcut must never be built for a path that is not there.
+func TestResolveDesktop(t *testing.T) {
+	dir := t.TempDir()
+
+	if got := resolveDesktop(dir); got != dir {
+		t.Errorf("existing folder: got %q, want %q", got, dir)
+	}
+
+	t.Setenv("AR_TEST_DESKTOP", dir)
+	if got := resolveDesktop(`%AR_TEST_DESKTOP%`); got != dir {
+		t.Errorf("unexpanded env var: got %q, want %q", got, dir)
+	}
+
+	if got := resolveDesktop(filepath.Join(dir, "redirected-away")); got != "" {
+		t.Errorf("missing folder: got %q, want empty", got)
+	}
+	if got := resolveDesktop("   "); got != "" {
+		t.Errorf("blank: got %q, want empty", got)
+	}
+	if got := resolveDesktop(`%NOT_SET_ANYWHERE%`); got != "" {
+		t.Errorf("unresolvable env var: got %q, want empty", got)
+	}
+}
+
+// desktopDir must resolve a real folder on this machine, or the wizard silently
+// creates no desktop shortcut.
+func TestDesktopDirResolvesAFolder(t *testing.T) {
+	dir := desktopDir()
+	if dir == "" {
+		t.Skip("no resolvable desktop folder in this environment")
+	}
+	st, err := os.Stat(dir)
+	if err != nil || !st.IsDir() {
+		t.Fatalf("desktopDir() = %q, which is not a folder (err %v)", dir, err)
+	}
+	t.Logf("desktop folder: %s", dir)
 }

@@ -78,7 +78,7 @@
   }
 
   .brand { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; }
-  .brand .mark { width: 24px; height: 24px; color: var(--foreground); }
+  .brand .mark { width: 28px; height: 28px; display: block; }
   .brand .name { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
   .brand .by {
     font-size: 11px; color: var(--muted-foreground); letter-spacing: 0.08em;
@@ -250,9 +250,7 @@
     <div class="veil" aria-hidden="true"></div>
 
     <div class="brand enter">
-      <svg class="mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M2.3 12h2.4v10.95h6.2V14.6h4.6v8.35h6.2V12h-2.4V1.05h-6.2V9.4H8.5V1.05H2.3Z" />
-      </svg>
+      <img class="mark" src="__BRAND_ICON__" alt="" aria-hidden="true" />
       <div>
         <div class="name">AstraRouter</div>
         <div class="by">Desktop Installer</div>
@@ -610,8 +608,11 @@ async function next() {
       const rootDir = r.dataDir || state.opts.dataDir || workDir;
       const appPath = workDir + "\\" + state.info.product + ".exe";
       const e = await ar_launch(appPath, workDir, rootDir);
-      if (e) toast(e);
+      if (e) { toast(e); return; }
     }
+    // The app owns the screen now. Leaving the wizard open on top of it looks
+    // like a second app the user has to dismiss by hand.
+    await ar_close();
     return;
   }
   state.step = Math.min(state.step + 1, RAIL.length - 1);
