@@ -35,6 +35,7 @@ export const NUMERIC_BUCKET_FIELDS = [
   'total_tokens',
   'cost_usd',
   'latency_p50_ms',
+  'latency_p90_ms',
   'latency_p95_ms',
   'latency_p99_ms',
 ] as const;
@@ -114,14 +115,16 @@ export function outcomeSplit(buckets: TimeBucket[] | null | undefined): OutcomeS
 
 export interface LatencySplit {
   p50: number[];
+  p90: number[];
   p95: number[];
   p99: number[];
 }
 
-/** Latency percentiles, as three aligned series. */
+/** Latency percentiles, as four aligned series. */
 export function latencySplit(buckets: TimeBucket[] | null | undefined): LatencySplit {
   return {
     p50: bucketSeries(buckets, 'latency_p50_ms').values,
+    p90: bucketSeries(buckets, 'latency_p90_ms').values,
     p95: bucketSeries(buckets, 'latency_p95_ms').values,
     p99: bucketSeries(buckets, 'latency_p99_ms').values,
   };

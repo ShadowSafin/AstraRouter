@@ -60,6 +60,13 @@ type Metrics struct {
 	// completes normally must never appear here, so the counter is the honest
 	// measure of "answers cut short" across the fleet.
 	TruncationsTotal *prometheus.CounterVec
+	// DashboardAuthTotal counts console login outcomes: setup, login, logout and
+	// their failures.
+	//
+	// Labelled by outcome only. A username label would let an attacker inflate
+	// metric cardinality simply by guessing names, which is how a Prometheus
+	// instance is taken down.
+	DashboardAuthTotal *prometheus.CounterVec
 	// CompletionTokensRatio observes emitted completion tokens against the
 	// ceiling that was applied, which is the early-warning signal for a
 	// limit that is too tight for real workloads.
@@ -294,6 +301,11 @@ func NewMetrics(cfg MetricsConfig) *Metrics {
 		Help: "Answers cut short by a limit, by tenant, provider and reason (max_tokens, timeout).",
 	}, []string{"tenant", "provider", "reason"})
 
+	m.DashboardAuthTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace, Subsystem: "dashboard_auth", Name: "events_total",
+		Help: "Console authentication outcomes: setup_success, login_success, login_failed, logout.",
+	}, []string{"outcome"})
+
 	m.CompletionTokensRatio = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: namespace, Subsystem: "provider", Name: "completion_tokens_ratio",
 		Help: "Emitted completion tokens divided by the applied ceiling. A pile-up at 1.0 means the ceiling is cutting answers off.",
@@ -425,6 +437,7 @@ func NewMetrics(cfg MetricsConfig) *Metrics {
 		m.CacheLookupDuration, m.CacheInvalidationsTotal, m.CacheLatencySaved,
 		m.CacheSemanticSimilarity, m.PolicyDecisionsTotal,
 		m.TruncationsTotal, m.CompletionTokensRatio,
+		m.DashboardAuthTotal,
 		m.RouteCandidatesTotal, m.RateLimitedTotal, m.BudgetBlockedTotal,
 		m.AuthFailuresTotal, m.AsyncDroppedTotal, m.AsyncFlushedTotal, m.AsyncQueueDepth,
 		m.ClassifierTotal, m.ShapingTotal, m.GuardrailBlocks,
@@ -590,6 +603,17 @@ func (m *Metrics) ObserveCompletionRatio(tenant, provider string, completionToke
 		ratio = 1
 	}
 	m.CompletionTokensRatio.WithLabelValues(orUnknown(tenant), orUnknown(provider)).Observe(ratio)
+}
+
+// ObserveDashboardAuth records a console authentication outcome.
+//
+// outcome is a closed set of flow states (setup_success, login_success,
+// login_failed, setup_rejected, logout), never a username or an error string.
+func (m *Metrics) ObserveDashboardAuth(outcome string) {
+	if !m.Enabled() || m.DashboardAuthTotal == nil {
+		return
+	}
+	m.DashboardAuthTotal.WithLabelValues(orUnknown(outcome)).Inc()
 }
 
 // ObserveFallback records a failover.

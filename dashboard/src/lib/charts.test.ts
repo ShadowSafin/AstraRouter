@@ -29,6 +29,7 @@ function bucket(partial: Partial<TimeBucket> = {}): TimeBucket {
     total_tokens: 0,
     cost_usd: 0,
     latency_p50_ms: 0,
+    latency_p90_ms: 0,
     latency_p95_ms: 0,
     latency_p99_ms: 0,
     ...partial,
@@ -89,12 +90,17 @@ describe('outcomeSplit', () => {
 });
 
 describe('latencySplit', () => {
-  it('keeps the three percentiles aligned', () => {
+  it('keeps the four percentiles aligned', () => {
     const split = latencySplit([
-      bucket({ latency_p50_ms: 100, latency_p95_ms: 500, latency_p99_ms: 900 }),
-      bucket({ latency_p50_ms: 120, latency_p95_ms: 600, latency_p99_ms: 1000 }),
+      bucket({ latency_p50_ms: 100, latency_p90_ms: 300, latency_p95_ms: 500, latency_p99_ms: 900 }),
+      bucket({ latency_p50_ms: 120, latency_p90_ms: 340, latency_p95_ms: 600, latency_p99_ms: 1000 }),
     ]);
-    expect(split).toEqual({ p50: [100, 120], p95: [500, 600], p99: [900, 1000] });
+    expect(split).toEqual({
+      p50: [100, 120],
+      p90: [300, 340],
+      p95: [500, 600],
+      p99: [900, 1000],
+    });
   });
 });
 

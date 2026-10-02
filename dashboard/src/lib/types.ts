@@ -47,6 +47,7 @@ export interface TimeBucket {
   total_tokens: number;
   cost_usd: number;
   latency_p50_ms: number;
+  latency_p90_ms: number;
   latency_p95_ms: number;
   latency_p99_ms: number;
 }
@@ -67,10 +68,111 @@ export interface UsageSummary {
   avg_cost_usd: number;
   avg_latency_ms: number;
   latency_p50_ms: number;
+  latency_p90_ms: number;
   latency_p95_ms: number;
   latency_p99_ms: number;
   unique_tenants: number;
   unique_keys: number;
+}
+
+/**
+ * One aggregate for a single value of a grouping dimension.
+ *
+ * The rates and per-unit figures are computed server-side from the same counts,
+ * so the UI never divides one aggregate by another.
+ */
+export interface DimensionRow {
+  key: string;
+  requests: number;
+  successes: number;
+  errors: number;
+  rejections: number;
+  fallbacks: number;
+  cache_hits: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cached_prompt_tokens: number;
+  cost_usd: number;
+  avg_latency_ms: number;
+  latency_p50_ms: number;
+  latency_p90_ms: number;
+  latency_p95_ms: number;
+  latency_p99_ms: number;
+  success_rate: number;
+  error_rate: number;
+  fallback_rate: number;
+  cache_hit_rate: number;
+  cost_per_success_usd: number;
+  tokens_per_request: number;
+}
+
+/** Whether caching is helping, with the two populations it is derived from. */
+export interface CacheReport {
+  hits: number;
+  misses: number;
+  hit_rate: number;
+  hit_avg_latency_ms: number;
+  miss_avg_latency_ms: number;
+  latency_saved_per_hit_ms: number;
+  latency_saved_total_ms: number;
+  cost_saved_usd: number;
+  cached_prompt_tokens: number;
+  prompt_cache_share: number;
+  active: boolean;
+}
+
+/** One routing strategy's share of traffic. */
+export interface RoutingStrategyRow {
+  strategy: string;
+  requests: number;
+  fallbacks: number;
+  errors: number;
+  avg_attempts: number;
+  fallback_rate: number;
+}
+
+export interface RoutingReport {
+  strategies: RoutingStrategyRow[] | null;
+  requests: number;
+  fallbacks: number;
+  errors: number;
+  fallback_rate: number;
+  avg_attempts: number;
+  /** Share of requests where the router did not stay with its first choice. */
+  provider_switch_rate: number;
+}
+
+/** One metric across the current and previous windows. */
+export interface MetricDelta {
+  metric: string;
+  current: number;
+  previous: number;
+  change: number;
+  /** Undefined-as-zero when the previous window had no activity. */
+  change_ratio: number;
+  higher_is_worse: boolean;
+  unit: 'count' | 'ratio' | 'ms' | 'usd';
+}
+
+/** The composed analytics payload: one window, every breakdown. */
+export interface AnalyticsReport {
+  window: TimeRange;
+  interval: string;
+  summary: UsageSummary;
+  previous_summary: UsageSummary;
+  buckets: TimeBucket[] | null;
+  comparison: MetricDelta[] | null;
+  providers: DimensionRow[] | null;
+  models: DimensionRow[] | null;
+  tenants: DimensionRow[] | null;
+  policies: DimensionRow[] | null;
+  request_types: DimensionRow[] | null;
+  outcomes: DimensionRow[] | null;
+  errors: DimensionRow[] | null;
+  cache: CacheReport;
+  routing: RoutingReport;
+  generated_at: string;
 }
 
 export interface ProviderBreakdownRow {

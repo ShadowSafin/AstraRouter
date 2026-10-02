@@ -47,6 +47,11 @@ type Repositories struct {
 	CacheEntries       *CacheEntryRepository
 	// Tunnel sessions: temporary public exposure audit trail.
 	Tunnels *TunnelSessionRepository
+	// Console operator identity and sessions. Separate from APIKeys because a
+	// password is stretched with Argon2id and the account is lockable, whereas a
+	// key is high-entropy material verified by digest lookup.
+	DashboardUsers    *DashboardUserRepository
+	DashboardSessions *DashboardSessionRepository
 }
 
 // NewRepositories builds every repository over a pool.
@@ -84,6 +89,9 @@ func NewRepositories(pool *pgxpool.Pool, logger *slog.Logger) *Repositories {
 		CacheEntries:       NewCacheEntryRepository(pool, logger),
 
 		Tunnels: NewTunnelSessionRepository(pool, logger),
+
+		DashboardUsers:    NewDashboardUserRepository(pool, logger),
+		DashboardSessions: NewDashboardSessionRepository(pool, logger),
 	}
 }
 

@@ -71,6 +71,10 @@ const (
 	AuditDeny       AuditAction = "deny"
 	AuditOverridden AuditAction = "override"
 	AuditProbe      AuditAction = "probe"
+	// AuditLogout records the end of an operator console session.
+	AuditLogout AuditAction = "logout"
+	// AuditPasswordChange records a console operator rotating their own password.
+	AuditPasswordChange AuditAction = "password_change"
 )
 
 // AuditResource names the kind of object an audit event concerns.
@@ -91,6 +95,10 @@ const (
 	ResourceCache         AuditResource = "cache"
 	ResourceFeedback      AuditResource = "feedback"
 	ResourceTunnel        AuditResource = "tunnel"
+	// ResourceDashboardUser is a human operator account for the console.
+	ResourceDashboardUser AuditResource = "dashboard_user"
+	// ResourceDashboardSession is one signed-in console session.
+	ResourceDashboardSession AuditResource = "dashboard_session"
 )
 
 // AuditEvent is an immutable record of a control-plane mutation.

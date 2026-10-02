@@ -60,8 +60,12 @@ type TimeBucket struct {
 	TotalTokens      int64 `json:"total_tokens"`
 	// CostUSD is the summed cost in the bucket.
 	CostUSD float64 `json:"cost_usd"`
-	// LatencyP50MS, LatencyP95MS and LatencyP99MS are bucket percentiles.
+	// LatencyP50MS, LatencyP90MS, LatencyP95MS and LatencyP99MS are bucket
+	// percentiles. p90 is carried alongside p95 because tail latency that only
+	// shows up at p95 is often already visible at p90, and operators triage on
+	// the earlier signal.
 	LatencyP50MS int64 `json:"latency_p50_ms"`
+	LatencyP90MS int64 `json:"latency_p90_ms"`
 	LatencyP95MS int64 `json:"latency_p95_ms"`
 	LatencyP99MS int64 `json:"latency_p99_ms"`
 }
@@ -89,11 +93,82 @@ type UsageSummary struct {
 	// AvgLatencyMS is the mean end-to-end latency.
 	AvgLatencyMS float64 `json:"avg_latency_ms"`
 	LatencyP50MS int64   `json:"latency_p50_ms"`
+	LatencyP90MS int64   `json:"latency_p90_ms"`
 	LatencyP95MS int64   `json:"latency_p95_ms"`
 	LatencyP99MS int64   `json:"latency_p99_ms"`
 	// UniqueTenants and UniqueKeys support the platform overview.
 	UniqueTenants int64 `json:"unique_tenants"`
 	UniqueKeys    int64 `json:"unique_keys"`
+}
+
+// DimensionRow is one aggregate for a single value of a grouping dimension:
+// a provider, a model, a tenant, a policy, a request type, an outcome or an
+// error code. One shape for every breakdown keeps the analytics API and the
+// dashboard tables uniform, and means a new dimension needs no new type.
+//
+// The rate and per-unit fields are derived from the counts rather than stored,
+// so a consumer can never divide by a different denominator than the one the
+// counts came from.
+type DimensionRow struct {
+	// Key is the dimension value. An empty key means "unattributed" (for
+	// example a request that arrived before a tenant was resolved).
+	Key string `json:"key"`
+
+	Requests   int64 `json:"requests"`
+	Successes  int64 `json:"successes"`
+	Errors     int64 `json:"errors"`
+	Rejections int64 `json:"rejections"`
+	Fallbacks  int64 `json:"fallbacks"`
+	CacheHits  int64 `json:"cache_hits"`
+
+	PromptTokens       int64 `json:"prompt_tokens"`
+	CompletionTokens   int64 `json:"completion_tokens"`
+	TotalTokens        int64 `json:"total_tokens"`
+	CachedPromptTokens int64 `json:"cached_prompt_tokens"`
+
+	CostUSD      float64 `json:"cost_usd"`
+	AvgLatencyMS float64 `json:"avg_latency_ms"`
+	LatencyP50MS int64   `json:"latency_p50_ms"`
+	LatencyP90MS int64   `json:"latency_p90_ms"`
+	LatencyP95MS int64   `json:"latency_p95_ms"`
+	LatencyP99MS int64   `json:"latency_p99_ms"`
+
+	// Derived metrics. Computed once, in one place, from the counts above.
+	SuccessRate       float64 `json:"success_rate"`
+	ErrorRate         float64 `json:"error_rate"`
+	FallbackRate      float64 `json:"fallback_rate"`
+	CacheHitRate      float64 `json:"cache_hit_rate"`
+	CostPerSuccessUSD float64 `json:"cost_per_success_usd"`
+	// TokensPerRequest supports spotting prompts that grew unexpectedly.
+	TokensPerRequest float64 `json:"tokens_per_request"`
+}
+
+// CacheSplit separates cached responses from provider-served ones, which is what
+// makes "did caching help?" answerable: savings are the difference between the
+// two populations, not a number invented by the cache.
+type CacheSplit struct {
+	Hits      int64   `json:"hits"`
+	Misses    int64   `json:"misses"`
+	HitAvgMS  float64 `json:"hit_avg_latency_ms"`
+	MissAvgMS float64 `json:"miss_avg_latency_ms"`
+	// MissCostUSD is the mean cost of a provider-served request, the counterfactual
+	// a hit avoided.
+	MissCostUSD        float64 `json:"miss_avg_cost_usd"`
+	HitTokens          int64   `json:"hit_total_tokens"`
+	MissTokens         int64   `json:"miss_total_tokens"`
+	CachedPromptTokens int64   `json:"cached_prompt_tokens"`
+}
+
+// StrategyRow is one aggregate for a routing strategy, read from the request
+// log rather than the billing row: how a request was routed is debugging data,
+// not billing data.
+type StrategyRow struct {
+	Strategy     string  `json:"strategy"`
+	Requests     int64   `json:"requests"`
+	Fallbacks    int64   `json:"fallbacks"`
+	Errors       int64   `json:"errors"`
+	AvgAttempts  float64 `json:"avg_attempts"`
+	FallbackRate float64 `json:"fallback_rate"`
 }
 
 // ProviderBreakdownRow is one row of a per-provider aggregate.

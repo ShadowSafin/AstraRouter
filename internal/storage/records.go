@@ -239,6 +239,7 @@ func (r *UsageRepository) Summary(ctx context.Context, filter QueryFilter) (*dom
 			COALESCE(sum(cost_usd), 0)                                        AS total_cost,
 			COALESCE(avg(latency_ms), 0)                                      AS avg_latency,
 			COALESCE(percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms), 0) AS p50,
+			COALESCE(percentile_cont(0.90) WITHIN GROUP (ORDER BY latency_ms), 0) AS p90,
 			COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms), 0) AS p95,
 			COALESCE(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms), 0) AS p99,
 			count(DISTINCT tenant_id)                                         AS unique_tenants,
@@ -251,16 +252,17 @@ func (r *UsageRepository) Summary(ctx context.Context, filter QueryFilter) (*dom
 	// enough rows the value is fractional (e.g. 1019.95) and pgx cannot scan
 	// NUMERIC with a fractional part into *int64. Rounding keeps the
 	// millisecond contract of the domain type.
-	var p50, p95, p99 float64
+	var p50, p90, p95, p99 float64
 	err := r.pool.QueryRow(ctx, query, args...).Scan(
 		&s.Requests, &s.Successes, &s.Errors, &s.Rejections, &s.Canceled, &s.Fallbacks,
 		&s.PromptTokens, &s.CompletionTokens, &s.TotalTokens, &s.TotalCostUSD,
-		&s.AvgLatencyMS, &p50, &p95, &p99,
+		&s.AvgLatencyMS, &p50, &p90, &p95, &p99,
 		&s.UniqueTenants, &s.UniqueKeys)
 	if err != nil {
 		return nil, wrapDBError("summarize usage", err)
 	}
 	s.LatencyP50MS = int64(math.Round(p50))
+	s.LatencyP90MS = int64(math.Round(p90))
 	s.LatencyP95MS = int64(math.Round(p95))
 	s.LatencyP99MS = int64(math.Round(p99))
 
@@ -318,6 +320,7 @@ func (r *UsageRepository) Series(ctx context.Context, filter QueryFilter, interv
 				COALESCE(sum(total_tokens), 0) AS total_tokens,
 				COALESCE(sum(cost_usd), 0) AS cost_usd,
 				COALESCE(percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms), 0) AS p50,
+				COALESCE(percentile_cont(0.90) WITHIN GROUP (ORDER BY latency_ms), 0) AS p90,
 				COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms), 0) AS p95,
 				COALESCE(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms), 0) AS p99
 			  FROM usage_records
@@ -329,7 +332,7 @@ func (r *UsageRepository) Series(ctx context.Context, filter QueryFilter, interv
 		       COALESCE(g.rejections, 0), COALESCE(g.fallbacks, 0), COALESCE(g.cache_hits, 0),
 		       COALESCE(g.prompt_tokens, 0), COALESCE(g.completion_tokens, 0),
 		       COALESCE(g.total_tokens, 0), COALESCE(g.cost_usd, 0),
-		       COALESCE(g.p50, 0), COALESCE(g.p95, 0), COALESCE(g.p99, 0)
+		       COALESCE(g.p50, 0), COALESCE(g.p90, 0), COALESCE(g.p95, 0), COALESCE(g.p99, 0)
 		  FROM buckets b
 		  LEFT JOIN grouped g ON g.bucket_start = b.bucket_start
 		 ORDER BY b.bucket_start`,
@@ -346,14 +349,15 @@ func (r *UsageRepository) Series(ctx context.Context, filter QueryFilter, interv
 	var out []domain.TimeBucket
 	for rows.Next() {
 		var b domain.TimeBucket
-		var p50, p95, p99 float64
+		var p50, p90, p95, p99 float64
 		if err := rows.Scan(&b.Start, &b.Requests, &b.Successes, &b.Errors, &b.Rejections,
 			&b.Fallbacks, &b.CacheHits, &b.PromptTokens, &b.CompletionTokens, &b.TotalTokens,
-			&b.CostUSD, &p50, &p95, &p99); err != nil {
+			&b.CostUSD, &p50, &p90, &p95, &p99); err != nil {
 			return nil, wrapDBError("scan usage bucket", err)
 		}
 		// See Summary: bucket percentiles interpolate fractionally.
 		b.LatencyP50MS = int64(math.Round(p50))
+		b.LatencyP90MS = int64(math.Round(p90))
 		b.LatencyP95MS = int64(math.Round(p95))
 		b.LatencyP99MS = int64(math.Round(p99))
 		b.End = b.Start.Add(width)
@@ -457,6 +461,172 @@ func (r *UsageRepository) ByModel(ctx context.Context, filter QueryFilter, limit
 		return nil, wrapDBError("aggregate usage by model", err)
 	}
 	return out, nil
+}
+
+// ---------------------------------------------------------------------------
+// Analytics aggregation
+// ---------------------------------------------------------------------------
+
+// AnalyticsDimension names a grouping dimension the analytics report may query.
+//
+// It is a closed set rather than a free column name on purpose: the value is
+// interpolated into the GROUP BY, and a whitelist is what keeps that from being
+// an injection point. A dimension that is not in the map is rejected.
+type AnalyticsDimension string
+
+const (
+	DimensionProvider       AnalyticsDimension = "provider"
+	DimensionModel          AnalyticsDimension = "model"
+	DimensionRequestedModel AnalyticsDimension = "requested_model"
+	DimensionTenant         AnalyticsDimension = "tenant"
+	DimensionPolicy         AnalyticsDimension = "policy"
+	DimensionRequestType    AnalyticsDimension = "request_type"
+	DimensionOutcome        AnalyticsDimension = "outcome"
+	DimensionErrorCode      AnalyticsDimension = "error"
+	DimensionStreaming      AnalyticsDimension = "streaming"
+)
+
+// dimensionColumns maps each dimension to its physical column. Every value here
+// is a literal from this file, never caller input.
+var dimensionColumns = map[AnalyticsDimension]string{
+	DimensionProvider:       "provider",
+	DimensionModel:          "model",
+	DimensionRequestedModel: "requested_model",
+	DimensionTenant:         "tenant_id",
+	DimensionPolicy:         "policy_id",
+	DimensionRequestType:    "request_type",
+	DimensionOutcome:        "outcome",
+	DimensionErrorCode:      "error_code",
+	DimensionStreaming:      "streaming",
+}
+
+// dimensionOrderBy maps a caller's sort choice onto an aggregate alias. Aliases
+// are also a whitelist for the same reason as the dimensions.
+var dimensionOrderBy = map[string]string{
+	"requests": "requests",
+	"cost":     "cost",
+	"errors":   "errors",
+	"latency":  "avg_latency",
+	"tokens":   "total_tokens",
+}
+
+// Grouped aggregates usage over one dimension.
+//
+// This is a single parameterized query rather than one function per breakdown:
+// the metrics are identical whatever the dimension, and eight near-identical
+// queries would be eight places for the percentile arithmetic to drift.
+func (r *UsageRepository) Grouped(
+	ctx context.Context,
+	filter QueryFilter,
+	dimension AnalyticsDimension,
+	orderBy string,
+	limit int,
+) ([]domain.DimensionRow, error) {
+	column, ok := dimensionColumns[dimension]
+	if !ok {
+		return nil, domain.Errorf(domain.ErrCodeInvalidRequest, "unknown analytics dimension %q", dimension)
+	}
+	order, ok := dimensionOrderBy[orderBy]
+	if !ok {
+		order = "requests"
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	// Bounded so a group-by over a high-cardinality dimension (error codes on a
+	// bad day) cannot return an unbounded payload.
+	if limit > 100 {
+		limit = 100
+	}
+
+	filter.normalize()
+	where, args := filter.where("usage_records")
+	args = append(args, limit)
+
+	query := fmt.Sprintf(`
+		SELECT COALESCE(%s::text, '') AS dim_key,
+		       count(*) AS requests,
+		       count(*) FILTER (WHERE outcome IN ('success','fallback')) AS successes,
+		       count(*) FILTER (WHERE outcome = 'error') AS errors,
+		       count(*) FILTER (WHERE outcome = 'rejected') AS rejections,
+		       count(*) FILTER (WHERE fallback_used) AS fallbacks,
+		       count(*) FILTER (WHERE cache_hit) AS cache_hits,
+		       COALESCE(sum(prompt_tokens), 0) AS prompt_tokens,
+		       COALESCE(sum(completion_tokens), 0) AS completion_tokens,
+		       COALESCE(sum(total_tokens), 0) AS total_tokens,
+		       COALESCE(sum(cached_prompt_tokens), 0) AS cached_prompt_tokens,
+		       COALESCE(sum(cost_usd), 0) AS cost,
+		       COALESCE(avg(latency_ms), 0) AS avg_latency,
+		       COALESCE(percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms), 0) AS p50,
+		       COALESCE(percentile_cont(0.90) WITHIN GROUP (ORDER BY latency_ms), 0) AS p90,
+		       COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms), 0) AS p95,
+		       COALESCE(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms), 0) AS p99
+		  FROM usage_records
+		 WHERE %s
+		 GROUP BY 1
+		 ORDER BY %s DESC
+		 LIMIT $%d`, column, where, order, len(args))
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, wrapDBError("aggregate usage by dimension", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DimensionRow
+	for rows.Next() {
+		var row domain.DimensionRow
+		// See Summary: percentile_cont interpolates fractionally and pgx cannot
+		// scan a fractional NUMERIC into *int64.
+		var p50, p90, p95, p99 float64
+		if err := rows.Scan(&row.Key, &row.Requests, &row.Successes, &row.Errors,
+			&row.Rejections, &row.Fallbacks, &row.CacheHits,
+			&row.PromptTokens, &row.CompletionTokens, &row.TotalTokens, &row.CachedPromptTokens,
+			&row.CostUSD, &row.AvgLatencyMS,
+			&p50, &p90, &p95, &p99); err != nil {
+			return nil, wrapDBError("scan dimension aggregate", err)
+		}
+		row.LatencyP50MS = int64(math.Round(p50))
+		row.LatencyP90MS = int64(math.Round(p90))
+		row.LatencyP95MS = int64(math.Round(p95))
+		row.LatencyP99MS = int64(math.Round(p99))
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, wrapDBError("aggregate usage by dimension", err)
+	}
+	return out, nil
+}
+
+// CacheSplit returns the cached and provider-served populations side by side.
+//
+// The two are computed in one pass so a hit can never be counted against a
+// miss total from a different instant, which is the classic way a cache
+// dashboard ends up reporting a hit rate above 100%.
+func (r *UsageRepository) CacheSplit(ctx context.Context, filter QueryFilter) (*domain.CacheSplit, error) {
+	filter.normalize()
+	where, args := filter.where("usage_records")
+
+	query := fmt.Sprintf(`
+		SELECT
+			count(*) FILTER (WHERE cache_hit)                       AS hits,
+			count(*) FILTER (WHERE NOT cache_hit)                   AS misses,
+			COALESCE(avg(latency_ms) FILTER (WHERE cache_hit), 0)    AS hit_avg,
+			COALESCE(avg(latency_ms) FILTER (WHERE NOT cache_hit), 0) AS miss_avg,
+			COALESCE(avg(cost_usd) FILTER (WHERE NOT cache_hit), 0)  AS miss_cost,
+			COALESCE(sum(total_tokens) FILTER (WHERE cache_hit), 0)  AS hit_tokens,
+			COALESCE(sum(total_tokens) FILTER (WHERE NOT cache_hit), 0) AS miss_tokens,
+			COALESCE(sum(cached_prompt_tokens), 0)                  AS cached_prompt_tokens
+		  FROM usage_records
+		 WHERE %s`, where)
+
+	var split domain.CacheSplit
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&split.Hits, &split.Misses, &split.HitAvgMS, &split.MissAvgMS, &split.MissCostUSD,
+		&split.HitTokens, &split.MissTokens, &split.CachedPromptTokens); err != nil {
+		return nil, wrapDBError("split cache usage", err)
+	}
+	return &split, nil
 }
 
 // CurrentSpend returns the spend for a tenant-keyed scope in a period label.
@@ -610,6 +780,56 @@ func scanRequestLog(row pgx.Row) (*domain.RequestLog, error) {
 		}
 	}
 	return &entry, nil
+}
+
+// StrategyMix aggregates routing decisions per strategy.
+//
+// It reads request_logs, not usage_records: how a request was routed is
+// debugging data. The filter's model clause is dropped because that table
+// records requested_model, and asking for a column that does not exist would
+// fail the query rather than narrow it.
+func (r *RequestLogRepository) StrategyMix(ctx context.Context, filter QueryFilter, limit int) ([]domain.StrategyRow, error) {
+	filter.Model = ""
+	filter.normalize()
+	if limit <= 0 {
+		limit = 12
+	}
+	where, args := filter.where("request_logs")
+	args = append(args, limit)
+
+	query := fmt.Sprintf(`
+		SELECT COALESCE(NULLIF(strategy, ''), 'unattributed') AS strategy,
+		       count(*) AS requests,
+		       count(*) FILTER (WHERE fallback_used) AS fallbacks,
+		       count(*) FILTER (WHERE outcome = 'error') AS errors,
+		       COALESCE(avg(attempts), 0) AS avg_attempts
+		  FROM request_logs
+		 WHERE %s
+		 GROUP BY 1
+		 ORDER BY requests DESC
+		 LIMIT $%d`, where, len(args))
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, wrapDBError("aggregate routing strategies", err)
+	}
+	defer rows.Close()
+
+	var out []domain.StrategyRow
+	for rows.Next() {
+		var row domain.StrategyRow
+		if err := rows.Scan(&row.Strategy, &row.Requests, &row.Fallbacks, &row.Errors, &row.AvgAttempts); err != nil {
+			return nil, wrapDBError("scan routing strategy", err)
+		}
+		if row.Requests > 0 {
+			row.FallbackRate = float64(row.Fallbacks) / float64(row.Requests)
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, wrapDBError("aggregate routing strategies", err)
+	}
+	return out, nil
 }
 
 // Prune deletes request logs older than a cutoff.
