@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // chiURLParam reads a path parameter.

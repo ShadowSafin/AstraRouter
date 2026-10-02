@@ -1,0 +1,706 @@
+// Command shell is the AstraRouter desktop app: a WebView window plus a
+// supervisor that owns the whole local stack (embedded postgres, gateway,
+// dashboard). Closing the window quits the app; everything runs from the
+// install directory, requires no admin rights, and never touches Docker.
+package main
+
+import (
+	"context"
+	_ "embed"
+	"flag"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/url"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+	"unsafe"
+
+	"github.com/getlantern/systray"
+	webview "github.com/webview/webview_go"
+	"golang.org/x/sys/windows"
+
+	"github.com/shadowsafin/astrarouter/desktop/pkg/dbembed"
+	"github.com/shadowsafin/astrarouter/desktop/pkg/supervisor"
+)
+
+//go:embed splash.html
+var splashHTML string
+
+// trayIcon holds the .ico bytes once loaded; the file lives in assets/ next
+// to the exe (staged by build.ps1), never inside the binary, so re-skinning
+// never needs a rebuild.
+var trayIcon []byte
+
+const appName = "AstraRouter"
+
+// bootRoot is the app directory, recorded as early as possible so a failure
+// before the settings load still has somewhere to write its explanation.
+var bootRoot string
+
+// messageBox shows a modal error dialog. A GUI-subsystem process has no
+// console, so this is the only way a startup failure can reach the user
+// instead of flashing a window and vanishing.
+func messageBox(title, text string) {
+	user32 := windows.NewLazySystemDLL("user32.dll")
+	proc := user32.NewProc("MessageBoxW")
+	t, _ := windows.UTF16PtrFromString(title)
+	m, _ := windows.UTF16PtrFromString(text)
+	const mbOK, mbIconError, mbSetForeground, mbTopMost = 0x0, 0x10, 0x10000, 0x40000
+	_, _, _ = proc.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)),
+		mbOK|mbIconError|mbSetForeground|mbTopMost)
+}
+
+// settings is everything the shell needs, resolved from native.env.
+type settings struct {
+	root         string
+	env          map[string]string
+	gatewayBin   string
+	nodeBin      string
+	dashboardDir string
+	configFile   string
+	logDir       string
+
+	gatewayAddr string // 127.0.0.1:18081
+	gatewayURL  string
+	dashHost    string
+	dashPort    string
+	dashURL     string
+
+	pgPort     uint32
+	pgUser     string
+	pgPassword string
+	pgDatabase string
+	pgDir      string
+	dsn        string
+
+	// dbLog receives embedded-postgres chatter (first-run download and start
+	// progress). A window launch discards it; a console launch streams it, so
+	// `--smoke` and `--migrate-only` are never silent.
+	dbLog io.Writer
+}
+
+func main() {
+	rootFlag := flag.String("root", "", "app directory holding native.env, config.yaml, data/ and logs/ (default: beside the exe)")
+	smoke := flag.Bool("smoke", false, "no window: start everything, check the dashboard title, shut down, exit 0/1")
+	migrateOnly := flag.Bool("migrate-only", false, "start the database, run migrations, stop, exit (installer prefetch)")
+	smokeTimeout := flag.Duration("smoke-timeout", 10*time.Minute, "bounds --smoke and --migrate-only")
+	gatewayBinFlag := flag.String("gateway-bin", "", "astrarouter binary (default: <root>/bin/astrarouter.exe)")
+	nodeBinFlag := flag.String("node-bin", "", "node binary (default: <root>/bin/node.exe, then PATH)")
+	dashboardFlag := flag.String("dashboard-dir", "", "dashboard dir (default: <root>/dashboard)")
+	flag.Parse()
+
+	root := *rootFlag
+	if root == "" {
+		var err error
+		root, err = defaultRoot()
+		if err != nil {
+			fatal(err)
+		}
+	}
+	bootRoot = root
+
+	// The single-file app carries its runtime inside itself: materialize it on
+	// first launch (or upgrade), then create config from the bundled templates.
+	// Both are no-ops on later launches and on an on-disk development bundle.
+	// Extraction runs before the icon is read so the first launch is branded.
+	if err := ensureRuntime(root); err != nil {
+		fatal(err)
+	}
+	if err := ensureFirstRunEnv(root); err != nil {
+		fatal(err)
+	}
+	trayIcon = loadTrayIcon(root)
+
+	st, err := loadSettings(root, *gatewayBinFlag, *nodeBinFlag, *dashboardFlag)
+	if err != nil {
+		fatal(err)
+	}
+	logger := slog.New(slog.NewTextHandler(logFile(st, "shell.log"), nil))
+
+	if *smoke || *migrateOnly {
+		// Console launches stream database progress; the GUI path shows it on
+		// the splash instead, so it stays quiet here.
+		st.dbLog = os.Stderr
+		ctx, cancel := context.WithTimeout(context.Background(), *smokeTimeout)
+		defer cancel()
+		os.Exit(runHeadless(ctx, st, logger, *migrateOnly))
+	}
+
+	if alreadyRunning() {
+		fmt.Println(appName + " is already running (see the tray icon).")
+		return
+	}
+	runWindow(st, logger)
+}
+
+// ---------------------------------------------------------------------------
+// settings
+// ---------------------------------------------------------------------------
+
+func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, error) {
+	envPath := filepath.Join(root, "native.env")
+	env, err := supervisor.LoadEnvFile(envPath)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w (reinstall the app to regenerate it)", envPath, err)
+	}
+	get := func(key, def string) string {
+		if v := strings.TrimSpace(env[key]); v != "" {
+			return v
+		}
+		return def
+	}
+	st := &settings{
+		root:         root,
+		env:          env,
+		gatewayAddr:  get("AR_HTTP_ADDR", "127.0.0.1:18081"),
+		dashHost:     get("HOSTNAME", "127.0.0.1"),
+		dashPort:     get("PORT", "3100"),
+		pgUser:       get("AR_POSTGRES_USER", "astrarouter"),
+		pgPassword:   get("AR_POSTGRES_PASSWORD", ""),
+		pgDatabase:   get("AR_POSTGRES_DB", "astrarouter"),
+		logDir:       filepath.Join(root, "logs"),
+		dashboardDir: dashboardDir,
+	}
+	if st.pgPassword == "" {
+		return nil, fmt.Errorf("AR_POSTGRES_PASSWORD is empty in %s (reinstall the app to regenerate it)", envPath)
+	}
+	pgPort, err := strconv.Atoi(get("AR_POSTGRES_PORT", "5433"))
+	if err != nil || pgPort <= 0 || pgPort > 65535 {
+		return nil, fmt.Errorf("AR_POSTGRES_PORT=%q is not a port", env["AR_POSTGRES_PORT"])
+	}
+	st.pgPort = uint32(pgPort)
+	st.pgDir = filepath.Join(root, "data", "postgres")
+	st.gatewayURL = "http://" + st.gatewayAddr
+	st.dashURL = "http://" + st.dashHost + ":" + st.dashPort
+
+	st.configFile = filepath.Join(root, "config.yaml")
+	if _, err := os.Stat(st.configFile); err != nil {
+		return nil, fmt.Errorf("missing %s (reinstall the app to regenerate it)", st.configFile)
+	}
+
+	st.gatewayBin = gatewayBin
+	if st.gatewayBin == "" {
+		st.gatewayBin = filepath.Join(root, "bin", "astrarouter.exe")
+	}
+	if _, err := os.Stat(st.gatewayBin); err != nil {
+		return nil, fmt.Errorf("missing gateway binary %s", st.gatewayBin)
+	}
+	st.nodeBin = nodeBin
+	if st.nodeBin == "" {
+		candidate := filepath.Join(root, "bin", "node.exe")
+		if _, err := os.Stat(candidate); err == nil {
+			st.nodeBin = candidate
+		} else if path, err := exec.LookPath("node"); err == nil {
+			st.nodeBin = path
+		} else {
+			return nil, fmt.Errorf("no node runtime (expected %s or node on PATH)", candidate)
+		}
+	}
+	if st.dashboardDir == "" {
+		st.dashboardDir = filepath.Join(root, "dashboard")
+	}
+	serverJS := filepath.Join(st.dashboardDir, ".next", "standalone", "server.js")
+	if _, err := os.Stat(serverJS); err != nil {
+		return nil, fmt.Errorf("dashboard not built at %s (reinstall the app)", serverJS)
+	}
+
+	if err := os.MkdirAll(st.logDir, 0o750); err != nil {
+		return nil, err
+	}
+	// Children inherit the file env plus the resolved config path.
+	for k, v := range env {
+		_ = os.Setenv(k, v)
+	}
+	_ = os.Setenv("AR_CONFIG_FILE", st.configFile)
+	return st, nil
+}
+
+// childEnv is the environment every gateway child gets: file env, config
+// path, and the embedded DSN once the database is up.
+func (st *settings) childEnv() []string {
+	env := os.Environ()
+	return append(env, "AR_POSTGRES_DSN="+st.dsn)
+}
+
+// ---------------------------------------------------------------------------
+// lifecycle shared by window, smoke and prefetch
+// ---------------------------------------------------------------------------
+
+// stack owns one running stack: database, supervisor, cancel.
+type stack struct {
+	st     *settings
+	logger *slog.Logger
+	pg     *dbembed.Server
+	sup    *supervisor.Supervisor
+	cancel context.CancelFunc
+	done   chan error
+}
+
+// startDatabase brings up embedded postgres and publishes its DSN.
+func (st *settings) startDatabase(ctx context.Context, logger *slog.Logger) (*dbembed.Server, error) {
+	pg, err := dbembed.Start(ctx, dbembed.Options{
+		Dir:      st.pgDir,
+		Port:     st.pgPort,
+		User:     st.pgUser,
+		Password: st.pgPassword,
+		Database: st.pgDatabase,
+		Log:      st.dbLog,
+	}, logger)
+	if err != nil {
+		return nil, err
+	}
+	st.dsn = pg.DSN
+	_ = os.Setenv("AR_POSTGRES_DSN", pg.DSN)
+	return pg, nil
+}
+
+// runMigrate applies pending migrations; safe to run on every launch.
+func (st *settings) runMigrate(ctx context.Context, logger *slog.Logger) error {
+	logPath := filepath.Join(st.logDir, "migrate.log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o640)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	cmd := exec.CommandContext(ctx, st.gatewayBin, "migrate")
+	cmd.Env = st.childEnv()
+	cmd.Stdout = f
+	cmd.Stderr = f
+	logger.Info("running migrations", "log", logPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("migrate failed (see %s): %w", logPath, err)
+	}
+	return nil
+}
+
+// children assembles gateway + dashboard in startup order.
+func (st *settings) children() []supervisor.Child {
+	apiURL := st.env["ASTRAROUTER_API_URL"]
+	if strings.TrimSpace(apiURL) == "" {
+		apiURL = st.gatewayURL
+	}
+	// The dashboard proxies the admin API with this credential; without it
+	// every admin call fails closed ("no administrative credential
+	// configured"). It mirrors the gateway's AR_ADMIN_KEY from the same
+	// native.env, so one secret serves both sides and rotation is one edit.
+	adminKey := strings.TrimSpace(st.env["AR_ADMIN_KEY"])
+	return []supervisor.Child{
+		{
+			Name: "gateway",
+			Argv: []string{st.gatewayBin, "serve"},
+			Env:  []string{"AR_CONFIG_FILE=" + st.configFile, "AR_POSTGRES_DSN=" + st.dsn},
+			StdoutPath: filepath.Join(st.logDir, "gateway.log"),
+			StderrPath: filepath.Join(st.logDir, "gateway.log"),
+			RestartDelay: 3 * time.Second, StopTimeout: 60 * time.Second,
+		},
+		{
+			Name: "dashboard",
+			Argv: []string{st.nodeBin, filepath.Join(st.dashboardDir, ".next", "standalone", "server.js")},
+			Dir:  st.dashboardDir,
+			Env: []string{
+				"PORT=" + st.dashPort,
+				"HOSTNAME=" + st.dashHost,
+				"ASTRAROUTER_API_URL=" + apiURL,
+				"ASTRAROUTER_ADMIN_KEY=" + adminKey,
+			},
+			StdoutPath: filepath.Join(st.logDir, "dashboard.log"),
+			StderrPath: filepath.Join(st.logDir, "dashboard.log"),
+			RestartDelay: 3 * time.Second, StopTimeout: 30 * time.Second,
+		},
+	}
+}
+
+// serve starts the supervised children and waits for readiness. The
+// database is assumed up (see base); the returned stack stops the children
+// but never the database.
+func serve(ctx context.Context, st *settings, logger *slog.Logger, onStep func(step, label string)) (*stack, error) {
+	step := func(name, label string) {
+		logger.Info("boot: "+name, "detail", label)
+		if onStep != nil {
+			onStep(name, label)
+		}
+	}
+	supCtx, cancel := context.WithCancel(context.Background())
+	s := &stack{st: st, logger: logger, cancel: cancel, done: make(chan error, 1)}
+	s.sup = supervisor.New(st.children(), logger)
+	go func() { s.done <- s.sup.Run(supCtx) }()
+
+	step("gateway", "Waiting for the gateway…")
+	if err := supervisor.WaitForHTTP(ctx, st.gatewayURL+"/ready", 2*time.Minute); err != nil {
+		s.shutdownChildren()
+		return nil, fmt.Errorf("gateway never became ready: %w", err)
+	}
+	step("dashboard", "Waiting for the dashboard…")
+	if err := supervisor.WaitForHTTP(ctx, st.dashURL+"/", 2*time.Minute); err != nil {
+		s.shutdownChildren()
+		return nil, fmt.Errorf("dashboard never became ready: %w", err)
+	}
+	return s, nil
+}
+
+// shutdownChildren stops the supervised processes, newest first.
+func (s *stack) shutdownChildren() {
+	if s.cancel != nil {
+		s.cancel()
+		select {
+		case <-s.done:
+		case <-time.After(90 * time.Second):
+		}
+	}
+}
+
+// shutdown stops children first, then the database. Pools belong to the
+// gateway process, which is already gone, so stopping postgres last is safe.
+func (s *stack) shutdown() {
+	s.shutdownChildren()
+	if s.pg != nil {
+		if err := s.pg.Stop(); err != nil {
+			s.logger.Warn("embedded postgres did not stop cleanly", "error", err)
+		}
+	}
+}
+
+// runHeadless implements --smoke and --migrate-only without any window.
+func runHeadless(ctx context.Context, st *settings, logger *slog.Logger, migrateOnly bool) int {
+	pg, err := st.startDatabase(ctx, logger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "database:", err)
+		return 1
+	}
+	defer func() { _ = pg.Stop() }()
+	if err := st.runMigrate(ctx, logger); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if migrateOnly {
+		fmt.Println("migrate-only: database ready and migrations applied")
+		return 0
+	}
+	supCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	sup := supervisor.New(st.children(), logger)
+	done := make(chan error, 1)
+	go func() { done <- sup.Run(supCtx) }()
+	defer func() {
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(90 * time.Second):
+		}
+	}()
+
+	if err := supervisor.WaitForHTTP(ctx, st.gatewayURL+"/ready", 3*time.Minute); err != nil {
+		fmt.Fprintln(os.Stderr, "gateway:", err)
+		return 1
+	}
+	if err := supervisor.WaitForHTTP(ctx, st.dashURL+"/", 3*time.Minute); err != nil {
+		fmt.Fprintln(os.Stderr, "dashboard:", err)
+		return 1
+	}
+	title, err := supervisor.FetchTitle(ctx, st.dashURL+"/login", 30*time.Second)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "title:", err)
+		return 1
+	}
+	fmt.Printf("SMOKE-OK gateway=%s dashboard=%s title=%q\n", st.gatewayURL, st.dashURL, title)
+	return 0
+}
+
+// ---------------------------------------------------------------------------
+// window + tray
+// ---------------------------------------------------------------------------
+
+func runWindow(st *settings, logger *slog.Logger) {
+	ctx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopSignals()
+
+	w := webview.New(true)
+	defer w.Destroy()
+	w.SetTitle(appName)
+	w.SetSize(1280, 860, webview.HintNone)
+	w.SetSize(1024, 640, webview.HintMin)
+	w.Navigate("data:text/html," + url.PathEscape(splashHTML))
+
+	app := &windowApp{st: st, logger: logger, w: w, quit: make(chan struct{}), done: make(chan struct{})}
+	app.mu = make(chan struct{}, 1)
+	w.Bind("desktop_quit", app.quitFromUI)
+	w.Bind("desktop_openlogs", app.openLogs)
+	w.Bind("desktop_retry", app.retry)
+
+	go app.bootAndServe(ctx)
+	go func() {
+		<-ctx.Done() // Ctrl-C in a console: same graceful path as Quit
+		closeOnce(app.quit)
+		w.Terminate()
+	}()
+	go startTray(app)
+	w.Run()
+
+	// The window closed: quit everything gracefully.
+	closeOnce(app.quit)
+	app.waitDone()
+}
+
+// windowApp bridges the UI (window + tray) and the running stack.
+type windowApp struct {
+	st     *settings
+	logger *slog.Logger
+	w      webview.WebView
+
+	quit chan struct{}
+	done chan struct{}
+
+	mu      chan struct{} // serializes boot/retry (buffered 1 as a mutex)
+	current *stack
+	based   bool // database + migrations are done (never repeated on retry)
+	pg      *dbembed.Server
+}
+
+func closeOnce(ch chan struct{}) {
+	select {
+	case <-ch:
+	default:
+		close(ch)
+	}
+}
+
+// eval runs JS on the UI thread; every caller except the pre-Run setup must
+// go through here because WebView calls are main-thread only.
+func (a *windowApp) eval(js string) {
+	a.w.Dispatch(func() { a.w.Eval(js) })
+}
+
+// navigate loads a URL on the UI thread.
+func (a *windowApp) navigate(url string) {
+	a.w.Dispatch(func() { a.w.Navigate(url) })
+}
+
+func (a *windowApp) fail(err error) {
+	msg := err.Error() + "\n\nLogs: " + a.st.logDir
+	js := "showError(" + jsString(msg) + ")"
+	a.eval(js)
+}
+
+func jsString(s string) string {
+	return "'" + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), `'`, `\'`) + "'"
+}
+
+func (a *windowApp) bootAndServe(ctx context.Context) {
+	defer close(a.done)
+	a.boot(ctx)
+	<-a.quit
+	if a.current != nil {
+		a.current.shutdown()
+	}
+	if a.pg != nil {
+		if err := a.pg.Stop(); err != nil {
+			a.logger.Warn("embedded postgres did not stop cleanly", "error", err)
+		}
+	}
+}
+
+func (a *windowApp) boot(ctx context.Context) {
+	a.mu <- struct{}{}
+	defer func() { <-a.mu }()
+	onStep := func(step, label string) {
+		a.eval("setStep('" + step + "', " + jsString(label) + ")")
+	}
+
+	// The database and migrations run once per process: a retry after a
+	// serving failure must not try to bind the database port again.
+	if !a.based {
+		pg, err := a.base(ctx, onStep)
+		if err != nil {
+			a.fail(err)
+			return
+		}
+		_ = pg
+		a.based = true
+	}
+	s, err := serve(ctx, a.st, a.logger, onStep)
+	if err != nil {
+		a.fail(err)
+		return
+	}
+	if a.current != nil {
+		a.current.shutdown()
+	}
+	a.current = s
+	a.eval("setStep('ready','')")
+	a.navigate(a.st.dashURL + "/")
+}
+
+// base starts the database and applies migrations.
+func (a *windowApp) base(ctx context.Context, onStep func(step, label string)) (*dbembed.Server, error) {
+	step := func(name, label string) {
+		a.logger.Info("boot: "+name, "detail", label)
+		if onStep != nil {
+			onStep(name, label)
+		}
+	}
+	step("db", "Starting the local database (first launch downloads it)…")
+	pg, err := a.st.startDatabase(ctx, a.logger)
+	if err != nil {
+		return nil, err
+	}
+	step("migrate", "Applying database migrations…")
+	if err := a.st.runMigrate(ctx, a.logger); err != nil {
+		_ = pg.Stop()
+		return nil, err
+	}
+	// The database outlives serving restarts; it stops with the app.
+	a.pg = pg
+	return pg, nil
+}
+
+func (a *windowApp) waitDone() {
+	if a.done != nil {
+		<-a.done
+	}
+	systray.Quit()
+}
+
+func (a *windowApp) quitFromUI() {
+	closeOnce(a.quit)
+	a.w.Terminate()
+}
+
+func (a *windowApp) openLogs() {
+	_ = exec.Command("explorer", a.st.logDir).Start()
+}
+
+func (a *windowApp) retry() {
+	go a.boot(context.Background())
+}
+
+// alreadyRunning uses a named mutex so a second launch exits quietly.
+func alreadyRunning() bool {
+	name, _ := syscall.UTF16PtrFromString(`Local\AstraRouterDesktopV1`)
+	h, err := windows.CreateMutex(nil, false, name)
+	if err != nil {
+		return true // fail closed: do not risk two stacks on one data dir
+	}
+	if windows.GetLastError() == windows.ERROR_ALREADY_EXISTS {
+		windows.CloseHandle(h)
+		return true
+	}
+	return false
+}
+
+// startTray adds the tray icon: status, restart, logs, quit.
+func startTray(app *windowApp) {
+	systray.Run(func() {
+		systray.SetIcon(trayIcon)
+		systray.SetTitle(appName)
+		systray.SetTooltip(appName + " is running")
+		mOpen := systray.AddMenuItem("Open "+appName, "Show the window")
+		mRestart := systray.AddMenuItem("Restart services", "Restart gateway and dashboard")
+		mLogs := systray.AddMenuItem("Open logs folder", "Show gateway and dashboard logs")
+		systray.AddSeparator()
+		mQuit := systray.AddMenuItem("Quit", "Stop everything and quit")
+		for {
+			select {
+			case <-mOpen.ClickedCh:
+				app.navigate(app.st.dashURL + "/")
+			case <-mRestart.ClickedCh:
+				app.retry()
+			case <-mLogs.ClickedCh:
+				app.openLogs()
+			case <-mQuit.ClickedCh:
+				app.quitFromUI()
+				return
+			case <-app.quit:
+				return
+			}
+		}
+	}, func() {})
+}
+
+// loadTrayIcon reads assets/icon.ico beside the app root. A missing icon
+// only costs the tray picture: the app still runs.
+// defaultRoot picks where the app lives. A development or portable bundle keeps
+// its runtime (and therefore its data) beside the executable. The single-file
+// app, which has no files beside it until it extracts, uses a per-user data
+// directory so it works no matter where the .exe is placed.
+func defaultRoot() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Dir(exe)
+	if _, err := os.Stat(filepath.Join(dir, "bin", "astrarouter.exe")); err == nil {
+		return dir, nil
+	}
+	if base := os.Getenv("LOCALAPPDATA"); base != "" {
+		return filepath.Join(base, appName), nil
+	}
+	return dir, nil
+}
+
+func loadTrayIcon(root string) []byte {
+	for _, p := range []string{
+		filepath.Join(root, "assets", "icon.ico"),
+		filepath.Join("assets", "icon.ico"),
+	} {
+		if b, err := os.ReadFile(p); err == nil && len(b) > 0 {
+			return b
+		}
+	}
+	fmt.Fprintln(os.Stderr, "astrarouter: assets/icon.ico not found; tray runs without an icon")
+	return nil
+}
+
+func logFile(st *settings, name string) *os.File {
+	f, err := os.OpenFile(filepath.Join(st.logDir, name), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o640)
+	if err != nil {
+		return os.Stderr
+	}
+	return f
+}
+
+// fatal reports a startup failure on every channel available: stderr for a
+// console launch, a bootstrap log that survives the process, and a message
+// box for the common double-click launch. It never exits silently.
+func fatal(err error) {
+	msg := err.Error()
+	fmt.Fprintln(os.Stderr, "astrarouter:", msg)
+	logPath := ""
+	if bootRoot != "" {
+		logPath = filepath.Join(bootRoot, "logs", "shell-bootstrap.log")
+		if e := os.MkdirAll(filepath.Dir(logPath), 0o750); e == nil {
+			if f, e := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o640); e == nil {
+				fmt.Fprintf(f, "%s astrarouter: %s\n", time.Now().Format(time.RFC3339), msg)
+				f.Close()
+			}
+		}
+	}
+	// Only a windowless (double-click) launch needs the dialog: a console
+	// launch already saw the message on stderr, and a modal box there would
+	// hang `--smoke` and `--migrate-only` scripts.
+	if !hasConsole() {
+		detail := msg
+		if logPath != "" {
+			detail += "\n\nDetails: " + logPath
+		}
+		messageBox(appName+" could not start", detail)
+	}
+	os.Exit(1)
+}
+
+// hasConsole reports whether the process has an attached console. A GUI
+// launch does not, which is exactly when the message box is needed.
+func hasConsole() bool {
+	h, err := windows.GetStdHandle(windows.STD_ERROR_HANDLE)
+	if err != nil {
+		return false
+	}
+	var mode uint32
+	return windows.GetConsoleMode(h, &mode) == nil
+}

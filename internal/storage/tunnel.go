@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Tunnel session persistence. Rows are write-mostly and tiny: one insert at

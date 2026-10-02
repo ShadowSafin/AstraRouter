@@ -10,7 +10,7 @@ import (
 
 // Build-time variables, set with -ldflags, for example:
 //
-//	go build -ldflags "-X github.com/shadowsafin/corerouter/internal/version.Version=1.2.3"
+//	go build -ldflags "-X github.com/shadowsafin/astrarouter/internal/version.Version=1.2.3"
 //
 // The defaults deliberately describe an unstamped local build rather than
 // pretending to be a release, so an operator can tell at a glance that a binary
@@ -66,7 +66,7 @@ func Short() string {
 // String renders the full version line used by the --version flag.
 func String() string {
 	info := Current()
-	return fmt.Sprintf("corerouter %s (commit %s, built %s, %s %s)",
+	return fmt.Sprintf("astrarouter %s (commit %s, built %s, %s %s)",
 		info.Version, info.Commit, info.BuildDate, info.GoVersion, info.Platform)
 }
 

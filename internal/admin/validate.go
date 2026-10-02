@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Validation caps keep admin writes sane and the error messages actionable.

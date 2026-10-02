@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Phase 5 repositories: cache policies, invalidation audit and entry

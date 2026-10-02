@@ -1,4 +1,4 @@
-# Contributing to CoreRouter
+# Contributing to AstraRouter
 
 Thanks for taking the time. This document covers what a good change looks like
 here, so review is fast and nobody has to reverse-engineer intent from a diff.
@@ -13,8 +13,8 @@ as the project.
 ## Getting set up
 
 ```bash
-git clone https://github.com/shadowsafin/corerouter.git
-cd corerouter
+git clone https://github.com/shadowsafin/astrarouter.git
+cd astrarouter
 
 cp .env.example .env
 docker compose up -d --build
@@ -38,7 +38,7 @@ information, not a blocker.
 
 | Path | Contains |
 | --- | --- |
-| `cmd/corerouter/` | The CLI entrypoint |
+| `cmd/astrarouter/` | The CLI entrypoint |
 | `internal/domain/` | Types and rules. No I/O, no dependencies on other packages. |
 | `internal/config/` | Defaults, file and environment loading, validation, redaction |
 | `internal/providers/` | One adapter per provider kind, plus the shared HTTP client |
@@ -92,7 +92,7 @@ Start reading at `internal/api/chat.go` for the request path end to end.
 | New behaviour | Tests for the behaviour and its boundaries |
 | Refactor | The existing tests unchanged and green — that is the point |
 | Dashboard page | `npm run typecheck` plus a `200` from the running stack |
-| Migration | Applied by `corerouter migrate` against a real database |
+| Migration | Applied by `astrarouter migrate` against a real database |
 
 ```bash
 go test ./internal/...                                  # Go
@@ -190,7 +190,7 @@ Two rules that cover most of it:
 Open an issue with:
 
 - What you did, what you expected, what happened.
-- The version, from `corerouter version` or `GET /version`.
+- The version, from `astrarouter version` or `GET /version`.
 - The `request_id` from the failing response, if you have one. That single id
   usually resolves the question without any back-and-forth.
 - Relevant logs around the failure.

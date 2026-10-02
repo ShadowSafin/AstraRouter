@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Sink is a durable destination for telemetry records.

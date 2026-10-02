@@ -10,8 +10,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Redis provides the operational data layer: credential caching, rate limiting,
@@ -81,7 +81,7 @@ func NewRedis(ctx context.Context, cfg config.RedisConfig, logger *slog.Logger) 
 
 	prefix := cfg.KeyPrefix
 	if prefix == "" {
-		prefix = "corerouter"
+		prefix = "astrarouter"
 	}
 	return &Redis{client: client, prefix: prefix, logger: logger}, nil
 }

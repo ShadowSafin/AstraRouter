@@ -92,7 +92,7 @@ export function RequestsView() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `corerouter-requests-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    anchor.download = `astrarouter-requests-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
     anchor.click();
     // Revoking immediately is safe: the click has already started the download.
     URL.revokeObjectURL(url);

@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Report is one complete analytics payload for a window.

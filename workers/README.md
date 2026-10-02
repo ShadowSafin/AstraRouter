@@ -1,6 +1,6 @@
-# CoreRouter intelligence workers
+# AstraRouter intelligence workers
 
-Python services for the parts of CoreRouter that benefit from Python: offline
+Python services for the parts of AstraRouter that benefit from Python: offline
 scoring, prompt analysis, evaluation and telemetry rollups. **Nothing here is on
 the critical path of a completion** — the gateway is Go, and a worker being down
 costs you evaluation results and dashboards, never inference.
@@ -20,7 +20,7 @@ stays in Go, where it runs once per request and must not allocate.
 ## Layout
 
 ```
-corerouter_workers/
+astrarouter_workers/
   config.py            environment-driven settings, no secrets from files
   models.py            typed payloads mirroring the Go JSON
   scoring.py           deterministic text metrics (stdlib only)
@@ -52,15 +52,15 @@ python -m unittest discover -s tests -t .
 
 ```bash
 pip install -r requirements.txt
-python -m corerouter_workers.cli serve
+python -m astrarouter_workers.cli serve
 ```
 
 ### Docker
 
 ```bash
-docker build -t corerouter-workers .
-docker run --rm -e CR_WORKER_NATS_URL=nats://host.docker.internal:4222 \
-  -p 9101:9101 corerouter-workers
+docker build -t astrarouter-workers .
+docker run --rm -e AR_WORKER_NATS_URL=nats://host.docker.internal:4222 \
+  -p 9101:9101 astrarouter-workers
 ```
 
 ### Configuration
@@ -77,38 +77,38 @@ them usable for debugging on the host that runs the gateway.
 
 ```bash
 # What metrics can a job request?
-corerouter-worker metrics
+astrarouter-worker metrics
 
 # Score candidates against a reference, offline.
-corerouter-worker score \
+astrarouter-worker score \
   --reference "Paris is the capital of France" \
   --candidate a="Paris is the capital of France" \
   --candidate b="Lyon is the capital of France"
 
 # What would routing decide for this prompt?
-corerouter-worker analyze --prompt "Explain how DNS resolution works"
-corerouter-worker analyze --request captured-request.json --json
+astrarouter-worker analyze --prompt "Explain how DNS resolution works"
+astrarouter-worker analyze --request captured-request.json --json
 
 # Serve until SIGTERM.
-corerouter-worker serve
+astrarouter-worker serve
 
 # Drain the current backlog and exit (Kubernetes Job shape).
-corerouter-worker serve --once
+astrarouter-worker serve --once
 ```
 
 ## Message contract
 
 Subjects are defined in `bus.py` and must match `internal/storage/nats.go`
-exactly. The worker consumes from `COREROUTER_USAGE` and `COREROUTER_JOBS` and
+exactly. The worker consumes from `ASTRAROUTER_USAGE` and `ASTRAROUTER_JOBS` and
 publishes results back.
 
 | Subject | Direction | Payload |
 | --- | --- | --- |
-| `cr.usage.recorded` | consumed | `UsageRecord` |
-| `cr.eval.job` | consumed | job with a `kind` discriminator |
-| `cr.eval.result` | published | `EvalResult` |
-| `cr.prompt.analysis` | published | `PromptAnalysis` |
-| `cr.telemetry.rollup` | published | period summary every 30s |
+| `ar.usage.recorded` | consumed | `UsageRecord` |
+| `ar.eval.job` | consumed | job with a `kind` discriminator |
+| `ar.eval.result` | published | `EvalResult` |
+| `ar.prompt.analysis` | published | `PromptAnalysis` |
+| `ar.telemetry.rollup` | published | period summary every 30s |
 
 Job kinds are `eval`, `prompt_analysis` and `replay`. Replay is acknowledged as
 **skipped** rather than failed, so a control plane that enqueues it does not build
@@ -167,12 +167,12 @@ attached.
 
 ## Observability
 
-Metrics are served on `CR_WORKER_METRICS_ADDR` (default `0.0.0.0:9101`) with the
-same `corerouter_` prefix and `_total`/`_seconds` suffixes as the Go control
+Metrics are served on `AR_WORKER_METRICS_ADDR` (default `0.0.0.0:9101`) with the
+same `astrarouter_` prefix and `_total`/`_seconds` suffixes as the Go control
 plane, so one scrape config and one dashboard cover both processes.
 
 The port doubles as the liveness endpoint. A worker whose consumer loop has died
-stops incrementing `corerouter_worker_jobs_total`, which is the only externally
+stops incrementing `astrarouter_worker_jobs_total`, which is the only externally
 visible symptom a background process has — alert on that rather than on the port.
 
 Logs are JSON by default with `time`, `level`, `msg` and `service` keys matching
@@ -184,6 +184,6 @@ they reach a handler.
 ```bash
 python -m unittest discover -s tests -t .   # 162 cases, no install required
 pytest tests/                               # same suite via pytest
-ruff check corerouter_workers tests
-mypy corerouter_workers
+ruff check astrarouter_workers tests
+mypy astrarouter_workers
 ```

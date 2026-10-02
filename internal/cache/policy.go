@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // PolicyInput is everything the cache policy decision needs. It mirrors the

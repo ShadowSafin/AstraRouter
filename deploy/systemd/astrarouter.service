@@ -1,0 +1,93 @@
+# AstraRouter gateway -- native systemd unit.
+#
+# Install:
+#
+#   sudo install -m 0755 astrarouter /usr/local/bin/astrarouter
+#   sudo install -m 0644 deploy/systemd/astrarouter.service /etc/systemd/system/
+#   sudo install -d -m 0750 -o astrarouter -g astrarouter /etc/astrarouter
+#   sudo install -m 0640 -o astrarouter -g astrarouter config.example.yaml /etc/astrarouter/config.yaml
+#   sudo systemctl daemon-reload && sudo systemctl enable --now astrarouter
+#
+# Secrets belong in the drop-in below, not in the unit file: a unit is world
+# readable, an EnvironmentFile can be mode 0600.
+#
+#   sudo install -d -m 0750 /etc/astrarouter
+#   printf 'AR_ADMIN_KEY=%s\n' "$(openssl rand -hex 24)" | \
+#     sudo tee /etc/astrarouter/env >/dev/null
+#   sudo chmod 0600 /etc/astrarouter/env
+#
+# Then `sudo systemctl edit astrarouter` and add:
+#
+#   [Service]
+#   EnvironmentFile=/etc/astrarouter/env
+
+[Unit]
+Description=AstraRouter inference gateway
+Documentation=https://github.com/shadowsafin/astrarouter
+# Requires only what it cannot function without. The datastores are declared as
+# After= rather than Requires= because the gateway is designed to start before
+# them and report itself unready: a hard dependency here turns a database restart
+# into a gateway restart, which is a worse failure mode.
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=astrarouter
+Group=astrarouter
+
+# The config file is optional; without it every setting comes from the
+# environment and the built-in defaults.
+Environment=AR_CONFIG_FILE=/etc/astrarouter/config.yaml
+EnvironmentFile=-/etc/astrarouter/env
+
+# `serve` is explicit rather than the default subcommand: the image and the unit
+# then invoke the same command line, so a change of default cannot diverge them.
+ExecStart=/usr/local/bin/astrarouter serve
+
+# SIGTERM is handled in-process: the gateway stops accepting, drains in-flight
+# streaming responses, flushes the telemetry buffer and exits 0. The timeout must
+# exceed http.shutdown_timeout plus the telemetry flush.
+KillSignal=SIGTERM
+TimeoutStopSec=60s
+
+Restart=on-failure
+RestartSec=3s
+# A binary that cannot read its own config file fails immediately; retrying
+# forever would bury a simple permissions error in the journal.
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+# The gateway needs no privileges and holds no writable state on disk.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+# ProtectSystem=strict makes the whole filesystem read-only, so the runtime needs
+# one writable path for its own state. The gateway keeps none, but a deployment
+# that enables the response cache on disk would point this somewhere specific.
+ReadWritePaths=/var/lib/astrarouter
+
+# AstraRouter is not fsGroup-aware and writes nowhere, so the systemd sandbox
+# above is the whole permission story. Set the limit from the deployment's own
+# capacity planning; the value here matches the container default.
+LimitNOFILE=65536
+
+# Logs go to the journal as JSON. The [Service] sandbox above does not affect
+# that: stdout and stderr are inherited from systemd.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=astrarouter
+
+[Install]
+WantedBy=multi-user.target

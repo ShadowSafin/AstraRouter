@@ -1,7 +1,7 @@
 // Login 3 from Hirael <https://hirael.com/blocks/auth/login-03>
 // MIT · Mohammad Shehadeh · https://github.com/MohammadShehadeh/hirael
 //
-// Adapted for CoreRouter: the tokens are HSL triplets wrapped in hsl() so the
+// Adapted for AstraRouter: the tokens are HSL triplets wrapped in hsl() so the
 // gradients resolve, the Tailwind v4 dynamic spacing values (h-320, w-140,
 // -translate-y-88) are written as arbitrary values for this v3 project, and the
 // GitHub-only action is replaced by the real username/password form the gateway
@@ -122,7 +122,7 @@ export function Login03({
 
         <div className={cn(ENTER, 'relative z-10 flex items-center gap-2')}>
           <BrandMark className="size-6 text-foreground" />
-          <span className="text-base font-semibold tracking-[-0.025em]">CoreRouter</span>
+          <span className="text-base font-semibold tracking-[-0.025em]">AstraRouter</span>
         </div>
 
         <figure style={stagger(4)} className={cn(ENTER, 'relative z-10 mt-auto flex flex-col gap-3')}>
@@ -131,7 +131,7 @@ export function Login03({
             <span className="italic text-foreground">without the spreadsheets</span>.
           </blockquote>
           <figcaption className="flex items-center gap-2 text-xs uppercase text-muted-foreground">
-            <span>CoreRouter</span>
+            <span>AstraRouter</span>
             <span aria-hidden className="text-border">
               |
             </span>
@@ -180,7 +180,7 @@ export function Login03({
         >
           <div className={cn(ENTER, 'flex items-center gap-2 lg:hidden')}>
             <BrandMark className="size-6 text-foreground" />
-            <span className="text-base font-semibold tracking-[-0.025em]">CoreRouter</span>
+            <span className="text-base font-semibold tracking-[-0.025em]">AstraRouter</span>
           </div>
 
           <div data-slot="login-header" className="flex flex-col gap-2">

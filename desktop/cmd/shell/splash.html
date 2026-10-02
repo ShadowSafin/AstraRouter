@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AstraRouter</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #0b1220; color: #e2e8f0;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card { width: 400px; text-align: center; }
+  .mark {
+    width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 18px;
+    background: linear-gradient(160deg, #1e1b4b, #0b1220);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 60px rgba(139, 92, 246, .35);
+  }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+  .sub { color: #94a3b8; font-size: 13px; margin-top: 6px; }
+  .steps { list-style: none; margin-top: 28px; text-align: left; }
+  .steps li {
+    display: flex; gap: 10px; align-items: center; padding: 7px 12px;
+    border-radius: 8px; font-size: 13px; color: #64748b;
+  }
+  .steps li.active { color: #e2e8f0; background: rgba(139, 92, 246, .08); }
+  .steps li.done { color: #34d399; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; flex: none; }
+  .steps li.active .dot { background: #8b5cf6; animation: pulse 1s infinite; }
+  .steps li.done .dot { background: #34d399; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .status { margin-top: 18px; font-size: 12px; color: #64748b; min-height: 18px; }
+  #error { display: none; margin-top: 20px; text-align: left;
+    background: rgba(239, 68, 68, .08); border: 1px solid rgba(239, 68, 68, .3);
+    border-radius: 10px; padding: 14px 16px; }
+  #error h2 { font-size: 14px; color: #fca5a5; margin-bottom: 6px; }
+  #error p { font-size: 12px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+  #error .row { display: flex; gap: 8px; margin-top: 12px; }
+  #error button {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #334155;
+    background: #1e293b; color: #e2e8f0; font-size: 12px; cursor: pointer;
+  }
+  #error button:hover { background: #334155; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <path d="M18 2 L21 15 L34 18 L21 21 L18 34 L15 21 L2 18 L15 15 Z" fill="#a78bfa"/>
+      <circle cx="18" cy="18" r="3.5" fill="#fff"/>
+    </svg>
+  </div>
+  <h1>AstraRouter</h1>
+  <p class="sub">Starting your local control plane&hellip;</p>
+  <ul class="steps" id="steps">
+    <li data-step="db"><span class="dot"></span>Local database</li>
+    <li data-step="migrate"><span class="dot"></span>Migrations</li>
+    <li data-step="gateway"><span class="dot"></span>Gateway</li>
+    <li data-step="dashboard"><span class="dot"></span>Dashboard</li>
+  </ul>
+  <p class="status" id="status"></p>
+  <div id="error">
+    <h2>Something failed to start</h2>
+    <p id="errmsg"></p>
+    <div class="row">
+      <button onclick="desktop_retry()">Retry</button>
+      <button onclick="desktop_openlogs()">Open logs</button>
+      <button onclick="desktop_quit()">Quit</button>
+    </div>
+  </div>
+</div>
+<script>
+  const items = [...document.querySelectorAll('#steps li')];
+  function setStep(name, label) {
+    const i = items.findIndex(li => li.dataset.step === name);
+    items.forEach((li, j) => {
+      li.classList.toggle('done', j < i);
+      li.classList.toggle('active', j === i);
+    });
+    if (label) document.getElementById('status').textContent = label;
+    if (name === 'ready') items.forEach(li => { li.classList.add('done'); li.classList.remove('active'); });
+  }
+  function showError(msg) {
+    items.forEach(li => li.classList.remove('active'));
+    document.getElementById('errmsg').textContent = msg;
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('status').textContent = '';
+  }
+</script>
+</body>
+</html>

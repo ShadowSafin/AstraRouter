@@ -3,7 +3,7 @@ package providers
 import (
 	"strings"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // streamAccumulator rebuilds a complete Response from incremental chunks.

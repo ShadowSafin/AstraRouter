@@ -40,10 +40,10 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: 'CoreRouter',
-    template: '%s · CoreRouter',
+    default: 'AstraRouter',
+    template: '%s · AstraRouter',
   },
-  description: 'CoreRouter control plane: traffic, routing, providers and spend.',
+  description: 'AstraRouter control plane: traffic, routing, providers and spend.',
   robots: { index: false, follow: false },
 };
 

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // ---------------------------------------------------------------------------
@@ -199,7 +199,7 @@ func TestOpenAIAdapterSendsTheExpectedWireRequest(t *testing.T) {
 	if got := req.Header.Get("Content-Type"); !strings.HasPrefix(got, "application/json") {
 		t.Errorf("content type = %q", got)
 	}
-	if got := req.Header.Get("User-Agent"); !strings.HasPrefix(got, "CoreRouter/") {
+	if got := req.Header.Get("User-Agent"); !strings.HasPrefix(got, "AstraRouter/") {
 		t.Errorf("user agent = %q", got)
 	}
 

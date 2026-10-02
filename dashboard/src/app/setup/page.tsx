@@ -12,7 +12,7 @@ import { authState, currentUser } from '@/lib/session';
  * never been completed. Once an account exists this page redirects to login, so
  * the screen cannot be used to add a second operator or to replace the first.
  */
-export const metadata: Metadata = { title: 'Initial setup · CoreRouter' };
+export const metadata: Metadata = { title: 'Initial setup · AstraRouter' };
 // Auth state is per-request; a cached page would show setup to a signed-in
 // operator.
 export const dynamic = 'force-dynamic';

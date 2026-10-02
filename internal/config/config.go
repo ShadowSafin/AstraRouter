@@ -1,11 +1,11 @@
-// Package config defines CoreRouter's configuration model.
+// Package config defines AstraRouter's configuration model.
 //
 // Configuration is resolved in a fixed order so behaviour is predictable in
 // every deployment mode:
 //
 //  1. built-in defaults   (Default)
-//  2. the config file     (--config / CR_CONFIG_FILE, YAML or JSON)
-//  3. environment vars    (CR_* prefixed, always win)
+//  2. the config file     (--config / AR_CONFIG_FILE, YAML or JSON)
+//  3. environment vars    (AR_* prefixed, always win)
 //
 // The same struct drives the container image, the native systemd unit and a
 // local `go run`, which is what lets both deployment paths share one set of
@@ -201,7 +201,7 @@ type RedisConfig struct {
 	ReadTimeout   Duration `yaml:"read_timeout" json:"read_timeout"`
 	WriteTimeout  Duration `yaml:"write_timeout" json:"write_timeout"`
 	// KeyPrefix namespaces every key so one Redis instance can serve several
-	// CoreRouter deployments.
+	// AstraRouter deployments.
 	KeyPrefix string `yaml:"key_prefix" json:"key_prefix"`
 	// TLS enables TLS for managed Redis providers.
 	TLS bool `yaml:"tls" json:"tls"`
@@ -262,7 +262,7 @@ type AuthConfig struct {
 	// RequireKeyOfLength rejects short keys early. Real minted keys are longer;
 	// this catches hand-crafted placeholders in development.
 	MinKeyLength int `yaml:"min_key_length" json:"min_key_length"`
-	// KeyPrefix is prepended to generated tokens, e.g. "cr_live_".
+	// KeyPrefix is prepended to generated tokens, e.g. "ar_live_".
 	KeyPrefix string `yaml:"key_prefix" json:"key_prefix"`
 	// CacheTTL is how long a validated key is cached in Redis. Short values
 	// bound the window in which a revoked key still works.
@@ -562,8 +562,8 @@ type ToolsConfig struct {
 //
 // The feature is opt-in: nothing is exposed until an operator creates a
 // tunnel through the dashboard or admin API. A tunnel mints a disposable
-// *.trycloudflare.com URL that proxies to one local CoreRouter service; all
-// CoreRouter authentication, policy and rate limiting still apply through it.
+// *.trycloudflare.com URL that proxies to one local AstraRouter service; all
+// AstraRouter authentication, policy and rate limiting still apply through it.
 type TunnelConfig struct {
 	// Enabled allows tunnel creation. When false every tunnel endpoint
 	// reports the feature as disabled rather than failing obscurely later.
@@ -733,7 +733,7 @@ type DashboardAuthConfig struct {
 func Default() *Config {
 	return &Config{
 		App: AppConfig{
-			Name:                "corerouter",
+			Name:                "astrarouter",
 			Environment:         "development",
 			DefaultTenantSlug:   "default",
 			DefaultTenantName:   "Default Tenant",
@@ -752,9 +752,9 @@ func Default() *Config {
 		Database: DatabaseConfig{
 			Host:             "localhost",
 			Port:             5432,
-			User:             "corerouter",
-			Password:         "corerouter",
-			Name:             "corerouter",
+			User:             "astrarouter",
+			Password:         "astrarouter",
+			Name:             "astrarouter",
 			SSLMode:          "disable",
 			MaxConns:         20,
 			MinConns:         2,
@@ -771,18 +771,18 @@ func Default() *Config {
 			DialTimeout:  Duration(5 * time.Second),
 			ReadTimeout:  Duration(3 * time.Second),
 			WriteTimeout: Duration(3 * time.Second),
-			KeyPrefix:    "corerouter",
+			KeyPrefix:    "astrarouter",
 		},
 		ClickHouse: ClickHouseConfig{
 			Addr:          "localhost:9000",
-			Database:      "corerouter",
+			Database:      "astrarouter",
 			BatchSize:     500,
 			FlushInterval: Duration(2 * time.Second),
 			MaxRetries:    3,
 		},
 		NATS: NATSConfig{
 			URL:            "nats://localhost:4222",
-			Name:           "corerouter-gateway",
+			Name:           "astrarouter-gateway",
 			JetStream:      true,
 			StreamReplicas: 1,
 			MaxReconnects:  -1,
@@ -790,9 +790,9 @@ func Default() *Config {
 		},
 		Auth: AuthConfig{
 			MinKeyLength: 20,
-			KeyPrefix:    "cr_live_",
+			KeyPrefix:    "ar_live_",
 			CacheTTL:     Duration(30 * time.Second),
-			AdminKeyEnv:  "CR_ADMIN_KEY",
+			AdminKeyEnv:  "AR_ADMIN_KEY",
 		},
 		Routing: RoutingConfig{
 			DefaultStrategy:    "priority",
@@ -842,7 +842,7 @@ DefaultTimeout: TimeoutConfig{
 		},
 		Tools: ToolsConfig{
 			// Off by default: agentic clients run their own tools. Set
-			// tools.gateway_execution: true (or CR_TOOLS_GATEWAY_EXECUTION=true)
+			// tools.gateway_execution: true (or AR_TOOLS_GATEWAY_EXECUTION=true)
 			// to let the gateway execute registered tools itself.
 			GatewayExecution: false,
 		},
@@ -907,7 +907,7 @@ DefaultTimeout: TimeoutConfig{
 			LogRetentionDays:   30,
 			DashboardAuth: DashboardAuthConfig{
 				Enabled:            true,
-				CookieName:         "corerouter_session",
+				CookieName:         "astrarouter_session",
 				CookieSecure:       false,
 				SessionTTL:         Duration(12 * time.Hour),
 				IdleTTL:            Duration(2 * time.Hour),
@@ -929,6 +929,24 @@ DefaultTimeout: TimeoutConfig{
 // through environment variables. An explicitly requested path that does not
 // exist is an error, since silently ignoring it would hide a typo.
 func Load(path string, explicit bool) (*Config, error) {
+	cfg, err := LoadUnchecked(path, explicit)
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.Finalize(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// LoadUnchecked resolves configuration from defaults, an optional file and the
+// environment without finalizing it: no materialization, no validation.
+//
+// It exists for tooling that must run against a broken configuration —
+// `astrarouter native doctor` reports validation problems instead of refusing
+// to start, and `native install` writes the files that fix them. Callers take
+// over the Finalize step and decide what a validation failure means for them.
+func LoadUnchecked(path string, explicit bool) (*Config, error) {
 	cfg := Default()
 
 	resolved, err := ResolveConfigPath(path, explicit)
@@ -945,24 +963,21 @@ func Load(path string, explicit bool) (*Config, error) {
 	if err := cfg.applyEnv(); err != nil {
 		return nil, err
 	}
-	if err := cfg.Finalize(); err != nil {
-		return nil, err
-	}
 	return cfg, nil
 }
 
 // DefaultSearchPaths returns the config file locations tried in order when no
-// path is given. The systemd unit uses /etc/corerouter; the container image
-// ships /etc/corerouter/config.yaml; a developer typically relies on
-// corerouter.yaml in the working directory.
+// path is given. The systemd unit uses /etc/astrarouter; the container image
+// ships /etc/astrarouter/config.yaml; a developer typically relies on
+// astrarouter.yaml in the working directory.
 func DefaultSearchPaths() []string {
 	return []string{
-		"corerouter.yaml",
-		"corerouter.yml",
-		"corerouter.json",
-		filepath.Join("config", "corerouter.yaml"),
-		"/etc/corerouter/config.yaml",
-		"/etc/corerouter/config.yml",
+		"astrarouter.yaml",
+		"astrarouter.yml",
+		"astrarouter.json",
+		filepath.Join("config", "astrarouter.yaml"),
+		"/etc/astrarouter/config.yaml",
+		"/etc/astrarouter/config.yml",
 	}
 }
 
@@ -977,9 +992,9 @@ func ResolveConfigPath(path string, explicit bool) (string, error) {
 		}
 		return path, nil
 	}
-	if envPath := firstEnv("CR_CONFIG_FILE", "COREROUTER_CONFIG_FILE"); envPath != "" {
+	if envPath := firstEnv("AR_CONFIG_FILE", "ASTRAROUTER_CONFIG_FILE"); envPath != "" {
 		if _, err := os.Stat(envPath); err != nil {
-			return "", fmt.Errorf("config file from CR_CONFIG_FILE %q: %w", envPath, err)
+			return "", fmt.Errorf("config file from AR_CONFIG_FILE %q: %w", envPath, err)
 		}
 		return envPath, nil
 	}

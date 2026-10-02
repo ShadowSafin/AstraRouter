@@ -1,4 +1,4 @@
--- CoreRouter initial schema.
+-- AstraRouter initial schema.
 --
 -- Design notes that matter for later evolution:
 --

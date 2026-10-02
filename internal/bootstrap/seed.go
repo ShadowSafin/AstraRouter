@@ -13,9 +13,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
-	"github.com/shadowsafin/corerouter/internal/storage"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/storage"
 )
 
 // Seeder applies the declarative catalogue from configuration into the database.

@@ -1,0 +1,56 @@
+# AstraRouter desktop configuration.
+#
+# Written by install.ps1 with the install's ports baked in (__TOKENS__ are
+# replaced at install time). Loopback only: the desktop app never listens on
+# the LAN. Secrets live in native.env, never here.
+app:
+  name: astrarouter
+  environment: production
+
+http:
+  addr: 127.0.0.1:__GW_PORT__
+  shutdown_timeout: 45s
+  cors_allowed_origins:
+    - http://127.0.0.1:__DASH_PORT__
+
+database:
+  host: 127.0.0.1
+  # The desktop shell starts an embedded postgres on this port and hands the
+  # gateway its DSN through AR_POSTGRES_DSN, which wins over these fields.
+  # They remain as documentation and as the doctor's dial target.
+  port: __PG_PORT__
+  user: astrarouter
+  # AR_POSTGRES_PASSWORD (native.env) — never committed.
+  name: astrarouter
+  ssl_mode: disable
+
+# No local Redis on a desktop: rate limiting uses the in-process limiter and
+# credentials are not cached. Uncomment if you run one.
+# redis:
+#   addr: 127.0.0.1:6379
+
+# No collector on a desktop: traces stay off (validation refuses an empty
+# endpoint while they are on), while /metrics stays available.
+telemetry:
+  traces_enabled: false
+
+# Uncomment when the host runs them; inference works without either.
+# clickhouse:
+#   addr: 127.0.0.1:9000
+#   database: astrarouter
+# nats:
+#   url: nats://127.0.0.1:4222
+
+# A local-model slot so the gateway reports ready out of the box. It needs
+# no key: install Ollama and pull a model, or add a cloud provider in the
+# dashboard — the catalogue is editable there without reinstalling.
+providers:
+  - name: local-ollama
+    kind: ollama
+    base_url: http://127.0.0.1:11434
+    status: active
+    priority: 100
+    models:
+      - name: llama3.1
+        display_name: Llama 3.1 (local)
+        capabilities: [chat, streaming]

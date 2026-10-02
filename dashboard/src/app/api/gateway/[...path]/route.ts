@@ -55,7 +55,7 @@ async function handle(request: Request, context: RouteContext): Promise<NextResp
         error: {
           message:
             'the dashboard has no administrative credential configured. ' +
-            "Set COREROUTER_ADMIN_KEY to the same value as the gateway's CR_ADMIN_KEY.",
+            "Set ASTRAROUTER_ADMIN_KEY to the same value as the gateway's AR_ADMIN_KEY.",
           type: 'configuration_error',
           code: 'dashboard_missing_admin_key',
         },

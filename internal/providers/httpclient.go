@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Options configures adapter construction. All fields are optional; the zero
@@ -38,7 +38,7 @@ type Options struct {
 
 func (o Options) withDefaults() Options {
 	if o.UserAgent == "" {
-		o.UserAgent = "CoreRouter/1.0 (+https://github.com/shadowsafin/corerouter)"
+		o.UserAgent = "AstraRouter/1.0 (+https://github.com/shadowsafin/astrarouter)"
 	}
 	if o.MaxResponseBytes <= 0 {
 		// 32 MiB comfortably fits a large completion with many choices while

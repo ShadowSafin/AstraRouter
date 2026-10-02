@@ -49,3 +49,15 @@ Thumbs.db
 *.log
 tmp/
 .data/
+
+# A `native install` run at the repo root writes these; they hold secrets.
+/native.env
+/config.yaml
+
+# Desktop app build output: the single-file exe (built by desktop/build.ps1,
+# ~200MB), the runtime staged for embedding, and the Windows exe resource
+# generated at build time.
+desktop/dist/
+desktop/internal/payload/files/*
+!desktop/internal/payload/files/.keep
+*.syso

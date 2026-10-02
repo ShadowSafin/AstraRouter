@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/shadowsafin/corerouter/internal/auth"
-	"github.com/shadowsafin/corerouter/internal/domain"
-	"github.com/shadowsafin/corerouter/internal/logging"
+	"github.com/shadowsafin/astrarouter/internal/auth"
+	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/logging"
 )
 
 // contextKey is an unexported type so no other package can collide with the keys
@@ -78,7 +78,7 @@ func (s *Server) identityMiddleware(next http.Handler) http.Handler {
 			trace.WithAttributes(
 				attribute.String("http.request.method", r.Method),
 				attribute.String("url.path", r.URL.Path),
-				attribute.String("corerouter.request_id", requestID),
+				attribute.String("astrarouter.request_id", requestID),
 			),
 		)
 		defer span.End()
@@ -355,9 +355,9 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Vary", "Origin")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers",
-			"Authorization, Content-Type, X-Request-ID, X-CoreRouter-Tenant")
+			"Authorization, Content-Type, X-Request-ID, X-AstraRouter-Tenant")
 		w.Header().Set("Access-Control-Expose-Headers",
-			"X-Request-ID, X-Trace-ID, X-CoreRouter-Provider, Retry-After")
+			"X-Request-ID, X-Trace-ID, X-AstraRouter-Provider, Retry-After")
 		w.Header().Set("Access-Control-Max-Age", "600")
 
 		if r.Method == http.MethodOptions {

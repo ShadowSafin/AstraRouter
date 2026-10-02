@@ -1,4 +1,4 @@
--- CoreRouter tunnel sessions: temporary public exposure audit trail.
+-- AstraRouter tunnel sessions: temporary public exposure audit trail.
 --
 -- One row per tunnel session: what was exposed, where it pointed, the public
 -- URL Cloudflare minted, and how the session ended. Rows are write-mostly and

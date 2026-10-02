@@ -1,4 +1,4 @@
-# OpenTelemetry collector configuration for CoreRouter.
+# OpenTelemetry collector configuration for AstraRouter.
 #
 # The collector is the seam between the gateway and whatever backend an operator
 # chooses. The gateway speaks OTLP and nothing else; swapping a Jaeger for a
@@ -47,10 +47,10 @@ processors:
   resource:
     attributes:
       - key: deployment.environment.name
-        value: ${env:CR_ENVIRONMENT}
+        value: ${env:AR_ENVIRONMENT}
         action: upsert
       - key: service.namespace
-        value: corerouter
+        value: astrarouter
         action: upsert
 
   # Batching is what makes the collector worth running at all: it converts a
@@ -79,7 +79,7 @@ exporters:
       localtime: true
 
   # Collector self-telemetry, scraped by prometheus.yml. This is what makes
-  # CoreRouterSpanExporterFailing and CoreRouterCollectorQueueSaturated possible:
+  # AstraRouterSpanExporterFailing and AstraRouterCollectorQueueSaturated possible:
   # a collector dropping data still looks idle from the application's side.
   prometheus:
     endpoint: 0.0.0.0:8889
@@ -87,11 +87,11 @@ exporters:
       enabled: true
 
   # Point traces at a real backend (Tempo, Jaeger, another collector) by setting
-  # CR_OTEL_TRACES_ENDPOINT and enabling this exporter in the pipeline below.
+  # AR_OTEL_TRACES_ENDPOINT and enabling this exporter in the pipeline below.
   # otlp/traces:
-  #   endpoint: ${env:CR_OTEL_TRACES_ENDPOINT:-localhost:4317}
+  #   endpoint: ${env:AR_OTEL_TRACES_ENDPOINT:-localhost:4317}
   #   tls:
-  #     insecure: ${env:CR_OTEL_TRACES_INSECURE:-true}
+  #     insecure: ${env:AR_OTEL_TRACES_INSECURE:-true}
 
 service:
   extensions: [health_check]

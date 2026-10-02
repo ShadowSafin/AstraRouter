@@ -20,12 +20,12 @@ import (
 
 	"golang.org/x/crypto/hkdf"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // CredentialsKeyEnv names the environment variable carrying the explicit data
 // key for provider-credential encryption.
-const CredentialsKeyEnv = "CR_CREDENTIALS_KEY"
+const CredentialsKeyEnv = "AR_CREDENTIALS_KEY"
 
 // keyInfo identifies the key version stamped on sealed envelopes.
 const currentKeyVersion = 1
@@ -40,7 +40,7 @@ type Store struct {
 
 // KeyMaterial derives the 32-byte data key.
 //
-// An explicit CR_CREDENTIALS_KEY wins when set (raw 32 bytes, hex, or base64).
+// An explicit AR_CREDENTIALS_KEY wins when set (raw 32 bytes, hex, or base64).
 // Otherwise the key is derived from the admin key via HKDF-SHA256, so a stock
 // deployment encrypts credentials without any new configuration. Deriving
 // from the admin key ties credential recovery to admin-key stability: rotate
@@ -51,16 +51,16 @@ func KeyMaterial(explicitKey, adminKey string) ([]byte, error) {
 		key, err := parseKey(strings.TrimSpace(explicitKey))
 		if err != nil {
 			return nil, domain.NewError(domain.ErrCodeInvalidRequest,
-				"CR_CREDENTIALS_KEY is not a valid 32-byte key (raw, hex or base64)").Wrap(err)
+				"AR_CREDENTIALS_KEY is not a valid 32-byte key (raw, hex or base64)").Wrap(err)
 		}
 		return key, nil
 	}
 	if strings.TrimSpace(adminKey) == "" {
 		return nil, domain.NewError(domain.ErrCodeUnavailable,
-			"credential storage needs CR_CREDENTIALS_KEY or a configured admin key")
+			"credential storage needs AR_CREDENTIALS_KEY or a configured admin key")
 	}
 	out := make([]byte, 32)
-	kdf := hkdf.New(sha256.New, []byte(adminKey), nil, []byte("corerouter/provider-credentials/v1"))
+	kdf := hkdf.New(sha256.New, []byte(adminKey), nil, []byte("astrarouter/provider-credentials/v1"))
 	if _, err := kdf.Read(out); err != nil {
 		return nil, domain.NewError(domain.ErrCodeInternal, "derive the credential key").Wrap(err)
 	}
@@ -68,7 +68,7 @@ func KeyMaterial(explicitKey, adminKey string) ([]byte, error) {
 }
 
 // KeyMaterialFromEnv resolves key material from the environment, honouring an
-// explicit CR_CREDENTIALS_KEY over the admin key fallback.
+// explicit AR_CREDENTIALS_KEY over the admin key fallback.
 func KeyMaterialFromEnv(adminKeyEnv string) ([]byte, error) {
 	adminKey := ""
 	if adminKeyEnv != "" {

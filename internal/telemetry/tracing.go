@@ -18,11 +18,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/config"
 )
 
-// TracerName is the instrumentation scope name for spans CoreRouter creates.
-const TracerName = "github.com/shadowsafin/corerouter"
+// TracerName is the instrumentation scope name for spans AstraRouter creates.
+const TracerName = "github.com/shadowsafin/astrarouter"
 
 // Tracer bundles the tracing and metering providers so a single Shutdown releases
 // both. The OTel SDK requires the same treatment for each signal, and a
@@ -66,7 +66,7 @@ func NewTracer(ctx context.Context, cfg config.TelemetryConfig, app config.AppCo
 			// versions, so the stable attribute key is set explicitly rather than
 			// depending on a helper that moves between minor releases.
 			attribute.String("deployment.environment.name", app.Environment),
-			attribute.String("corerouter.region", app.Region),
+			attribute.String("astrarouter.region", app.Region),
 		),
 		resource.WithProcessRuntimeDescription(),
 		resource.WithHost(),

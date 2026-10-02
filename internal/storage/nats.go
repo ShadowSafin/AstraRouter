@@ -10,64 +10,64 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Subject conventions.
 //
 // Subjects are hierarchical and versioned:
 //
-//	cr.<domain>.<event>[.<qualifier>]
+//	ar.<domain>.<event>[.<qualifier>]
 //
 // The leading version segment is absent because a breaking payload change is
 // expressed by adding a new subject rather than by mutating an existing one; a
 // durable consumer keeps reading the old subject while the new one warms up.
 const (
 	// SubjectUsageRecorded carries a completed request's usage record.
-	SubjectUsageRecorded = "cr.usage.recorded"
+	SubjectUsageRecorded = "ar.usage.recorded"
 	// SubjectTraceRecorded carries a completed request trace.
-	SubjectTraceRecorded = "cr.trace.recorded"
+	SubjectTraceRecorded = "ar.trace.recorded"
 	// SubjectRequestLogged carries a request log entry for the debug view.
-	SubjectRequestLogged = "cr.log.request"
+	SubjectRequestLogged = "ar.log.request"
 	// SubjectProviderHealth carries a provider health assessment.
-	SubjectProviderHealth = "cr.provider.health"
+	SubjectProviderHealth = "ar.provider.health"
 	// SubjectProviderStatusChange carries a provider status transition.
-	SubjectProviderStatusChange = "cr.provider.status"
+	SubjectProviderStatusChange = "ar.provider.status"
 	// SubjectEvalJob carries an evaluation job request for the Python workers.
-	SubjectEvalJob = "cr.eval.job"
+	SubjectEvalJob = "ar.eval.job"
 	// SubjectEvalResult carries an evaluation result back to the control plane.
-	SubjectEvalResult = "cr.eval.result"
+	SubjectEvalResult = "ar.eval.result"
 	// SubjectReplayJob carries a replay job request.
-	SubjectReplayJob = "cr.replay.job"
+	SubjectReplayJob = "ar.replay.job"
 	// SubjectAuditEvent carries a control-plane audit event.
-	SubjectAuditEvent = "cr.audit.event"
+	SubjectAuditEvent = "ar.audit.event"
 	// SubjectToolRunCompleted carries a finished bounded tool run: its status,
 	// what ran, and why it stopped. Downstream consumers get the same summary
 	// the client saw, so the dashboard and the event stream cannot disagree.
-	SubjectToolRunCompleted = "cr.tool.run.completed"
+	SubjectToolRunCompleted = "ar.tool.run.completed"
 	// SubjectCacheInvalidated carries a cache flush: scope, target, reason and
 	// how many entries were removed. Published best-effort from the admin
 	// path so cache behaviour is observable without polling.
-	SubjectCacheInvalidated = "cr.cache.invalidated"
+	SubjectCacheInvalidated = "ar.cache.invalidated"
 	// SubjectTunnelStatus carries a tunnel lifecycle transition: created,
 	// url, restarted, stopped or failed, with the session summary. Published
 	// best-effort so tunnel state is observable without polling the API.
-	SubjectTunnelStatus = "cr.tunnel.status"
+	SubjectTunnelStatus = "ar.tunnel.status"
 )
 
-// SubjectWildcard is the prefix every CoreRouter subject shares. It is used to
+// SubjectWildcard is the prefix every AstraRouter subject shares. It is used to
 // scope a NATS account or a stream to this application's traffic.
-const SubjectWildcard = "cr.>"
+const SubjectWildcard = "ar.>"
 
 // JetStream stream and consumer names.
 const (
 	// StreamUsage is the durable stream retaining usage and trace events.
-	StreamUsage = "COREROUTER_USAGE"
+	StreamUsage = "ASTRAROUTER_USAGE"
 	// StreamJobs is the durable stream retaining evaluation and replay jobs.
-	StreamJobs = "COREROUTER_JOBS"
+	StreamJobs = "ASTRAROUTER_JOBS"
 	// StreamEvents is the durable stream retaining audit and health events.
-	StreamEvents = "COREROUTER_EVENTS"
+	StreamEvents = "ASTRAROUTER_EVENTS"
 )
 
 // NATS is the asynchronous messaging layer.
@@ -153,7 +153,7 @@ func NewNATS(ctx context.Context, cfg config.NATSConfig, logger *slog.Logger) (*
 	return out, nil
 }
 
-// ensureStreams creates the streams CoreRouter owns, idempotently.
+// ensureStreams creates the streams AstraRouter owns, idempotently.
 func (n *NATS) ensureStreams(replicas int) error {
 	if replicas < 1 {
 		replicas = 1
@@ -294,7 +294,7 @@ func (n *NATS) Subscribe(subject, queue string, handler func(msg *nats.Msg)) (*n
 		return nil, fmt.Errorf("nats is not initialized")
 	}
 	if queue == "" {
-		queue = "corerouter"
+		queue = "astrarouter"
 	}
 	return n.conn.QueueSubscribe(subject, queue, handler)
 }

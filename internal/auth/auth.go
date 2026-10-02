@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // KeyStore loads credentials and their owning tenant.
@@ -171,7 +171,7 @@ func New(opts Options) *Authenticator {
 	}
 	prefix := opts.KeyPrefix
 	if prefix == "" {
-		prefix = "cr_live_"
+		prefix = "ar_live_"
 	}
 	logger := opts.Logger
 	if logger == nil {
@@ -435,7 +435,7 @@ type GeneratedKey struct {
 // GenerateKey mints a new API key.
 func GenerateKey(prefix string) (GeneratedKey, error) {
 	if prefix == "" {
-		prefix = "cr_live_"
+		prefix = "ar_live_"
 	}
 	buf := make([]byte, KeyBytes)
 	if _, err := rand.Read(buf); err != nil {

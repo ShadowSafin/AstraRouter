@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // ollamaAdapter speaks Ollama's native API.
@@ -22,7 +22,7 @@ import (
 //   - its usage fields are named prompt_eval_count and eval_count, and its model
 //     lifecycle endpoints (/api/tags, /api/version) only exist on the native API.
 //
-// The native API is therefore the one CoreRouter targets, and the OpenAI shim is
+// The native API is therefore the one AstraRouter targets, and the OpenAI shim is
 // reachable through the openai_compatible kind for operators who prefer it.
 type ollamaAdapter struct {
 	*baseAdapter

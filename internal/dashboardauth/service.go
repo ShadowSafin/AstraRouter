@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // The operator-facing auth flow: first-run setup, login, and session validation.
@@ -506,7 +506,7 @@ func (s *Service) SetEnabled(ctx context.Context, userID string, enabled bool) e
 // It is computed once at init rather than per attempt: the work factor is fixed,
 // so re-deriving it per request would add cost without adding uniformity.
 var dummyHash = func() string {
-	hash, err := HashPassword("corerouter-nonexistent-account-placeholder")
+	hash, err := HashPassword("astrarouter-nonexistent-account-placeholder")
 	if err != nil {
 		// HashPassword only fails if the system CSPRNG fails, in which case
 		// everything else is already broken. A fixed, valid-format string keeps the

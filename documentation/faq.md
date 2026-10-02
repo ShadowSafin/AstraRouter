@@ -4,7 +4,7 @@ Short, practical answers. For depth, follow the links.
 
 ## Getting started
 
-### What is CoreRouter, in one sentence?
+### What is AstraRouter, in one sentence?
 
 An OpenAI-compatible gateway that sits between your apps and your model
 providers, and decides per request which provider serves it, what happens when
@@ -13,13 +13,13 @@ that provider fails, and what it costs. See [Overview](overview.md).
 ### Do I have to change my client code?
 
 Base URL only. Any client that speaks OpenAI works by pointing at
-`http://your-host:8080/v1`. The extra `corerouter` response block is namespaced,
+`http://your-host:8080/v1`. The extra `astrarouter` response block is namespaced,
 so OpenAI SDKs ignore it.
 
 ### Which provider does my traffic actually go to?
 
 Whichever the routing policy picks — often not the first one configured. The
-response tells you: `corerouter.provider` is who **answered**, and
+response tells you: `astrarouter.provider` is who **answered**, and
 `routed_model` is what served.
 
 ### Do I need all four datastores?
@@ -37,8 +37,8 @@ operate. Performance is identical — same code, same configuration model.
 
 ### Can I pin a request to one provider?
 
-Yes. `X-CoreRouter-No-Fallback: true` gives exactly one attempt, and
-`X-CoreRouter-Policy` pins the rule set. See [Routing](routing.md).
+Yes. `X-AstraRouter-No-Fallback: true` gives exactly one attempt, and
+`X-AstraRouter-Policy` pins the rule set. See [Routing](routing.md).
 
 ### Why did failover not happen?
 
@@ -69,7 +69,7 @@ rule set safe to grow.
 
 ### Why did my answer stop mid-sentence?
 
-Check `corerouter.completion` in the response. If `truncated` is true, `reason`
+Check `astrarouter.completion` in the response. If `truncated` is true, `reason`
 says which limit: `max_tokens` or `timeout`, and `budget_ms` tells you which
 budget applied. Every truncation is now reported; nothing is cut silently.
 
@@ -123,7 +123,7 @@ load balancers: it does check them.
 ### Is my data safe if ClickHouse is down?
 
 Inference is unaffected. Analytics writes are dropped and counted in
-`corerouter_async_dropped_total`. Authentication, policy and budgets are
+`astrarouter_async_dropped_total`. Authentication, policy and budgets are
 synchronous and never lossy.
 
 ### Are the costs in the dashboard real bills?
@@ -143,9 +143,9 @@ reason. It is also on the dashboard's **Requests** page.
 `PUT /admin/v1/providers/{id}/credential` again. It audits as `rotate`. The next
 catalogue refresh rebuilds the adapter with the new secret.
 
-### I rotated `CR_ADMIN_KEY`. What now?
+### I rotated `AR_ADMIN_KEY`. What now?
 
-Stored provider credentials are orphaned unless you set `CR_CREDENTIALS_KEY`
+Stored provider credentials are orphaned unless you set `AR_CREDENTIALS_KEY`
 explicitly, because the data key otherwise derives from the admin key. Re-save
 each credential after rotating.
 

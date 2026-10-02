@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // defaultLatencyPriorMS is the latency assumed for a provider with no history.

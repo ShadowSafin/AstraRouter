@@ -100,7 +100,7 @@ export function TunnelsView() {
     <>
       <PageHeader
         title="Public tunnels"
-        description="Disposable Cloudflare URLs that expose one local service to the internet. No port forwarding; every request through the tunnel still passes CoreRouter auth, policy and rate limits."
+        description="Disposable Cloudflare URLs that expose one local service to the internet. No port forwarding; every request through the tunnel still passes AstraRouter auth, policy and rate limits."
         actions={
           <Button variant="outline" size="sm" onClick={() => { void refetch(); void history.refetch(); }} disabled={isFetching}>
             <RefreshCw className={isFetching ? 'animate-spin' : undefined} />
@@ -119,7 +119,7 @@ export function TunnelsView() {
             </CardTitle>
             <CardDescription>
               Set <code className="font-mono">tunnel.enabled: true</code> (or{' '}
-              <code className="font-mono">CR_TUNNEL_ENABLED=true</code>) and install{' '}
+              <code className="font-mono">AR_TUNNEL_ENABLED=true</code>) and install{' '}
               <code className="font-mono">cloudflared</code> on the gateway host, then restart
               the gateway. Nothing is exposed until you create a tunnel below.
             </CardDescription>
@@ -162,7 +162,7 @@ export function TunnelsView() {
                 <CardDescription>
                   Exposing <code className="font-mono">{active.target_addr}</code> as{' '}
                   <code className="font-mono">{active.target}</code>. Anyone with the URL can
-                  reach CoreRouter; auth and policy still apply.
+                  reach AstraRouter; auth and policy still apply.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

@@ -1,0 +1,4 @@
+# Placeholder. `build.ps1` stages the real runtime tree here (bin/, dashboard/,
+# assets/, templates/) before compiling the shell, so the resulting
+# AstraRouter.exe is a single self-contained executable. In a bare checkout
+# this file is all that exists; the shell then falls back to files on disk.

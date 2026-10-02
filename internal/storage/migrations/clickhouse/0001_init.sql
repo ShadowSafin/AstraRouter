@@ -1,4 +1,4 @@
--- CoreRouter ClickHouse telemetry schema.
+-- AstraRouter ClickHouse telemetry schema.
 --
 -- ClickHouse is the analytical store for high-volume traffic data. It is
 -- deliberately NOT the billing system of record: the Postgres usage_records table
@@ -21,13 +21,13 @@
 --  * TTL expressions give automatic retention management, so an operator does not
 --    need a cron job that deletes rows out from under a running query.
 
-CREATE DATABASE IF NOT EXISTS corerouter;
+CREATE DATABASE IF NOT EXISTS astrarouter;
 
 -- ---------------------------------------------------------------------------
 -- Request traces: one row per request.
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS corerouter.request_traces
+CREATE TABLE IF NOT EXISTS astrarouter.request_traces
 (
     trace_id         String,
     request_id       String,
@@ -65,7 +65,7 @@ SETTINGS index_granularity = 8192;
 -- Trace attempts: one row per provider call.
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS corerouter.trace_attempts
+CREATE TABLE IF NOT EXISTS astrarouter.trace_attempts
 (
     trace_id          String,
     request_id        String,
@@ -100,7 +100,7 @@ SETTINGS index_granularity = 8192;
 -- Provider status snapshots.
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS corerouter.provider_status_snapshots
+CREATE TABLE IF NOT EXISTS astrarouter.provider_status_snapshots
 (
     provider_id     String,
     provider_name   LowCardinality(String),
@@ -130,7 +130,7 @@ SETTINGS index_granularity = 8192;
 -- Raw usage events, plus a daily rollup materialized view.
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS corerouter.usage_events
+CREATE TABLE IF NOT EXISTS astrarouter.usage_events
 (
     request_id        String,
     tenant_id         String,
@@ -160,7 +160,7 @@ SETTINGS index_granularity = 8192;
 -- The rollup keeps dashboard cost and volume charts off the raw table. SummingMergeTree
 -- collapses rows with an identical key at merge time, so a monthly scan reads a
 -- tiny fraction of the raw data.
-CREATE TABLE IF NOT EXISTS corerouter.usage_daily
+CREATE TABLE IF NOT EXISTS astrarouter.usage_daily
 (
     day               Date,
     tenant_id         String,
@@ -180,8 +180,8 @@ PARTITION BY toYYYYMM(day)
 ORDER BY (tenant_id, day, provider, model)
 TTL day + INTERVAL 730 DAY DELETE;
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS corerouter.usage_daily_mv
-TO corerouter.usage_daily
+CREATE MATERIALIZED VIEW IF NOT EXISTS astrarouter.usage_daily_mv
+TO astrarouter.usage_daily
 AS
 SELECT
     toDate(created_at)     AS day,
@@ -196,14 +196,14 @@ SELECT
     sum(total_tokens)      AS total_tokens,
     sum(cost_usd)          AS total_cost_usd,
     sum(latency_ms)        AS latency_ms_sum
-FROM corerouter.usage_events
+FROM astrarouter.usage_events
 GROUP BY day, tenant_id, provider, model;
 
 -- ---------------------------------------------------------------------------
 -- Routing decision analytics
 -- ---------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS corerouter.route_decisions
+CREATE TABLE IF NOT EXISTS astrarouter.route_decisions
 (
     request_id        String,
     tenant_id         String,

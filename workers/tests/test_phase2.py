@@ -2,12 +2,12 @@
 
 import unittest
 
-from corerouter_workers.jobs import EvalJob, dispatch
-from corerouter_workers.models import KIND_REPLAY
-from corerouter_workers.provider_scores import score_providers
-from corerouter_workers.models import UsageEvent
-from corerouter_workers.replay import build_replay_plan, select_requests, validate_replay_job
-from corerouter_workers.task_classify import classify_task
+from astrarouter_workers.jobs import EvalJob, dispatch
+from astrarouter_workers.models import KIND_REPLAY
+from astrarouter_workers.provider_scores import score_providers
+from astrarouter_workers.models import UsageEvent
+from astrarouter_workers.replay import build_replay_plan, select_requests, validate_replay_job
+from astrarouter_workers.task_classify import classify_task
 
 
 class ReplayTest(unittest.TestCase):

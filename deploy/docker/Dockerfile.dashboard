@@ -1,4 +1,4 @@
-# CoreRouter dashboard.
+# AstraRouter dashboard.
 #
 # Built with Next.js standalone output so the runtime image ships the server
 # bundle and its traced dependencies rather than node_modules. That is the
@@ -29,8 +29,8 @@ COPY dashboard/ ./
 # NEXT_PUBLIC_* variables are inlined into the browser bundle at build time, so
 # the API URL must be known here. The default targets the compose service name,
 # which is correct for the shipped stack and overridable for any other.
-ARG NEXT_PUBLIC_COREROUTER_API_URL=http://localhost:8080
-ENV NEXT_PUBLIC_COREROUTER_API_URL=${NEXT_PUBLIC_COREROUTER_API_URL} \
+ARG NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:8080
+ENV NEXT_PUBLIC_ASTRAROUTER_API_URL=${NEXT_PUBLIC_ASTRAROUTER_API_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

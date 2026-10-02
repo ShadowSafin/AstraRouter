@@ -1,4 +1,4 @@
-// Package policy implements CoreRouter's policy engine: selecting which routing
+// Package policy implements AstraRouter's policy engine: selecting which routing
 // policy applies to a request and enforcing the numeric limits a policy declares.
 //
 // Matching and enforcement are separated from routing on purpose. Routing answers
@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Repository supplies stored policies.

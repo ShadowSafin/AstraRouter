@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/auth"
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/version"
+	"github.com/shadowsafin/astrarouter/internal/auth"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/version"
 )
 
 // getRoot issues GET / with the given Accept header against a minimal server.
@@ -61,7 +61,7 @@ func TestRootAnswersBrowsersWithAStatusPage(t *testing.T) {
 	if ct := header.Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Errorf("content type = %q, want text/html", ct)
 	}
-	for _, want := range []string{"CoreRouter", "test-root", "/v1/chat/completions", "API key"} {
+	for _, want := range []string{"AstraRouter", "test-root", "/v1/chat/completions", "API key"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("landing page should mention %q", want)
 		}
@@ -77,7 +77,7 @@ func TestRootAnswersJSONClientsWithEndpoints(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &decoded); err != nil {
 		t.Fatalf("root must return valid JSON for JSON clients: %v (%s)", err, body)
 	}
-	if decoded["service"] != "corerouter" {
+	if decoded["service"] != "astrarouter" {
 		t.Errorf("service = %v", decoded["service"])
 	}
 	if decoded["status"] != "ok" {

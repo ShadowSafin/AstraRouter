@@ -1,4 +1,4 @@
-# Loki configuration for CoreRouter.
+# Loki configuration for AstraRouter.
 #
 # Single-binary, filesystem-backed: the smallest Loki that is still correct. A
 # real deployment swaps `filesystem` for object storage and moves to distributed

@@ -1,6 +1,6 @@
 # Architecture
 
-How CoreRouter is put together and, more usefully, why. Each section ends with
+How AstraRouter is put together and, more usefully, why. Each section ends with
 the failure mode it is designed around, because that is what the design is
 actually optimising for.
 
@@ -25,8 +25,8 @@ Four kinds of process, each with one job:
 
 | Process | Language | Responsibility |
 | --- | --- | --- |
-| `corerouter` gateway | Go | The synchronous request path: authentication, policy, routing, provider calls, and the durable write of what happened. |
-| `corerouter-worker` | Python | Everything asynchronous and CPU-bound: candidate scoring, prompt analysis, telemetry rollups, optional LLM judging. |
+| `astrarouter` gateway | Go | The synchronous request path: authentication, policy, routing, provider calls, and the durable write of what happened. |
+| `astrarouter-worker` | Python | Everything asynchronous and CPU-bound: candidate scoring, prompt analysis, telemetry rollups, optional LLM judging. |
 | dashboard | TypeScript / Next.js | Read-only operator console, plus a server-side proxy that holds the admin credential. |
 | Observability stack | third-party | Collector, Prometheus, Loki, Promtail, Grafana. |
 
@@ -53,7 +53,7 @@ POST /v1/chat/completions
   ├─ auth                         verify the key (Redis-cached), enforce `inference`
   │
   ├─ request context              tenant, key, requested model, streaming flag,
-  │                               plus routing intent from X-CoreRouter-* headers
+  │                               plus routing intent from X-AstraRouter-* headers
   │
   ├─ cache lookup                 exact → prefix → semantic, subject to policy
   │
@@ -70,7 +70,7 @@ POST /v1/chat/completions
   │
   ├─ tools loop                   only when policy allows gateway execution
   │
-  ├─ response                     OpenAI-shaped body + a `corerouter` metadata block
+  ├─ response                     OpenAI-shaped body + a `astrarouter` metadata block
   └─ telemetry.Recorder           usage row, trace, log, metrics — off the hot path
 ```
 
@@ -86,7 +86,7 @@ Three properties are load-bearing:
 3. **Token ceilings are only applied when the client asked for one.** A policy
    ceiling bounds what a caller may request and what the gateway budgets for; it
    is never substituted in as the request's `max_tokens`. When a ceiling does
-   bound generation, the response says so in `corerouter.completion`.
+   bound generation, the response says so in `astrarouter.completion`.
 
 **Failure mode it addresses.** "It returned 200 with half a JSON body" and "the
 error told me nothing about what was attempted" are both un-debuggable from the
@@ -248,7 +248,7 @@ history and token budgets (system messages preserved), injects prefixes and
 guardrails, and sets structured-output and tool hints.
 
 Every step appears in the plan with its token delta and is visible in traces. A
-trimmed prompt reports `corerouter.shaping`, so a short answer is never mistaken
+trimmed prompt reports `astrarouter.shaping`, so a short answer is never mistaken
 for a model that stopped early.
 
 ## Data stores
@@ -271,7 +271,7 @@ They duplicate a few fields for that reason.
 - Redis down → **degraded**: rate limits fall back to per-process, caching
   stops. Reported in `/ready` but readiness does **not** fail.
 - ClickHouse down → analytics writes are dropped and counted
-  (`corerouter_async_dropped_total`). Inference is unaffected.
+  (`astrarouter_async_dropped_total`). Inference is unaffected.
 - NATS down → async work is dropped and counted. Inference is unaffected.
 
 ## Telemetry
@@ -281,11 +281,11 @@ tenants, providers and models are labels; request ids, user ids and prompts neve
 are. Nothing per-request is a label, which is the single most common way an
 observability stack is destroyed.
 
-Metric namespaces: `corerouter_gateway_*`, `corerouter_provider_*`,
-`corerouter_routing_*`, `corerouter_usage_*`, `corerouter_cache_*`,
-`corerouter_policy_*`, `corerouter_auth_*`, `corerouter_async_*`, plus
-`corerouter_build_info`. The workers share the prefix with
-`corerouter_worker_*`, so one scrape config and one dashboard cover both.
+Metric namespaces: `astrarouter_gateway_*`, `astrarouter_provider_*`,
+`astrarouter_routing_*`, `astrarouter_usage_*`, `astrarouter_cache_*`,
+`astrarouter_policy_*`, `astrarouter_auth_*`, `astrarouter_async_*`, plus
+`astrarouter_build_info`. The workers share the prefix with
+`astrarouter_worker_*`, so one scrape config and one dashboard cover both.
 
 Traces are exported over OTLP to the collector, which fans out to a file sink by
 default and to a real backend (Tempo, Jaeger, another collector) by uncommenting
@@ -294,7 +294,7 @@ change.
 
 The record pipeline is **asynchronous and lossy by design**. It batches to
 ClickHouse and Postgres, counts what it drops, and never blocks a response on a
-write. `corerouter_async_queue_depth` and the drop counter are what make that
+write. `astrarouter_async_queue_depth` and the drop counter are what make that
 trade-off visible rather than invisible.
 
 **Failure mode it addresses.** A slow analytics write adding latency to every
@@ -303,7 +303,7 @@ request; and the corruption of the observability stack by an unbounded label.
 ## Configuration
 
 ```
-built-in defaults  <  config file  <  CR_* environment
+built-in defaults  <  config file  <  AR_* environment
 ```
 
 The environment mapping is written out explicitly in `internal/config/env.go`
@@ -319,7 +319,7 @@ merely unwise:
 - CORS wildcard in production → **refuse to start**
 - an unreachable optional dependency → start, report unready or degraded
 
-`corerouter config` prints the resolved configuration with every secret
+`astrarouter config` prints the resolved configuration with every secret
 redacted. Redaction is applied to the *copy*, so the running config is never
 mutated by being printed.
 
@@ -349,7 +349,7 @@ mutated by being printed.
 ## Repository layout
 
 ```
-cmd/corerouter/          CLI: serve | migrate | config | version
+cmd/astrarouter/          CLI: serve | migrate | config | version
 internal/
   domain/                types and rules; no I/O
   config/                defaults, file + env loading, validation, redaction

@@ -9,7 +9,7 @@ import "time"
 // invalidation audit rows and lightweight entry metadata used by the
 // dashboard (top prompts, hit counts). Nothing here changes the public
 // inference contract: a cache hit returns the same JSON shape as a live
-// response with `corerouter.cache_hit: true` plus the kind/similarity.
+// response with `astrarouter.cache_hit: true` plus the kind/similarity.
 // ---------------------------------------------------------------------------
 
 // Cache bypass reasons. Machine-readable and surfaced in metrics, traces

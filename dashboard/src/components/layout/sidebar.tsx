@@ -43,7 +43,7 @@ export function SidebarBrand({ compact = false }: { compact?: boolean }) {
         <Zap className="size-4" strokeWidth={2.5} />
       </span>
       <span className={cn('leading-tight', compact && 'sr-only min-[400px]:not-sr-only')}>
-        <span className="block text-sm font-semibold tracking-tight">CoreRouter</span>
+        <span className="block text-sm font-semibold tracking-tight">AstraRouter</span>
         <span className="block text-[11px] text-muted-foreground">Control plane</span>
       </span>
     </span>

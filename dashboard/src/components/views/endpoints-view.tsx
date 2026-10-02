@@ -125,10 +125,10 @@ function formFromEndpoint(e: Endpoint, lookups: CatalogueLookups): EndpointFormS
 
 function useGatewayUrls(): { local: string; lan: string | null } {
   // The build-time public URL is the address a browser can reach (compose
-  // inlines NEXT_PUBLIC_COREROUTER_API_URL). The server-side gateway address
+  // inlines NEXT_PUBLIC_ASTRAROUTER_API_URL). The server-side gateway address
   // is only a fallback: inside Docker it is a service name no browser can
   // resolve.
-  const baked = process.env.NEXT_PUBLIC_COREROUTER_API_URL;
+  const baked = process.env.NEXT_PUBLIC_ASTRAROUTER_API_URL;
   const [urls, setUrls] = React.useState<{ local: string; lan: string | null }>({
     local: baked && baked.length > 0 ? baked : 'http://GATEWAY:PORT',
     lan: null,
@@ -160,9 +160,9 @@ function useGatewayUrls(): { local: string; lan: string | null } {
 function curlSnippet(gatewayUrl: string, slug: string): string {
   return [
     `curl -s ${gatewayUrl}/v1/chat/completions \\`,
-    '  -H "Authorization: Bearer $CR_KEY" \\',
+    '  -H "Authorization: Bearer $AR_KEY" \\',
     '  -H "Content-Type: application/json" \\',
-    `  -H "X-CoreRouter-Endpoint: ${slug}" \\`,
+    `  -H "X-AstraRouter-Endpoint: ${slug}" \\`,
     `  -d '{"model": "any-registered-model", "messages": [{"role": "user", "content": "hi"}]}'`,
   ].join('\n');
 }
@@ -317,7 +317,7 @@ export function EndpointsView() {
       },
       {
         onSuccess: (saved) => {
-          setFeedback(`saved endpoint "${saved.slug}" — call it with X-CoreRouter-Endpoint: ${saved.slug}`);
+          setFeedback(`saved endpoint "${saved.slug}" — call it with X-AstraRouter-Endpoint: ${saved.slug}`);
           onCancel();
         },
         onError: (e) => setFormError(e instanceof ApiError ? e.message : 'save failed'),
@@ -338,7 +338,7 @@ export function EndpointsView() {
     <>
       <PageHeader
         title="Endpoints"
-        description="Named routing scopes for classes of traffic. An endpoint is not a separate URL: every client calls the same inference URL and selects a scope with the X-CoreRouter-Endpoint header."
+        description="Named routing scopes for classes of traffic. An endpoint is not a separate URL: every client calls the same inference URL and selects a scope with the X-AstraRouter-Endpoint header."
         note={feedback ? <span className="text-info">{feedback}</span> : undefined}
       />
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
@@ -360,7 +360,7 @@ export function EndpointsView() {
               POST <span className="font-semibold">{gatewayUrl}/v1/chat/completions</span>
             </p>
             <p className="font-mono text-xs">
-              X-CoreRouter-Endpoint: <span className="font-semibold">{form.slug.trim() || 'your-slug'}</span>
+              X-AstraRouter-Endpoint: <span className="font-semibold">{form.slug.trim() || 'your-slug'}</span>
             </p>
             <pre className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-[11px]">
               {curlSnippet(gatewayUrl, form.slug.trim() || 'your-slug')}

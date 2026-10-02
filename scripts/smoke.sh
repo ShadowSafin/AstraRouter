@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CoreRouter Phase 3 smoke test (bash): verify a running stack end to end.
+# AstraRouter Phase 3 smoke test (bash): verify a running stack end to end.
 #
 # Same checks as scripts/smoke.ps1: gateway health/readiness, admin providers +
 # policies + models, demo tenant/key seeding, a sample inference request, request
@@ -11,7 +11,7 @@
 # expected to fail AFTER routing (e.g. upstream 401); that still proves the
 # pipeline ran. Only local failures fail the script.
 #
-# Reads .env in the repository root for CR_ADMIN_KEY and GATEWAY_PORT.
+# Reads .env in the repository root for AR_ADMIN_KEY and GATEWAY_PORT.
 # Needs: curl, python (python3 preferred, plain python accepted on Windows).
 set -u
 # REPO_ROOT stays in msys form (/c/...) for shell tools. WIN_ROOT is the native
@@ -50,10 +50,10 @@ dotenv() { # $1=name [$2=default]
   printf '%s' "$v"
 }
 
-ADMIN_KEY="$(dotenv CR_ADMIN_KEY)"
+ADMIN_KEY="$(dotenv AR_ADMIN_KEY)"
 GATEWAY_PORT="$(dotenv GATEWAY_PORT 8080)"
 [ -z "$GATEWAY_URL" ] && GATEWAY_URL="http://127.0.0.1:${GATEWAY_PORT}"
-[ -z "$ADMIN_KEY" ] && { echo "CR_ADMIN_KEY is empty. Copy .env.example to .env and set it."; exit 2; }
+[ -z "$ADMIN_KEY" ] && { echo "AR_ADMIN_KEY is empty. Copy .env.example to .env and set it."; exit 2; }
 
 step() { # $1=name, rest=command...
   local name="$1"; shift
@@ -150,11 +150,11 @@ body = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': 'hel
 req = urllib.request.Request('$GATEWAY_URL/v1/chat/completions', data=body, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})
 try:
     d = json.load(urllib.request.urlopen(req, timeout=60))
-    print('200 OK via', d['corerouter'].get('provider'))
+    print('200 OK via', d['astrarouter'].get('provider'))
 except urllib.error.HTTPError as e:
     d = json.loads(e.read().decode())
     code = d['error']['code']
-    rid = d.get('corerouter', {}).get('request_id', '')
+    rid = d.get('astrarouter', {}).get('request_id', '')
     pathlib.Path('$WIN_ROOT/.smoke_reqid').write_text(rid)
     if code in ('authentication_error', 'quota_exceeded', 'upstream_error', 'provider_unavailable', 'timeout', 'rate_limited'):
         print('HTTP %d (%s) after routing -- pipeline OK, request %s' % (e.code, code, rid[:8]))
@@ -187,8 +187,8 @@ check_metrics() {
   py "
 import urllib.request
 t = urllib.request.urlopen('$GATEWAY_URL/metrics', timeout=15).read().decode()
-assert 'corerouter_gateway_requests_total' in t, 'requests_total missing'
-assert 'corerouter_async_flushed_total' in t, 'async_flushed missing'
+assert 'astrarouter_gateway_requests_total' in t, 'requests_total missing'
+assert 'astrarouter_async_flushed_total' in t, 'async_flushed missing'
 print('requests_total + async_flushed present')
 "
 }

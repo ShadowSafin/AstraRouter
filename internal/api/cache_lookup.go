@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/cache"
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/cache"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // cacheLookup is the Phase 5 request-flow cache check.

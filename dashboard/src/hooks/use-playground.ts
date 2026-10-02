@@ -132,7 +132,7 @@ export function usePlayground() {
         headers: {
           'content-type': 'application/json',
           accept: config.streaming ? 'text/event-stream' : 'application/json',
-          'x-corerouter-key': apiKey,
+          'x-astrarouter-key': apiKey,
           // The routing intent travels as headers, exactly as a real client
           // would send it, so the console cannot express an intent the
           // inference API does not accept.

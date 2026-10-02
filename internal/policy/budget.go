@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // CounterStore is the fast counter backend used for budgets and rate limits.

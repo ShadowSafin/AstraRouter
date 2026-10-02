@@ -1,4 +1,4 @@
-# Promtail configuration for CoreRouter.
+# Promtail configuration for AstraRouter.
 #
 # Promtail discovers containers through the Docker API and ships their stdout to
 # Loki. This is what turns the gateway's and workers' structured JSON logs into
@@ -37,10 +37,10 @@ scrape_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 15s
     relabel_configs:
-      # Only ship CoreRouter's own containers. The observability stack's logs are
+      # Only ship AstraRouter's own containers. The observability stack's logs are
       # noise here, and Loki's own logs would be circular.
       - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
-        regex: "corerouter"
+        regex: "astrarouter"
         action: keep
       # The compose service name is the useful identity: "gateway", "workers",
       # "dashboard". The container name has a replica suffix that would create a

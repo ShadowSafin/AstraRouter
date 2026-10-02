@@ -1,6 +1,6 @@
 # Observability
 
-CoreRouter emits Prometheus metrics, OpenTelemetry traces and structured JSON
+AstraRouter emits Prometheus metrics, OpenTelemetry traces and structured JSON
 logs, and ships Grafana dashboards and alert rules. This page covers what each
 signal tells you and how to correlate them when something is wrong.
 
@@ -19,51 +19,51 @@ signal tells you and how to correlate them when something is wrong.
 | Events | NATS JetStream | Yes, if the bus is down |
 
 The record pipeline batches and counts what it drops rather than blocking a
-response. `corerouter_async_queue_depth` and `corerouter_async_dropped_total` make
+response. `astrarouter_async_queue_depth` and `astrarouter_async_dropped_total` make
 that trade-off visible instead of invisible. What is synchronous —
 authentication, policy, budgets — is never lossy.
 
 ## Metrics
 
-All metrics are prefixed `corerouter_`. The workers use `corerouter_worker_*`, so
+All metrics are prefixed `astrarouter_`. The workers use `astrarouter_worker_*`, so
 one scrape config and one dashboard cover both.
 
 ### Gateway
 
 | Metric | Labels | Use it to |
 | --- | --- | --- |
-| `corerouter_gateway_requests_total` | tenant, provider, model, type, outcome, status | See traffic and success rate |
-| `corerouter_gateway_request_duration_seconds` | tenant, provider, type, outcome | See latency distribution |
-| `corerouter_gateway_requests_in_flight` | — | See saturation |
-| `corerouter_gateway_request_size_bytes` / `response_size_bytes` | tenant, type | See payload growth |
-| `corerouter_build_info` | version, commit, go_version | Answer "which build is running?" |
+| `astrarouter_gateway_requests_total` | tenant, provider, model, type, outcome, status | See traffic and success rate |
+| `astrarouter_gateway_request_duration_seconds` | tenant, provider, type, outcome | See latency distribution |
+| `astrarouter_gateway_requests_in_flight` | — | See saturation |
+| `astrarouter_gateway_request_size_bytes` / `response_size_bytes` | tenant, type | See payload growth |
+| `astrarouter_build_info` | version, commit, go_version | Answer "which build is running?" |
 
 ### Provider
 
 | Metric | Labels | Use it to |
 | --- | --- | --- |
-| `corerouter_provider_attempts_total` | tenant, provider, model, outcome, attempt | See attempts per provider |
-| `corerouter_provider_duration_seconds` | tenant, provider, model, outcome | See provider latency |
-| `corerouter_provider_time_to_first_token_seconds` | tenant, provider, model | See streaming startup |
-| `corerouter_provider_health` | provider | See breaker state (1 healthy, 0.5 degraded, 0 unhealthy) |
-| `corerouter_provider_truncations_total` | tenant, provider, reason | **See answers cut short** by `max_tokens` or `timeout` |
-| `corerouter_provider_completion_tokens_ratio` | tenant, provider | See headroom; a pile-up at `1.0` means the ceiling is too tight |
+| `astrarouter_provider_attempts_total` | tenant, provider, model, outcome, attempt | See attempts per provider |
+| `astrarouter_provider_duration_seconds` | tenant, provider, model, outcome | See provider latency |
+| `astrarouter_provider_time_to_first_token_seconds` | tenant, provider, model | See streaming startup |
+| `astrarouter_provider_health` | provider | See breaker state (1 healthy, 0.5 degraded, 0 unhealthy) |
+| `astrarouter_provider_truncations_total` | tenant, provider, reason | **See answers cut short** by `max_tokens` or `timeout` |
+| `astrarouter_provider_completion_tokens_ratio` | tenant, provider | See headroom; a pile-up at `1.0` means the ceiling is too tight |
 
 ### Routing, policy and usage
 
 | Metric | Use it to |
 | --- | --- |
-| `corerouter_routing_decisions_total` | Count routing decisions by strategy and outcome |
-| `corerouter_routing_candidates` | See how many candidates survived filtering |
-| `corerouter_routing_fallbacks_total` | See failover rate and which codes triggered it |
-| `corerouter_policy_rate_limited_total` | See rate-limit rejections |
-| `corerouter_policy_budget_blocked_total` | See budget denials |
-| `corerouter_usage_tokens_total` | See prompt and completion token throughput |
-| `corerouter_usage_cost_usd_total` | See estimated spend |
+| `astrarouter_routing_decisions_total` | Count routing decisions by strategy and outcome |
+| `astrarouter_routing_candidates` | See how many candidates survived filtering |
+| `astrarouter_routing_fallbacks_total` | See failover rate and which codes triggered it |
+| `astrarouter_policy_rate_limited_total` | See rate-limit rejections |
+| `astrarouter_policy_budget_blocked_total` | See budget denials |
+| `astrarouter_usage_tokens_total` | See prompt and completion token throughput |
+| `astrarouter_usage_cost_usd_total` | See estimated spend |
 
 ### Cache
 
-`corerouter_cache_hits_total{kind}`, `misses_total`, `bypass_total{reason}`,
+`astrarouter_cache_hits_total{kind}`, `misses_total`, `bypass_total{reason}`,
 `lookup_duration_seconds`, `invalidations_total{scope,reason}`,
 `latency_saved_seconds{tenant,kind}`, `semantic_similarity`. See
 [Caching](caching.md).
@@ -72,23 +72,23 @@ one scrape config and one dashboard cover both.
 
 | Metric | Use it to |
 | --- | --- |
-| `corerouter_classifier_requests_total{task}` | See the task mix |
-| `corerouter_shaping_requests_total{step}` | See which shaping steps fire |
-| `corerouter_guardrail_blocks_total{kind}` | See kill switches and caps firing |
-| `corerouter_scoring_provider_score` | See quality scores |
-| `corerouter_eval_jobs_total`, `corerouter_replay_jobs_total` | See offline work |
-| `corerouter_feedback_events_total` | See user feedback volume |
+| `astrarouter_classifier_requests_total{task}` | See the task mix |
+| `astrarouter_shaping_requests_total{step}` | See which shaping steps fire |
+| `astrarouter_guardrail_blocks_total{kind}` | See kill switches and caps firing |
+| `astrarouter_scoring_provider_score` | See quality scores |
+| `astrarouter_eval_jobs_total`, `astrarouter_replay_jobs_total` | See offline work |
+| `astrarouter_feedback_events_total` | See user feedback volume |
 
 ### Tools and tunnels
 
-`corerouter_tools_runs_total{tenant,mode,status}`,
+`astrarouter_tools_runs_total{tenant,mode,status}`,
 `run_duration_seconds{mode}`, `invocations_total{tenant,tool,status}`,
-`persist_errors_total{tenant}`. `corerouter_tunnel_up{target}`,
+`persist_errors_total{tenant}`. `astrarouter_tunnel_up{target}`,
 `tunnel_sessions_total{target,outcome}`, `tunnel_restarts_total{target}`.
 
 ### Async pipeline
 
-`corerouter_async_queue_depth`, `dropped_total`, `flushed_total`. A rising queue
+`astrarouter_async_queue_depth`, `dropped_total`, `flushed_total`. A rising queue
 depth with drops means a dependency is slow or down.
 
 ## Traces
@@ -106,7 +106,7 @@ start**. Losing traces silently is worse than not starting.
 ## Logs
 
 JSON to stdout. In Compose, `docker compose logs -f gateway`; under systemd,
-`journalctl -u corerouter -f`.
+`journalctl -u astrarouter -f`.
 
 | Field | Why it is there |
 | --- | --- |
@@ -122,7 +122,7 @@ to escape.
 
 ## Grafana
 
-Compose brings up Grafana on `:3001` with `deploy/grafana/dashboards/corerouter-overview.json`
+Compose brings up Grafana on `:3001` with `deploy/grafana/dashboards/astrarouter-overview.json`
 preloaded, and Prometheus scraping both the gateway and the workers.
 
 The overview dashboard covers throughput, latency percentiles, success rate, token
@@ -130,7 +130,7 @@ throughput, cost, provider health, fallback rate and cache hit rate.
 
 ## Alert rules
 
-`deploy/prometheus/rules/corerouter.yml` ships with alerts for the failures that
+`deploy/prometheus/rules/astrarouter.yml` ships with alerts for the failures that
 matter:
 
 | Alert | Fires when |
@@ -150,24 +150,24 @@ Load them into your own Prometheus if you are not using the Compose one.
 **Answers are stopping mid-sentence.** This is the one symptom that used to be
 silent. Check, in order:
 
-1. `corerouter_provider_truncations_total{reason}` — is it `max_tokens` or
+1. `astrarouter_provider_truncations_total{reason}` — is it `max_tokens` or
    `timeout`?
-2. The response's `corerouter.completion` block — `requested_tokens`,
+2. The response's `astrarouter.completion` block — `requested_tokens`,
    `applied_tokens`, `budget_ms`, `finish_reason`.
 3. The routing decision's timeout policy — a `per_attempt` shorter than a long
    generation truncates by definition.
 
-**A provider is getting no traffic.** Check `corerouter_provider_health`, then
+**A provider is getting no traffic.** Check `astrarouter_provider_health`, then
 whether the policy's target list actually names it, then whether the capability
 filter excludes it for these requests.
 
 **Failover is not happening.** Compare the error code against the policy's
 `on_error_codes`. That list is exhaustive when present.
 
-**Latency is worse than expected.** Read `corerouter_routing_candidates` — a
+**Latency is worse than expected.** Read `astrarouter_routing_candidates` — a
 single candidate means no choice was available, so latency is that provider's.
 
-**Telemetry seems to be missing rows.** Check `corerouter_async_dropped_total`
+**Telemetry seems to be missing rows.** Check `astrarouter_async_dropped_total`
 and `queue_depth` before suspecting the queries.
 
 ## Scripts
@@ -178,13 +178,13 @@ curl -s $GATEWAY/health | jq
 curl -s $GATEWAY/version | jq
 
 # Traffic and errors
-curl -s $GATEWAY/metrics | grep corerouter_gateway_requests_total
-curl -s $GATEWAY/metrics | grep corerouter_provider_health
-curl -s $GATEWAY/metrics | grep corerouter_provider_truncations_total
+curl -s $GATEWAY/metrics | grep astrarouter_gateway_requests_total
+curl -s $GATEWAY/metrics | grep astrarouter_provider_health
+curl -s $GATEWAY/metrics | grep astrarouter_provider_truncations_total
 
 # One request, end to end
-curl -s "$GATEWAY/admin/v1/requests/$REQUEST_ID" -H "Authorization: Bearer $CR_ADMIN_KEY" | jq
-curl -s "$GATEWAY/admin/v1/requests/$REQUEST_ID/explain" -H "Authorization: Bearer $CR_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/requests/$REQUEST_ID" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/requests/$REQUEST_ID/explain" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
 ```
 
 ---

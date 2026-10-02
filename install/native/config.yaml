@@ -1,0 +1,47 @@
+# AstraRouter minimal native configuration.
+#
+# Written by `astrarouter native install` when no config exists. It covers a
+# single host with local datastores; everything else falls back to built-in
+# defaults. Secrets do NOT live here — they live in native.env (mode 0600).
+#
+# For the full reference with every knob documented, copy config.example.yaml
+# instead and point AR_CONFIG_FILE at it.
+app:
+  name: astrarouter
+  environment: production
+
+http:
+  # Loopback only: put a reverse proxy in front before exposing the LAN.
+  addr: 127.0.0.1:8080
+  # Must exceed nothing here; the native supervisor allows 60s for drain.
+  shutdown_timeout: 45s
+  cors_allowed_origins:
+    - http://127.0.0.1:3000
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  user: astrarouter
+  # AR_POSTGRES_PASSWORD (native.env) — never committed.
+  name: astrarouter
+  ssl_mode: disable
+
+redis:
+  addr: 127.0.0.1:6379
+
+# No collector on a fresh host: traces stay off (validation refuses an empty
+# endpoint while they are on), while /metrics stays available for Prometheus.
+telemetry:
+  traces_enabled: false
+
+# Uncomment when the host runs them; inference works without either.
+# clickhouse:
+#   addr: 127.0.0.1:9000
+#   database: astrarouter
+#   username: astrarouter
+# nats:
+#   url: nats://127.0.0.1:4222
+#   jetstream: true
+
+admin:
+  enabled: true

@@ -1,6 +1,6 @@
 # Installation: Docker
 
-Docker Compose is the fastest path to a complete CoreRouter: the gateway, four
+Docker Compose is the fastest path to a complete AstraRouter: the gateway, four
 datastores, the intelligence workers, the dashboard and an observability stack.
 This page covers the whole stack; for a host install see
 [Installation: native](native.md).
@@ -35,8 +35,8 @@ Postgres and Redis to report healthy before it starts serving.
 
 ```bash
 cp .env.example .env
-openssl rand -hex 24    # paste the result into CR_ADMIN_KEY in .env
-$EDITOR .env            # add CR_ADMIN_KEY and your provider key
+openssl rand -hex 24    # paste the result into AR_ADMIN_KEY in .env
+$EDITOR .env            # add AR_ADMIN_KEY and your provider key
 
 docker compose up -d --build
 docker compose ps
@@ -52,7 +52,7 @@ Move the host port, not the container port — gateway configuration is unchange
 
 ```dotenv
 GATEWAY_PORT=18080
-NEXT_PUBLIC_COREROUTER_API_URL=http://localhost:18080
+NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
 ```
 
 ```bash
@@ -91,13 +91,13 @@ Three layers, lowest precedence first:
 
 1. Built-in defaults — the stack boots with no config file at all.
 2. A config file — `config.example.yaml` documents every setting.
-3. Environment variables — every `CR_*` variable wins.
+3. Environment variables — every `AR_*` variable wins.
 
 `docker-compose.yml` passes the file in and lets the environment override it. To
 see what the gateway actually resolved, with secrets redacted:
 
 ```bash
-docker compose exec gateway corerouter config
+docker compose exec gateway astrarouter config
 ```
 
 Secrets are referenced, never embedded. A provider record names an environment
@@ -107,24 +107,24 @@ committable.
 To use a configuration file other than the example:
 
 ```dotenv
-CR_CONFIG_FILE=/etc/corerouter/config.yaml
+AR_CONFIG_FILE=/etc/astrarouter/config.yaml
 ```
 
 and mount it into the container in `docker-compose.yml`.
 
 ## Migrations
 
-Compose sets `CR_POSTGRES_AUTO_MIGRATE=true`, so the gateway applies pending
+Compose sets `AR_POSTGRES_AUTO_MIGRATE=true`, so the gateway applies pending
 migrations at startup — convenient for a single host.
 
 Under change control, turn it off and migrate as an explicit release step:
 
 ```dotenv
-CR_POSTGRES_AUTO_MIGRATE=false
+AR_POSTGRES_AUTO_MIGRATE=false
 ```
 
 ```bash
-docker compose run --rm gateway corerouter migrate
+docker compose run --rm gateway astrarouter migrate
 ```
 
 Migrations are applied in order, recorded with a checksum, and a mismatch on an
@@ -156,7 +156,7 @@ responses, flushes the telemetry buffer, then exits. Compose gives it
 
 ### Secrets
 
-`CR_ADMIN_KEY` is not optional in production: with `admin.require_scope: true`,
+`AR_ADMIN_KEY` is not optional in production: with `admin.require_scope: true`,
 validation refuses to start without it. That is deliberate — a production install
 that cannot be administered is a worse outcome than one that refuses to boot.
 
@@ -164,9 +164,9 @@ that cannot be administered is a worse outcome than one that refuses to boot.
 openssl rand -hex 24
 ```
 
-Set `CR_CREDENTIALS_KEY` (32 bytes, raw/hex/base64) for serious deployments so
+Set `AR_CREDENTIALS_KEY` (32 bytes, raw/hex/base64) for serious deployments so
 stored provider credentials do not derive from the admin key. Otherwise the data
-key is derived via HKDF-SHA256 from `CR_ADMIN_KEY`, which means rotating the admin
+key is derived via HKDF-SHA256 from `AR_ADMIN_KEY`, which means rotating the admin
 key orphans stored secrets and they must be re-saved.
 
 ## Exposing it outside your host

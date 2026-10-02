@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/auth"
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
-	"github.com/shadowsafin/corerouter/internal/policy"
-	"github.com/shadowsafin/corerouter/internal/providers"
-	"github.com/shadowsafin/corerouter/internal/routing"
-	"github.com/shadowsafin/corerouter/internal/version"
+	"github.com/shadowsafin/astrarouter/internal/auth"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/policy"
+	"github.com/shadowsafin/astrarouter/internal/providers"
+	"github.com/shadowsafin/astrarouter/internal/routing"
+	"github.com/shadowsafin/astrarouter/internal/version"
 )
 
 // ---------------------------------------------------------------------------
@@ -32,8 +32,8 @@ import (
 const (
 	primaryID    = "p-openai"
 	secondaryID  = "p-anthropic"
-	testToken    = "cr_live_abcdefghijklmnopqrstuvwxyz0123456789"
-	testAdminKey = "cr_admin_abcdefghijklmnopqrstuvwxyz0123456789"
+	testToken    = "ar_live_abcdefghijklmnopqrstuvwxyz0123456789"
+	testAdminKey = "ar_admin_abcdefghijklmnopqrstuvwxyz0123456789"
 	testModel    = "gpt-4o"
 )
 
@@ -393,7 +393,7 @@ func TestChatCompletionsReturnsOpenAICompatibleResponse(t *testing.T) {
 	h := newHarness(t, harnessOptions{})
 
 	resp := h.do(t, http.MethodPost, "/v1/chat/completions", testToken, chatBody(""),
-		map[string]string{"X-CoreRouter-Debug": "true"})
+		map[string]string{"X-AstraRouter-Debug": "true"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", resp.StatusCode, readBody(t, resp))
 	}
@@ -410,7 +410,7 @@ func TestChatCompletionsReturnsOpenAICompatibleResponse(t *testing.T) {
 		Model   string                   `json:"model"`
 		Choices []domain.Choice          `json:"choices"`
 		Usage   *domain.TokenUsage       `json:"usage"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -432,7 +432,7 @@ func TestChatCompletionsReturnsOpenAICompatibleResponse(t *testing.T) {
 		t.Errorf("usage = %+v", decoded.Usage)
 	}
 	if decoded.Core == nil {
-		t.Fatal("the corerouter metadata block is missing")
+		t.Fatal("the astrarouter metadata block is missing")
 	}
 	if decoded.Core.Provider != "openai" {
 		t.Errorf("metadata provider = %q", decoded.Core.Provider)
@@ -458,7 +458,7 @@ func TestChatCompletionsFailsOverWithoutBreakingTheClient(t *testing.T) {
 
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -484,7 +484,7 @@ func TestChatCompletionsHonoursNoFallbackHeader(t *testing.T) {
 	h := newHarness(t, harnessOptions{failPrimary: true})
 
 	resp := h.do(t, http.MethodPost, "/v1/chat/completions", testToken, chatBody(""),
-		map[string]string{"X-CoreRouter-No-Fallback": "true"})
+		map[string]string{"X-AstraRouter-No-Fallback": "true"})
 
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502: %s", resp.StatusCode, readBody(t, resp))
@@ -579,7 +579,7 @@ func TestChatCompletionsRejectsMissingCredentials(t *testing.T) {
 func TestChatCompletionsRejectsInvalidKey(t *testing.T) {
 	h := newHarness(t, harnessOptions{})
 
-	resp := h.do(t, http.MethodPost, "/v1/chat/completions", "cr_live_this_is_not_a_real_key_at_all", chatBody(""), nil)
+	resp := h.do(t, http.MethodPost, "/v1/chat/completions", "ar_live_this_is_not_a_real_key_at_all", chatBody(""), nil)
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
 	}
@@ -589,11 +589,11 @@ func TestChatCompletionsEnforcesInferenceScope(t *testing.T) {
 	h := newHarness(t, harnessOptions{})
 
 	// Rebuild the harness's key store with a key that holds no inference scope.
-	scopeless := auth.HashKey("cr_live_scopeless_key_value_padding_000")
+	scopeless := auth.HashKey("ar_live_scopeless_key_value_padding_000")
 	store := &stubKeyStore{
 		key: &domain.APIKey{
 			ID: "k-2", TenantID: "t-1", Name: "scopeless",
-			Prefix:  domain.DisplayPrefix("cr_live_scopeless_key_value_padding_000"),
+			Prefix:  domain.DisplayPrefix("ar_live_scopeless_key_value_padding_000"),
 			KeyHash: scopeless, Scopes: []string{string(domain.ScopeReadModels)},
 			Status: domain.APIKeyActive,
 		},
@@ -624,7 +624,7 @@ func TestChatCompletionsEnforcesInferenceScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRequest: %v", err)
 	}
-	req.Header.Set("Authorization", "Bearer cr_live_scopeless_key_value_padding_000")
+	req.Header.Set("Authorization", "Bearer ar_live_scopeless_key_value_padding_000")
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := scoped.Client().Do(req)
@@ -695,13 +695,13 @@ func TestChatCompletionsAppliesCostCeilingHeader(t *testing.T) {
 	// pass rather than failing outright, and the decision reports the ceiling it
 	// actually enforced.
 	resp := h.do(t, http.MethodPost, "/v1/chat/completions", testToken, chatBody(""),
-		map[string]string{"X-CoreRouter-Max-Cost-USD": "0.0000001", "X-CoreRouter-Debug": "true"})
+		map[string]string{"X-AstraRouter-Max-Cost-USD": "0.0000001", "X-AstraRouter-Debug": "true"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d: %s", resp.StatusCode, readBody(t, resp))
 	}
 
 	var decoded struct {
-		Core *domain.ResponseMetadata `json:"corerouter"`
+		Core *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)

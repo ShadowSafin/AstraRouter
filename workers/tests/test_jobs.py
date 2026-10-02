@@ -5,17 +5,17 @@ from __future__ import annotations
 import json
 import unittest
 
-from corerouter_workers.bus import (
+from astrarouter_workers.bus import (
     SUBJECT_EVAL_RESULT,
     SUBJECT_PROMPT_ANALYSIS,
     SUBJECT_TELEMETRY_ROLLUP,
     NullBus,
     decode,
 )
-from corerouter_workers.config import Config, ConfigError
-from corerouter_workers.jobs import UnknownJobKind, analyze_job, dispatch, evaluate_job, parse_job
-from corerouter_workers.metrics import NullMetrics
-from corerouter_workers.models import (
+from astrarouter_workers.config import Config, ConfigError
+from astrarouter_workers.jobs import UnknownJobKind, analyze_job, dispatch, evaluate_job, parse_job
+from astrarouter_workers.metrics import NullMetrics
+from astrarouter_workers.models import (
     KIND_EVAL,
     KIND_PROMPT_ANALYSIS,
     KIND_REPLAY,
@@ -25,8 +25,8 @@ from corerouter_workers.models import (
     EvalCandidate,
     EvalJob,
 )
-from corerouter_workers.telemetry import Aggregator
-from corerouter_workers.worker import Worker
+from astrarouter_workers.telemetry import Aggregator
+from astrarouter_workers.worker import Worker
 
 
 def eval_payload(**overrides):
@@ -242,8 +242,8 @@ class TestDispatch(unittest.TestCase):
 class TestNullBusAndDecode(unittest.TestCase):
     def test_null_bus_records_publications(self) -> None:
         bus = NullBus()
-        bus.publish_json("cr.test", {"a": 1})
-        self.assertEqual(bus.messages_for("cr.test"), [{"a": 1}])
+        bus.publish_json("ar.test", {"a": 1})
+        self.assertEqual(bus.messages_for("ar.test"), [{"a": 1}])
         self.assertTrue(bus.connected)
 
     def test_decode_rejects_non_json(self) -> None:
@@ -357,16 +357,16 @@ class TestConfiguration(unittest.TestCase):
         config = Config()
         self.assertTrue(config.metrics_enabled)
         self.assertFalse(config.judging_enabled)
-        self.assertEqual(config.queue_group, "corerouter-workers")
+        self.assertEqual(config.queue_group, "astrarouter-workers")
 
     def test_environment_overrides(self) -> None:
         config = Config.from_env({
-            "CR_WORKER_NATS_URL": "nats://nats:4222",
-            "CR_WORKER_METRICS_ADDR": "127.0.0.1:9200",
-            "CR_WORKER_LOG_LEVEL": "debug",
-            "CR_WORKER_EVAL_CONCURRENCY": "8",
-            "CR_WORKER_METRICS_ENABLED": "false",
-            "CR_WORKER_LABELS": "pool=eval,region=eu",
+            "AR_WORKER_NATS_URL": "nats://nats:4222",
+            "AR_WORKER_METRICS_ADDR": "127.0.0.1:9200",
+            "AR_WORKER_LOG_LEVEL": "debug",
+            "AR_WORKER_EVAL_CONCURRENCY": "8",
+            "AR_WORKER_METRICS_ENABLED": "false",
+            "AR_WORKER_LABELS": "pool=eval,region=eu",
         })
 
         self.assertEqual(config.nats_url, "nats://nats:4222")
@@ -382,19 +382,19 @@ class TestConfiguration(unittest.TestCase):
 
     def test_rejects_a_malformed_boolean(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"CR_WORKER_METRICS_ENABLED": "perhaps"})
+            Config.from_env({"AR_WORKER_METRICS_ENABLED": "perhaps"})
 
     def test_rejects_a_non_numeric_integer(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"CR_WORKER_EVAL_CONCURRENCY": "many"})
+            Config.from_env({"AR_WORKER_EVAL_CONCURRENCY": "many"})
 
     def test_rejects_a_zero_concurrency(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"CR_WORKER_EVAL_CONCURRENCY": "0"})
+            Config.from_env({"AR_WORKER_EVAL_CONCURRENCY": "0"})
 
     def test_rejects_an_unknown_log_level(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"CR_WORKER_LOG_LEVEL": "chatty"})
+            Config.from_env({"AR_WORKER_LOG_LEVEL": "chatty"})
 
     def test_rejects_a_judge_endpoint_without_a_model(self) -> None:
         with self.assertRaises(ConfigError):
@@ -402,7 +402,7 @@ class TestConfiguration(unittest.TestCase):
 
     def test_rejects_malformed_labels(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"CR_WORKER_LABELS": "pool"})
+            Config.from_env({"AR_WORKER_LABELS": "pool"})
 
     def test_redacts_secrets_when_rendered(self) -> None:
         config = Config(

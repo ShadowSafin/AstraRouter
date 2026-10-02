@@ -1,4 +1,4 @@
-# Runtime dependencies for the CoreRouter intelligence workers.
+# Runtime dependencies for the AstraRouter intelligence workers.
 #
 # The core scoring and analysis modules need nothing from this file; only the
 # message bus, the optional judge client and the metrics exporter do. The bounds

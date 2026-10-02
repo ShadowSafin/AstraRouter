@@ -45,7 +45,7 @@ const (
 	ErrCodeNotImplemented ErrorCode = "not_implemented"
 )
 
-// Error is CoreRouter's normalized error. It carries enough context to make
+// Error is AstraRouter's normalized error. It carries enough context to make
 // fallback decisions, populate audit records and render an OpenAI-compatible
 // error body without the caller inspecting provider payloads.
 type Error struct {
@@ -85,7 +85,7 @@ func (e *Error) Error() string {
 // Unwrap exposes the underlying cause to errors.Is / errors.As.
 func (e *Error) Unwrap() error { return e.Cause }
 
-// HTTPStatus maps the normalized code to the status CoreRouter returns.
+// HTTPStatus maps the normalized code to the status AstraRouter returns.
 // Upstream 4xx codes are passed through when they are informative, because
 // clients are written against OpenAI's status conventions.
 func (e *Error) HTTPStatus() int {

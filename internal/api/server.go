@@ -1,4 +1,4 @@
-// Package api implements CoreRouter's HTTP surface: the OpenAI-compatible
+// Package api implements AstraRouter's HTTP surface: the OpenAI-compatible
 // inference endpoints, the health and metrics endpoints, and the administrative
 // API that backs the dashboard.
 //
@@ -23,17 +23,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/shadowsafin/corerouter/internal/auth"
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/dashboardauth"
-	"github.com/shadowsafin/corerouter/internal/domain"
-	"github.com/shadowsafin/corerouter/internal/logging"
-	"github.com/shadowsafin/corerouter/internal/policy"
-	"github.com/shadowsafin/corerouter/internal/providers"
-	"github.com/shadowsafin/corerouter/internal/routing"
-	"github.com/shadowsafin/corerouter/internal/storage"
-	"github.com/shadowsafin/corerouter/internal/telemetry"
-	"github.com/shadowsafin/corerouter/internal/version"
+	"github.com/shadowsafin/astrarouter/internal/auth"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/dashboardauth"
+	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/logging"
+	"github.com/shadowsafin/astrarouter/internal/policy"
+	"github.com/shadowsafin/astrarouter/internal/providers"
+	"github.com/shadowsafin/astrarouter/internal/routing"
+	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/astrarouter/internal/telemetry"
+	"github.com/shadowsafin/astrarouter/internal/version"
 )
 
 // pathMetrics is the Prometheus scrape path, referenced by the span namer.

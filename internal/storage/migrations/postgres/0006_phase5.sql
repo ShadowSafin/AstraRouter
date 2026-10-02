@@ -1,4 +1,4 @@
--- CoreRouter Phase 5 schema: local request cache policy and audit.
+-- AstraRouter Phase 5 schema: local request cache policy and audit.
 --
 -- The live body always lives in Redis. These tables hold the policy rows that
 -- decide when caching applies, the invalidation audit trail, and lightweight

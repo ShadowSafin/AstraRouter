@@ -1,6 +1,6 @@
 # Overview
 
-CoreRouter is an AI inference gateway and control plane. It sits between your
+AstraRouter is an AI inference gateway and control plane. It sits between your
 applications and the model providers you use, presents a single
 OpenAI-compatible API, and decides — per request, per policy — which provider
 serves the call, what happens when that provider fails, and what it cost.
@@ -29,10 +29,10 @@ this is common by the time four applications are live:
 Each of these is individually small. Together they are an operating burden that
 competes with the product.
 
-## What CoreRouter does about it
+## What AstraRouter does about it
 
 **One endpoint.** `POST /v1/chat/completions`, OpenAI-compatible. Any client that
-speaks OpenAI works by changing its base URL. The `corerouter` metadata block
+speaks OpenAI works by changing its base URL. The `astrarouter` metadata block
 rides alongside the standard fields and is ignored by clients that do not know
 about it.
 

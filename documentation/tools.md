@@ -1,6 +1,6 @@
 # Tools
 
-CoreRouter supports tool calling. Tools are advertised to the model, the model
+AstraRouter supports tool calling. Tools are advertised to the model, the model
 emits `tool_calls`, and either the client or the gateway runs them.
 
 > **Client-executed tools are the default.** Gateway-side execution is opt-in via
@@ -16,7 +16,7 @@ emits `tool_calls`, and either the client or the gateway runs them.
    Without one, every request runs under the built-in manual default.
 3. **Send a request** with `tools`, and optionally
    `"tool_execution": {"mode": "automatic"}`.
-4. **Read the answer** plus `corerouter.tool_run`: what ran, how many steps, why
+4. **Read the answer** plus `astrarouter.tool_run`: what ran, how many steps, why
    it stopped.
 5. **Inspect the trace** on `/agent-runs`, which shows the model/tool step trace
    and every invocation with its arguments and outcome.
@@ -35,7 +35,7 @@ exactly the pre-tools behaviour.
 
 ```bash
 curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $CR_KEY" \
+  -H "Authorization: Bearer $AR_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "gpt-4o-mini",
@@ -75,7 +75,7 @@ tools:
 ```
 
 ```dotenv
-CR_TOOLS_GATEWAY_EXECUTION=true
+AR_TOOLS_GATEWAY_EXECUTION=true
 ```
 
 With it on, `now` and `echo` are seeded at startup. Everything below about
@@ -116,7 +116,7 @@ tool results live in the gateway's run and the client cannot resume it.
 
 ```bash
 curl -s -X PUT $GATEWAY/admin/v1/tool-policies \
-  -H "Authorization: Bearer $CR_ADMIN_KEY" \
+  -H "Authorization: Bearer $AR_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "support-agent",
@@ -134,7 +134,7 @@ silently inert one.
 
 ## Response metadata
 
-A request that involved tools carries `corerouter.tool_run`:
+A request that involved tools carries `astrarouter.tool_run`:
 
 ```json
 "tool_run": {
@@ -175,7 +175,7 @@ requires a `tenant_id` that exists.
 
 ## Structured output
 
-A request with `response_format` carries `corerouter.structured`
+A request with `response_format` carries `astrarouter.structured`
 (`requested`, `valid`, `schema`, `error`, `repaired`).
 
 When an answer contains a fenced JSON object and the extraction is unambiguous,
@@ -187,16 +187,16 @@ content the caller cannot parse is worse than telling it why.
 
 | Metric | Meaning |
 | --- | --- |
-| `corerouter_tools_runs_total{tenant,mode,status}` | Runs by mode and outcome |
-| `corerouter_tools_run_duration_seconds{mode}` | Run latency |
-| `corerouter_tools_invocations_total{tenant,tool,status}` | Per-tool calls |
-| `corerouter_tools_persist_errors_total{tenant}` | Trace persistence failures |
+| `astrarouter_tools_runs_total{tenant,mode,status}` | Runs by mode and outcome |
+| `astrarouter_tools_run_duration_seconds{mode}` | Run latency |
+| `astrarouter_tools_invocations_total{tenant,tool,status}` | Per-tool calls |
+| `astrarouter_tools_persist_errors_total{tenant}` | Trace persistence failures |
 
 Tool names are operator-registered and finite, so the per-tool label is bounded
 like providers and models.
 
-NATS `cr.tool.run.completed` carries the finished run's summary, retained 30 days
-in `COREROUTER_EVENTS` alongside audit and health events.
+NATS `ar.tool.run.completed` carries the finished run's summary, retained 30 days
+in `ASTRAROUTER_EVENTS` alongside audit and health events.
 
 The run row is written *before* the first step, because `agent_steps` has a
 foreign key to `agent_runs`. A persistence failure does not fail the request, but

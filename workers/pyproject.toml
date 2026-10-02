@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "corerouter-workers"
+name = "astrarouter-workers"
 version = "1.0.0"
-description = "CoreRouter intelligence workers: evaluation, prompt analysis and telemetry rollups"
+description = "AstraRouter intelligence workers: evaluation, prompt analysis and telemetry rollups"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -31,16 +31,16 @@ dev = [
 ]
 
 [project.scripts]
-corerouter-worker = "corerouter_workers.cli:main"
+astrarouter-worker = "astrarouter_workers.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/shadowsafin/corerouter"
-Documentation = "https://github.com/shadowsafin/corerouter/blob/main/documentation/README.md"
-Source = "https://github.com/shadowsafin/corerouter"
-Issues = "https://github.com/shadowsafin/corerouter/issues"
+Homepage = "https://github.com/shadowsafin/astrarouter"
+Documentation = "https://github.com/shadowsafin/astrarouter/blob/main/documentation/README.md"
+Source = "https://github.com/shadowsafin/astrarouter"
+Issues = "https://github.com/shadowsafin/astrarouter/issues"
 
 [tool.setuptools]
-packages = ["corerouter_workers"]
+packages = ["astrarouter_workers"]
 
 [tool.ruff]
 line-length = 110

@@ -1,4 +1,4 @@
-module github.com/shadowsafin/corerouter
+module github.com/shadowsafin/astrarouter
 
 go 1.27.1
 

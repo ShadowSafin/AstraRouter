@@ -1,6 +1,6 @@
 <div align="center">
 
-# CoreRouter
+# AstraRouter
 
 **An OpenAI-compatible gateway that decides, per request, which AI provider serves it — and proves it.**
 
@@ -16,9 +16,9 @@ Routing · failover · caching · policy · budgets · full request lineage
 
 ---
 
-## What CoreRouter does
+## What AstraRouter does
 
-CoreRouter is an **inference gateway** and **control plane**. It sits between your
+AstraRouter is an **inference gateway** and **control plane**. It sits between your
 applications and your model providers, presents a single OpenAI-compatible
 endpoint, and decides — per request, under policy — which provider serves it,
 what happens when that provider fails, and what it cost.
@@ -28,7 +28,7 @@ managed. Changing which model answers production traffic is a dashboard edit
 rather than a deployment.
 
 Any client that speaks OpenAI works by changing its base URL. The extra response
-fields are namespaced under `corerouter`, so OpenAI SDKs ignore them.
+fields are namespaced under `astrarouter`, so OpenAI SDKs ignore them.
 
 ## Why it exists
 
@@ -47,7 +47,7 @@ are live you have:
   answers?"
 
 Each is small. Together they are an operating burden that competes with the
-product. CoreRouter moves all of it into one layer you can operate.
+product. AstraRouter moves all of it into one layer you can operate.
 
 ## Key features
 
@@ -104,7 +104,7 @@ The request path, end to end:
 └──────────────────────────────────────────────┘
      │                          │
      ▼                          ▼
-  provider                response + corerouter
+  provider                response + astrarouter
   adapter call            metadata block
         │
         └──────────────────────────────────────┐
@@ -130,11 +130,11 @@ Every request records why it was routed the way it was. Read it back with
 ### Docker
 
 ```bash
-git clone https://github.com/shadowsafin/corerouter.git
-cd corerouter
+git clone https://github.com/shadowsafin/astrarouter.git
+cd astrarouter
 
 cp .env.example .env
-openssl rand -hex 24        # paste into CR_ADMIN_KEY, then add your provider key
+openssl rand -hex 24        # paste into AR_ADMIN_KEY, then add your provider key
 $EDITOR .env
 
 docker compose up -d --build
@@ -151,20 +151,36 @@ configuration does not change:
 
 ```dotenv
 GATEWAY_PORT=18080
-NEXT_PUBLIC_COREROUTER_API_URL=http://localhost:18080
+NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
 ```
 
 ### Native
 
 ```bash
 make build
-sudo install -m 0755 bin/corerouter /usr/local/bin/corerouter
-sudo install -m 0640 config.example.yaml /etc/corerouter/config.yaml
-sudo systemctl enable --now corerouter
+astrarouter native install   # templates, builds, migrations (idempotent)
+astrarouter native up        # foreground supervisor: gateway + dashboard
 ```
+
+Production Linux hosts use the systemd units instead (`deploy/systemd/`,
+including `astrarouter-dashboard.service`); Windows hosts run `native up` from
+Task Scheduler.
+
+### Desktop app (Windows)
+
+```powershell
+# one self-contained AstraRouter.exe plus install.ps1
+.\install.ps1   # per-user install: embedded Postgres, gateway, dashboard, shortcuts
+```
+
+The single `.exe` carries the gateway, a portable Node runtime and the built
+dashboard inside it, extracts them on first launch, and opens AstraRouter in
+its own window with everything supervised. Full walkthrough:
+**[Desktop app](documentation/installation/desktop.md)**
 
 Full walkthroughs: **[Docker](documentation/installation/docker.md)** ·
 **[Native](documentation/installation/native.md)** ·
+**[Desktop](documentation/installation/desktop.md)** ·
 **[Tunnel](documentation/installation/cloudflare-tunnel.md)** ·
 **[Getting started](documentation/getting-started.md)**
 
@@ -186,13 +202,13 @@ Mint a tenant key, then call the public endpoint:
 
 ```bash
 export GATEWAY=http://127.0.0.1:8080
-export CR_ADMIN_KEY=<from .env>
+export AR_ADMIN_KEY=<from .env>
 
 TENANT=$(curl -s $GATEWAY/admin/v1/tenants \
-  -H "Authorization: Bearer $CR_ADMIN_KEY" | jq -r '.tenants[0].id')
+  -H "Authorization: Bearer $AR_ADMIN_KEY" | jq -r '.tenants[0].id')
 
-export CR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
-  -H "Authorization: Bearer $CR_ADMIN_KEY" \
+export AR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
+  -H "Authorization: Bearer $AR_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"tenant_id\":\"$TENANT\",\"name\":\"first-key\",\"scopes\":[\"inference\"]}" \
   | jq -r .plaintext)
@@ -200,7 +216,7 @@ export CR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
 
 ```bash
 curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $CR_KEY" \
+  -H "Authorization: Bearer $AR_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "gpt-4o-mini",
@@ -214,7 +230,7 @@ curl -s $GATEWAY/v1/chat/completions \
 {
   "choices": [{ "index": 0, "message": { "role": "assistant", "content": "…" }, "finish_reason": "stop" }],
   "usage": { "prompt_tokens": 26, "completion_tokens": 81, "total_tokens": 107 },
-  "corerouter": {
+  "astrarouter": {
     "request_id": "5e0804c7-…",
     "provider": "openai-prod",
     "requested_model": "gpt-4o-mini",
@@ -326,7 +342,7 @@ sets expectations for technical disagreement as well as conduct.
 
 | | |
 | --- | --- |
-| Questions | [FAQ](documentation/faq.md), then [GitHub Issues](https://github.com/shadowsafin/corerouter/issues) |
+| Questions | [FAQ](documentation/faq.md), then [GitHub Issues](https://github.com/shadowsafin/astrarouter/issues) |
 | Something broken | [Troubleshooting](documentation/troubleshooting.md) — start with the `request_id` from the failing response |
 | Security | **Do not open an issue.** See [SECURITY.md](SECURITY.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |

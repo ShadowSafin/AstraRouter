@@ -1,4 +1,4 @@
-// Package schema implements the JSON Schema subset CoreRouter needs.
+// Package schema implements the JSON Schema subset AstraRouter needs.
 //
 // # Why a subset
 //
@@ -604,7 +604,7 @@ var knownTypeNames = map[string]bool{
 // {"if": {...}} or {"prefixItems": [...]} would pass a schema check and then
 // silently permit anything, which is the exact failure this package exists to
 // prevent. Rejecting an unknown keyword tells the caller their schema is not
-// what CoreRouter will check.
+// what AstraRouter will check.
 var supportedKeywords = map[string]bool{
 	// Assertions this package implements.
 	"type":                 true,

@@ -270,7 +270,7 @@ export function ToolPoliciesView() {
             Gateway-side execution is disabled (<code className="font-mono">tools.gateway_execution: false</code>):
             automatic requests are clamped to manual and clients run their own tools. Set it to{' '}
             <code className="font-mono">true</code> (or{' '}
-            <code className="font-mono">CR_TOOLS_GATEWAY_EXECUTION=true</code>) to let these policies execute
+            <code className="font-mono">AR_TOOLS_GATEWAY_EXECUTION=true</code>) to let these policies execute
             inside the gateway.
           </CardContent>
         </Card>

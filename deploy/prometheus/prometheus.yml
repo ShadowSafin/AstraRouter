@@ -1,4 +1,4 @@
-# Prometheus configuration for the CoreRouter stack.
+# Prometheus configuration for the AstraRouter stack.
 #
 # The gateway exposes its own metrics on /metrics. The OpenTelemetry collector is
 # scraped too, because a pipeline that drops spans is invisible in the gateway's
@@ -11,27 +11,27 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
-    cluster: corerouter
-    environment: ${CR_ENVIRONMENT:-local}
+    cluster: astrarouter
+    environment: ${AR_ENVIRONMENT:-local}
 
 rule_files:
   - /etc/prometheus/rules/*.yml
 
 scrape_configs:
-  - job_name: corerouter-gateway
+  - job_name: astrarouter-gateway
     metrics_path: /metrics
     static_configs:
       - targets: ["gateway:8080"]
         labels:
-          service: corerouter-gateway
+          service: astrarouter-gateway
           component: control-plane
 
-  - job_name: corerouter-workers
+  - job_name: astrarouter-workers
     metrics_path: /metrics
     static_configs:
       - targets: ["workers:9101"]
         labels:
-          service: corerouter-workers
+          service: astrarouter-workers
           component: intelligence
 
   - job_name: otel-collector

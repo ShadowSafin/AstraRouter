@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // ---------------------------------------------------------------------------

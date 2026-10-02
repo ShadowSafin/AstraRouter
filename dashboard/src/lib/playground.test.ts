@@ -184,10 +184,10 @@ describe('buildChatBody', () => {
 
 describe('buildHeaders', () => {
   it('sends the transport headers and the bearer token', () => {
-    const headers = buildHeaders(config({ debug: false }), 'cr_live_x');
+    const headers = buildHeaders(config({ debug: false }), 'ar_live_x');
     expect(headers['content-type']).toBe('application/json');
-    expect(headers.authorization).toBe('Bearer cr_live_x');
-    expect(headers).not.toHaveProperty('X-CoreRouter-Debug');
+    expect(headers.authorization).toBe('Bearer ar_live_x');
+    expect(headers).not.toHaveProperty('X-AstraRouter-Debug');
   });
 
   it('omits the authorization header when no key is present', () => {
@@ -201,8 +201,8 @@ describe('buildHeaders', () => {
 
   it('never sends a provider or tenant header, which the gateway ignores', () => {
     const headers = buildHeaders(config({ debug: true, endpoint: 'prod', policy: 'fast' }), 'k');
-    expect(headers).not.toHaveProperty('X-CoreRouter-Provider');
-    expect(headers).not.toHaveProperty('X-CoreRouter-Tenant');
+    expect(headers).not.toHaveProperty('X-AstraRouter-Provider');
+    expect(headers).not.toHaveProperty('X-AstraRouter-Tenant');
   });
 });
 
@@ -226,31 +226,31 @@ describe('intentHeaders', () => {
       }),
     );
     expect(headers).toEqual({
-      'X-CoreRouter-Debug': 'true',
-      'X-CoreRouter-Endpoint': 'prod-chat',
-      'X-CoreRouter-Policy': 'policy_1',
-      'X-CoreRouter-No-Fallback': 'true',
-      'X-CoreRouter-No-Cache': 'true',
-      'X-CoreRouter-Region': 'eu',
-      'X-CoreRouter-Sensitivity': 'pii,public',
-      'X-CoreRouter-Max-Cost-USD': '0.02',
-      'X-CoreRouter-Latency-Target-Ms': '1500',
+      'X-AstraRouter-Debug': 'true',
+      'X-AstraRouter-Endpoint': 'prod-chat',
+      'X-AstraRouter-Policy': 'policy_1',
+      'X-AstraRouter-No-Fallback': 'true',
+      'X-AstraRouter-No-Cache': 'true',
+      'X-AstraRouter-Region': 'eu',
+      'X-AstraRouter-Sensitivity': 'pii,public',
+      'X-AstraRouter-Max-Cost-USD': '0.02',
+      'X-AstraRouter-Latency-Target-Ms': '1500',
     });
   });
 
   it('treats a zero cost ceiling and a zero latency target as unset', () => {
     const headers = intentHeaders(config({ maxCostUsd: -1, latencyTargetMs: 0 }));
-    expect(headers).not.toHaveProperty('X-CoreRouter-Max-Cost-USD');
-    expect(headers).not.toHaveProperty('X-CoreRouter-Latency-Target-Ms');
+    expect(headers).not.toHaveProperty('X-AstraRouter-Max-Cost-USD');
+    expect(headers).not.toHaveProperty('X-AstraRouter-Latency-Target-Ms');
   });
 });
 
 describe('buildCurl', () => {
   it('redacts the credential instead of pasting a real key', () => {
     const curl = buildCurl(config(), [userMessage('hello')], 'http://localhost:8080/');
-    expect(curl).toContain('$COREROUTER_API_KEY');
+    expect(curl).toContain('$ASTRAROUTER_API_KEY');
     expect(curl).toContain('http://localhost:8080/v1/chat/completions');
-    expect(curl).not.toContain('cr_live_');
+    expect(curl).not.toContain('ar_live_');
   });
 
   it('reproduces the routing intent as real headers', () => {
@@ -259,9 +259,9 @@ describe('buildCurl', () => {
       [userMessage('hello')],
       'http://localhost:8080',
     );
-    expect(curl).toContain('X-CoreRouter-Endpoint: prod-chat');
-    expect(curl).toContain('X-CoreRouter-No-Fallback: true');
-    expect(curl).not.toContain('X-CoreRouter-Provider');
+    expect(curl).toContain('X-AstraRouter-Endpoint: prod-chat');
+    expect(curl).toContain('X-AstraRouter-No-Fallback: true');
+    expect(curl).not.toContain('X-AstraRouter-Provider');
   });
 });
 
@@ -269,7 +269,7 @@ describe('response parsing', () => {
   const envelope = {
     choices: [{ message: { role: 'assistant', content: 'hello there' }, finish_reason: 'stop' }],
     usage: { prompt_tokens: 10, completion_tokens: 3, total_tokens: 13 },
-    corerouter: {
+    astrarouter: {
       request_id: 'req_1',
       trace_id: 'trace_1',
       fallback_used: true,
@@ -305,7 +305,7 @@ describe('response parsing', () => {
 
   it('reads the flattened debug block the gateway actually sends', () => {
     const flattened = {
-      corerouter: {
+      astrarouter: {
         request_id: 'req_2',
         trace_id: 'trace_2',
         policy_name: 'default',
@@ -337,7 +337,7 @@ describe('response parsing', () => {
   it('reports no decision when debug was not requested', () => {
     // Without the debug header the block is correlation ids and counters only.
     const plain = {
-      corerouter: {
+      astrarouter: {
         request_id: 'req_3',
         fallback_used: false,
         cache_hit: false,

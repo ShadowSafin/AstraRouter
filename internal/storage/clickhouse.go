@@ -13,37 +13,37 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // Column orders are declared once and paired with their INSERT statement, because
 // ClickHouse's batch API is positional: a mismatch between the column list and the
 // Append arguments would silently write values into the wrong columns.
 const (
-	insertRequestTrace = `INSERT INTO corerouter.request_traces (
+	insertRequestTrace = `INSERT INTO astrarouter.request_traces (
 		trace_id, request_id, tenant_id, api_key_id, policy_id, strategy, requested_model,
 		routed_provider, routed_model, outcome, error_code, attempts, fallback_used, degraded,
 		client_streamed, estimated_cost_usd, total_ms, first_token_ms, prompt_tokens,
 		completion_tokens, decision_json, started_at)`
 
-	insertTraceAttempt = `INSERT INTO corerouter.trace_attempts (
+	insertTraceAttempt = `INSERT INTO astrarouter.trace_attempts (
 		trace_id, request_id, tenant_id, attempt_number, provider_id, provider_name,
 		provider_kind, model, status, error_code, error_message, duration_ms,
 		started_offset_ms, backoff_ms, first_token_ms, retry_triggered, fallback_triggered,
 		prompt_tokens, completion_tokens, cost_usd, started_at)`
 
-	insertUsageEvent = `INSERT INTO corerouter.usage_events (
+	insertUsageEvent = `INSERT INTO astrarouter.usage_events (
 		request_id, tenant_id, api_key_id, provider, model, requested_model, outcome,
 		error_code, fallback_used, cache_hit, estimated, streaming, prompt_tokens,
 		completion_tokens, total_tokens, cost_usd, latency_ms, created_at)`
 
-	insertProviderSnapshot = `INSERT INTO corerouter.provider_status_snapshots (
+	insertProviderSnapshot = `INSERT INTO astrarouter.provider_status_snapshots (
 		provider_id, provider_name, provider_kind, state, window_ms, request_count,
 		success_count, error_count, success_rate, error_rate, latency_p50_ms,
 		latency_p95_ms, latency_p99_ms, total_tokens, total_cost_usd, message, captured_at)`
 
-	insertRouteDecision = `INSERT INTO corerouter.route_decisions (
+	insertRouteDecision = `INSERT INTO astrarouter.route_decisions (
 		request_id, tenant_id, policy_id, policy_name, strategy, requested_model,
 		chosen_provider, chosen_model, degraded, candidate_count, eligible_count,
 		skipped_count, estimated_cost_usd, reason, created_at)`

@@ -56,7 +56,7 @@ survives the session.
 
 > **Recovering a lost password is a database operation.** There is no reset link and
 > no default account, by design — a recovery path is a backdoor. Set
-> `CR_CREDENTIALS_KEY` and keep a database backup.
+> `AR_CREDENTIALS_KEY` and keep a database backup.
 
 ### What the login actually protects
 
@@ -134,7 +134,7 @@ with server-side validation. **Reload** forces a resolver refresh.
 ### Endpoints
 
 Named scopes with routing overrides, each with a copy-paste call example showing
-the inference URL and the `X-CoreRouter-Endpoint` header.
+the inference URL and the `X-AstraRouter-Endpoint` header.
 
 ### Tenants
 
@@ -227,7 +227,7 @@ effective configuration.
 1. **Requests** → filter by `search` or by outcome.
 2. Expand the row; read the explain view.
 3. Check whether prompt shaping trimmed the prompt — a trimmed prompt reports
-   `corerouter.shaping`, and a shortened answer is not the same as a model that
+   `astrarouter.shaping`, and a shortened answer is not the same as a model that
    stopped early.
 4. Check **Scores** if the model was chosen on quality.
 
@@ -257,17 +257,17 @@ npm run build
 
 ```bash
 NODE_ENV=production \
-COREROUTER_API_URL=http://127.0.0.1:8080 \
-COREROUTER_ADMIN_KEY=... \
+ASTRAROUTER_API_URL=http://127.0.0.1:8080 \
+ASTRAROUTER_ADMIN_KEY=... \
 PORT=3000 HOSTNAME=127.0.0.1 \
 node .next/standalone/server.js
 ```
 
 | Variable | Meaning |
 | --- | --- |
-| `COREROUTER_API_URL` | The gateway as seen from the dashboard **server** |
-| `COREROUTER_ADMIN_KEY` | The same value as the gateway's `CR_ADMIN_KEY` |
-| `NEXT_PUBLIC_COREROUTER_API_URL` | Gateway URL advertised to the browser, for direct non-admin calls |
+| `ASTRAROUTER_API_URL` | The gateway as seen from the dashboard **server** |
+| `ASTRAROUTER_ADMIN_KEY` | The same value as the gateway's `AR_ADMIN_KEY` |
+| `NEXT_PUBLIC_ASTRAROUTER_API_URL` | Gateway URL advertised to the browser, for direct non-admin calls |
 
 Put a reverse proxy in front and terminate TLS there. The dashboard has no
 authentication of its own — whoever reaches it and holds the admin credential can
@@ -300,8 +300,8 @@ Adding a page means adding both plus a sidebar link.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Dashboard loads but every panel is empty | The gateway is unreachable from the dashboard server | Check `COREROUTER_API_URL` from the server's network, not the browser's |
-| `401` on load | `COREROUTER_ADMIN_KEY` does not match `CR_ADMIN_KEY` | Make them identical |
+| Dashboard loads but every panel is empty | The gateway is unreachable from the dashboard server | Check `ASTRAROUTER_API_URL` from the server's network, not the browser's |
+| `401` on load | `ASTRAROUTER_ADMIN_KEY` does not match `AR_ADMIN_KEY` | Make them identical |
 | Edits appear then vanish after a restart | The row is `bootstrap`-managed | Re-create it through the API so it becomes `api`-managed |
 | A model you edited is missing after discovery | Discovery skips existing rows | Expected — your edits are preserved |
 | Charts are empty for a custom range | No data in that window | Check the range picker and that requests were flowing |

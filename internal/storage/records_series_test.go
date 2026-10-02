@@ -9,18 +9,18 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
-// openTestPool connects to the database named by CR_TEST_POSTGRES_DSN, or
+// openTestPool connects to the database named by AR_TEST_POSTGRES_DSN, or
 // skips the test when it is unset. Series bucketing can only be verified
 // against real PostgreSQL: the bug it guards against is an epoch-alignment
 // mismatch inside generate_series, which no mock reproduces.
 func openTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("CR_TEST_POSTGRES_DSN")
+	dsn := os.Getenv("AR_TEST_POSTGRES_DSN")
 	if dsn == "" {
-		t.Skip("CR_TEST_POSTGRES_DSN is not set; skipping PostgreSQL-backed series test")
+		t.Skip("AR_TEST_POSTGRES_DSN is not set; skipping PostgreSQL-backed series test")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

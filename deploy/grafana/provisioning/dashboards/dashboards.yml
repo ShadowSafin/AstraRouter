@@ -8,10 +8,10 @@
 apiVersion: 1
 
 providers:
-  - name: corerouter
+  - name: astrarouter
     orgId: 1
-    folder: CoreRouter
-    folderUid: corerouter
+    folder: AstraRouter
+    folderUid: astrarouter
     type: file
     disableDeletion: true
     # A dashboard removed from disk is removed from Grafana. With

@@ -8,7 +8,7 @@ import (
 
 // handleRoot serves GET /.
 //
-// CoreRouter is an API gateway, so it has no user-facing page at the root: the
+// AstraRouter is an API gateway, so it has no user-facing page at the root: the
 // useful surfaces are /v1/chat/completions, /v1/models and the admin API. But a
 // gateway that is also reachable from a browser — which is exactly what a
 // temporary tunnel invites — must not answer a bare URL with a bare 404. That
@@ -24,7 +24,7 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	// only signal that distinguishes them reliably.
 	if wantsJSON(r) {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"service": "corerouter",
+			"service": "astrarouter",
 			"status":  "ok",
 			"version": s.version,
 			"uptime":  s.uptime().Round(time.Second).String(),
@@ -71,7 +71,7 @@ func rootPage(version string) string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>CoreRouter</title>
+<title>AstraRouter</title>
 <style>
   :root { color-scheme: dark; }
   body {
@@ -98,7 +98,7 @@ func rootPage(version string) string {
 <body>
 <main>
   <div class="pill">● online</div>
-  <h1>CoreRouter ` + htmlEscape(version) + `</h1>
+  <h1>AstraRouter ` + htmlEscape(version) + `</h1>
   <p class="sub">This is an API gateway. Point your client at one of the endpoints below.</p>
   <ul>
     <li><div class="row"><code>POST /v1/chat/completions</code><span class="note">OpenAI-compatible<br>API key</span></div></li>

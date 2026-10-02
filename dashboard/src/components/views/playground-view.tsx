@@ -63,7 +63,7 @@ const PAGE_BACKGROUND: React.CSSProperties = {
  * (and no pasted curl) can resolve.
  */
 function useGatewayUrl(): string {
-  const baked = process.env.NEXT_PUBLIC_COREROUTER_API_URL;
+  const baked = process.env.NEXT_PUBLIC_ASTRAROUTER_API_URL;
   const [url, setUrl] = React.useState(baked && baked.length > 0 ? baked : '');
   React.useEffect(() => {
     let cancelled = false;

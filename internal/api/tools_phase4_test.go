@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/auth"
-	"github.com/shadowsafin/corerouter/internal/config"
-	"github.com/shadowsafin/corerouter/internal/domain"
-	"github.com/shadowsafin/corerouter/internal/policy"
-	"github.com/shadowsafin/corerouter/internal/providers"
-	"github.com/shadowsafin/corerouter/internal/routing"
-	"github.com/shadowsafin/corerouter/internal/tools"
-	"github.com/shadowsafin/corerouter/internal/version"
+	"github.com/shadowsafin/astrarouter/internal/auth"
+	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/policy"
+	"github.com/shadowsafin/astrarouter/internal/providers"
+	"github.com/shadowsafin/astrarouter/internal/routing"
+	"github.com/shadowsafin/astrarouter/internal/tools"
+	"github.com/shadowsafin/astrarouter/internal/version"
 )
 
 // ---------------------------------------------------------------------------
@@ -499,7 +499,7 @@ func TestClientSideToolCallsAreUnchangedByDefault(t *testing.T) {
 
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -537,7 +537,7 @@ func TestBoundedRunExplainsItself(t *testing.T) {
 
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -579,7 +579,7 @@ func TestGatewayExecutesToolAndReturnsFinalAnswer(t *testing.T) {
 
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -727,7 +727,7 @@ func TestDisabledGatewayExecutionClampsNonStreamingAutomatic(t *testing.T) {
 	}
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -869,7 +869,7 @@ func TestPlainChatHonoursJSONObject(t *testing.T) {
 
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"corerouter"`
+		Core    *domain.ResponseMetadata `json:"astrarouter"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatalf("decode: %v", err)

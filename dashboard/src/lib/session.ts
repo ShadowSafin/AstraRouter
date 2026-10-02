@@ -18,7 +18,7 @@ import { cookies } from 'next/headers';
 import { GATEWAY_URL } from '@/lib/gateway';
 
 /** Cookie name. Must match `admin.dashboard_auth.cookie_name` on the gateway. */
-export const SESSION_COOKIE = process.env.COREROUTER_SESSION_COOKIE ?? 'corerouter_session';
+export const SESSION_COOKIE = process.env.ASTRAROUTER_SESSION_COOKIE ?? 'astrarouter_session';
 
 export interface SessionUser {
   username: string;

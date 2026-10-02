@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 func mustPool(t *testing.T, dsn string) *pgxpool.Pool {
@@ -31,9 +31,9 @@ func mustPool(t *testing.T, dsn string) *pgxpool.Pool {
 // the brute-force lockout never actually engages. That is precisely the failure
 // this caught once already.
 func TestLiveDashboardUserRepository(t *testing.T) {
-	dsn := os.Getenv("COREROUTER_TEST_DSN")
+	dsn := os.Getenv("ASTRAROUTER_TEST_DSN")
 	if dsn == "" {
-		t.Skip("COREROUTER_TEST_DSN is not set")
+		t.Skip("ASTRAROUTER_TEST_DSN is not set")
 	}
 
 	pool := mustPool(t, dsn)

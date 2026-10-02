@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/corerouter/internal/domain"
+	"github.com/shadowsafin/astrarouter/internal/domain"
 )
 
 // healthWindow is the number of recent observations retained per provider. A

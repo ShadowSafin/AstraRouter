@@ -1,4 +1,4 @@
-# CoreRouter intelligence workers.
+# AstraRouter intelligence workers.
 #
 # Multi-stage so the runtime image carries no compiler, no build tooling and no
 # pip cache. The core scoring logic is dependency-free, so the runtime image only
@@ -38,17 +38,17 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONFAULTHANDLER=1 \
     PATH="/opt/venv/bin:$PATH" \
-    CR_WORKER_METRICS_ADDR="0.0.0.0:9101" \
-    CR_WORKER_LOG_FORMAT="json"
+    AR_WORKER_METRICS_ADDR="0.0.0.0:9101" \
+    AR_WORKER_LOG_FORMAT="json"
 
 COPY --from=builder /opt/venv /opt/venv
 
-RUN useradd --create-home --shell /usr/sbin/nologin --uid 10001 corerouter
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 10001 astrarouter
 WORKDIR /app
-COPY --chown=corerouter:corerouter corerouter_workers ./corerouter_workers
-COPY --chown=corerouter:corerouter pyproject.toml README.md ./
+COPY --chown=astrarouter:astrarouter astrarouter_workers ./astrarouter_workers
+COPY --chown=astrarouter:astrarouter pyproject.toml README.md ./
 
-USER corerouter
+USER astrarouter
 
 # The metrics port doubles as the liveness endpoint: a worker whose loop has died
 # stops serving it, which is the only externally visible symptom this process has.
@@ -57,5 +57,5 @@ EXPOSE 9101
 # Tini-style signal forwarding is unnecessary here because the entrypoint is the
 # interpreter itself (PID 1 is python), but exec form is still used so SIGTERM
 # reaches it directly.
-ENTRYPOINT ["python", "-m", "corerouter_workers.cli"]
+ENTRYPOINT ["python", "-m", "astrarouter_workers.cli"]
 CMD ["serve"]
