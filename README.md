@@ -129,24 +129,36 @@ Every request records why it was routed the way it was. Read it back with
 
 ## Quick start
 
-### Docker
+### Docker (one command)
 
 ```bash
 git clone https://github.com/shadowsafin/astrarouter.git
 cd astrarouter
 
-cp .env.example .env
-openssl rand -hex 24        # paste into AR_ADMIN_KEY, then add your provider key
-$EDITOR .env
-
-docker compose up -d --build
+./scripts/deploy.sh        # Linux / macOS / Windows Git Bash
+# .\scripts\deploy.ps1    # native Windows PowerShell instead
+# make deploy             # same script through the Makefile
 ```
+
+That single command deploys the whole platform: it checks for Docker,
+Docker Compose and curl, verifies the host ports are free, creates `.env`
+from `.env.example` on first run (with a generated `AR_ADMIN_KEY`), starts
+every Compose service together (gateway, dashboard, Postgres, Redis,
+ClickHouse, NATS, workers, Grafana/Prometheus/Loki), waits until the gateway
+reports ready — which only happens after migrations and catalogue seeding
+finish — and prints the access URLs. Add a provider key to `.env` afterwards
+(`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`); the stack boots without one, with
+providers reporting unconfigured until then. The script is idempotent, so
+re-running it is a safe restart-and-verify.
 
 | Service | URL |
 | --- | --- |
-| Gateway | <http://127.0.0.1:8080> |
 | Dashboard | <http://127.0.0.1:3000> |
+| Gateway | <http://127.0.0.1:8080> (`/health` · `/ready` · `/metrics`) |
 | Grafana | <http://127.0.0.1:3001> |
+
+Manage the stack with `./scripts/deploy.sh {stop|restart|logs|status|reset}`
+(`reset` deletes volumes, so data, after a `--yes` confirmation).
 
 If port 8080 is taken, move the host port rather than the container port — gateway
 configuration does not change:
@@ -155,6 +167,21 @@ configuration does not change:
 GATEWAY_PORT=18080
 NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
 ```
+
+<details>
+<summary>Manual equivalent (what the script runs for you)</summary>
+
+```bash
+cp .env.example .env
+openssl rand -hex 24        # paste into AR_ADMIN_KEY, then add your provider key
+$EDITOR .env
+
+docker compose up -d --build
+curl -sf http://127.0.0.1:8080/ready   # ready only after migrations + seeding
+curl -sf http://127.0.0.1:3000/        # dashboard
+```
+
+</details>
 
 ### Native
 

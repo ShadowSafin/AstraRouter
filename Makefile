@@ -29,7 +29,7 @@ LDFLAGS     := -s -w \
 .DEFAULT_GOAL := help
 .PHONY: help build install run config migrate test test-go test-workers lint fmt vet \
         tidy dashboard-install dashboard-build dashboard-typecheck up down logs \
-        ps smoke smoke-ps clean docker-build native-install native-up native-doctor \
+        ps deploy deploy-ps smoke smoke-ps clean docker-build native-install native-up native-doctor \
         desktop-build desktop-test
 
 help: ## Show this help.
@@ -141,6 +141,12 @@ desktop-test: ## Run the desktop module's Go tests.
 
 up: ## Start the whole stack in the background.
 	docker compose up -d --build
+
+deploy: ## One-command deploy: env bootstrap, stack start, readiness waits, URLs.
+	bash scripts/deploy.sh
+
+deploy-ps: ## One-command deploy from Windows PowerShell.
+	powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1
 
 smoke: ## Verify the running stack end to end (needs the stack up; see scripts/smoke.sh).
 	bash scripts/smoke.sh
