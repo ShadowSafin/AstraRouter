@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="desktop/assets/icon.png" alt="AstraRouter logo" width="96" />
+
 # AstraRouter
 
 **An OpenAI-compatible gateway that decides, per request, which AI provider serves it — and proves it.**
