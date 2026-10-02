@@ -14,6 +14,12 @@ Routing · failover · caching · policy · budgets · full request lineage
 
 [Quick start](#quick-start) · [Documentation](documentation/README.md) · [Troubleshooting](documentation/troubleshooting.md)
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+```
+
+One command: clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
+
 </div>
 
 ---
