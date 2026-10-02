@@ -131,10 +131,22 @@ Every request records why it was routed the way it was. Read it back with
 
 ### Docker (one command)
 
-```bash
-git clone https://github.com/shadowsafin/astrarouter.git
-cd astrarouter
+Zero to running stack with a single paste — no clone needed (works in Linux,
+macOS, and Windows Git Bash):
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+```
+
+This fetches AstraRouter into `~/astrarouter` (override with
+`ASTRAROUTER_DIR=...` in front of the command), then runs the deploy script:
+prerequisite and port checks, `.env` bootstrap with a generated admin key,
+full Compose startup, readiness waits, and the URL summary. Re-running it
+updates the checkout and re-verifies the stack without touching `.env` or data.
+
+Already cloned? The same flow from the repo root:
+
+```bash
 ./scripts/deploy.sh        # Linux / macOS / Windows Git Bash
 # .\scripts\deploy.ps1    # native Windows PowerShell instead
 # make deploy             # same script through the Makefile
