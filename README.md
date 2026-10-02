@@ -18,7 +18,12 @@ Routing · failover · caching · policy · budgets · full request lineage
 curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
 ```
 
-One command: clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
+```powershell
+irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
+```
+
+One command (top: Linux / macOS / Git Bash · bottom: Windows PowerShell):
+clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
 
 </div>
 
@@ -137,18 +142,24 @@ Every request records why it was routed the way it was. Read it back with
 
 ### Docker (one command)
 
-Zero to running stack with a single paste — no clone needed (works in Linux,
-macOS, and Windows Git Bash):
+Zero to running stack with a single paste — no clone needed:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
 ```
 
-This fetches AstraRouter into `~/astrarouter` (override with
-`ASTRAROUTER_DIR=...` in front of the command), then runs the deploy script:
-prerequisite and port checks, `.env` bootstrap with a generated admin key,
-full Compose startup, readiness waits, and the URL summary. Re-running it
-updates the checkout and re-verifies the stack without touching `.env` or data.
+```powershell
+irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
+```
+
+Top command for Linux / macOS / Windows Git Bash, bottom for native Windows
+PowerShell. (In cmd.exe or PowerShell, a bare `bash` is the WSL stub, which is
+why the pipe form needs Git Bash or the PowerShell installer instead.) Either
+fetches AstraRouter into `~/astrarouter` (override with `ASTRAROUTER_DIR` /
+`$env:ASTRAROUTER_DIR`), then runs the deploy script: prerequisite and port
+checks, `.env` bootstrap with a generated admin key, full Compose startup,
+readiness waits, and the URL summary. Re-running it updates the checkout and
+re-verifies the stack without touching `.env` or data.
 
 Already cloned? The same flow from the repo root:
 
