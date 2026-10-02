@@ -15,15 +15,21 @@ Routing · failover · caching · policy · budgets · full request lineage
 [Quick start](#quick-start) · [Documentation](documentation/README.md) · [Troubleshooting](documentation/troubleshooting.md)
 
 ```bash
+# Linux
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+```
+
+```bash
+# macOS
 curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
 ```
 
 ```powershell
+# Windows (PowerShell)
 irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
 ```
 
-One command (top: Linux / macOS / Git Bash · bottom: Windows PowerShell):
-clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
+One command per OS: clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
 
 </div>
 
