@@ -176,6 +176,29 @@ max calls, max seconds, allowed and denied tool globs.
 **Admin key** — the control-plane credential (`CR_ADMIN_KEY`). Separate from
 tenant inference keys and held by the dashboard's server, never the browser.
 
+**Console operator** — a human account that can sign in to the dashboard. Stored
+as an Argon2id hash rather than a digest, because an operator chooses a password
+and the stored hash must be expensive to attack offline.
+
+**First-run latch** — the settings row that closes initial setup permanently.
+Gating on "no users exist" instead would mean deleting every operator reopens
+setup to anyone who can reach the console.
+
+**Key stretching** — deliberately slow password hashing (Argon2id here). The cost
+is the protection: it makes an offline attack against a stolen hash expensive.
+
+**Lockout** — refusing every password for an account, including the correct one,
+after repeated failures. The delay doubles on each further round up to a bound, so
+a sustained attack gets progressively more expensive without ever needing manual
+intervention to recover a legitimate operator.
+
+**Session token** — 32 bytes of CSPRNG output in an `httpOnly` cookie. Only its
+SHA-256 is persisted, so a database disclosure yields no usable session.
+
+**Idle expiry** — the limit on how long a session may go unused. Enforced when
+the session is presented rather than by a background job, because that is the only
+moment an idle session can actually be rejected.
+
 **API key** — a tenant inference credential. Stored as a SHA-256 digest; the
 plaintext is returned exactly once.
 

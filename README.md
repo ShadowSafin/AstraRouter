@@ -62,7 +62,7 @@ product. CoreRouter moves all of it into one layer you can operate.
 | **Tool calling** | Client-executed by default. Optional bounded gateway-side execution with operator-owned limits and a durable step trace per run. |
 | **Local caching** | Exact, prefix and semantic tiers, tenant-isolated by construction, invalidatable by scope with an audit trail. Off by default. |
 | **Observability** | Task classification, policy verdict, cache decision and routing reason on every request. Prometheus, OTLP traces, JSON logs, Grafana dashboards and alert rules. |
-| **Dashboard** | A full control plane for providers, models, policies, tenants, keys, tools, cache and tunnels. |
+| **Dashboard** | A full control plane for providers, models, policies, tenants, keys, tools, cache and tunnels, behind a first-run operator account. |
 | **Deployment** | Docker Compose, native systemd, and temporary Cloudflare tunnels. One configuration model across all three. |
 
 ## Tech stack
@@ -167,6 +167,11 @@ Full walkthroughs: **[Docker](documentation/installation/docker.md)** ·
 **[Native](documentation/installation/native.md)** ·
 **[Tunnel](documentation/installation/cloudflare-tunnel.md)** ·
 **[Getting started](documentation/getting-started.md)**
+
+On first launch the dashboard asks you to create the console administrator. There
+are no default credentials; the password you choose is stored as an Argon2id hash,
+and the setup screen closes itself permanently afterwards. See
+[Dashboard → Authentication](documentation/dashboard.md#authentication).
 
 Verify a running stack end to end — no provider key needed:
 

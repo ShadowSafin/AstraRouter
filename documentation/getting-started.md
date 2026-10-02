@@ -200,6 +200,29 @@ curl -s $GATEWAY/metrics | grep corerouter_gateway_requests_total
 Or open the dashboard and look at the Overview page — usage, cost and provider
 health update as traffic arrives.
 
+## Sign in to the dashboard
+
+Open <http://127.0.0.1:3000> for the first time and you get a setup screen rather
+than a login form. It creates the single console administrator and then closes
+itself permanently:
+
+```
+Create the admin account
+  Username          admin
+  Password          •••••••••••••••••••  Strong
+  Confirm password  •••••••••••••••••••
+                   [ Create admin account ]
+```
+
+There are no default credentials. The password is stored as an Argon2id hash and
+is never written down. After this, every visit shows a normal login form, and
+failed attempts lock the account temporarily.
+
+> If you lose the credentials, recovery is a database operation. There is no reset
+> link and no default account, deliberately — a recovery path is a backdoor.
+
+Details: [Dashboard → Authentication](dashboard.md#authentication)
+
 ## Verify the whole stack automatically
 
 The smoke suite checks liveness, readiness, the admin surface, the dashboard
@@ -226,6 +249,7 @@ failure appears in the request log. With a real key it returns `200`.
 | Control which provider answers | [Routing](routing.md) |
 | Reuse identical responses | [Caching](caching.md) |
 | Cap spend per tenant | [Routing](routing.md#cost-control) |
+| Sign in to the console | [Dashboard](dashboard.md#authentication) |
 | Let the model call tools | [Tools](tools.md) |
 | Use every endpoint | [API reference](api.md) |
 | Run without Docker | [Installation: native](installation/native.md) |

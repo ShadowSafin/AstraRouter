@@ -50,7 +50,49 @@ Things to know when you work with this codebase:
   derives from `CR_ADMIN_KEY`, so rotating the admin key orphans stored secrets.
   Set it explicitly for anything you intend to operate.
 - **The dashboard never holds the admin key in the browser.** Next route handlers
-  proxy `/admin/v1/*` server-side.
+  proxy `/admin/v1/*` server-side, and refuse to attach the key at all unless the
+  gateway has confirmed the operator's session.
+
+## Console operator login
+
+The dashboard is a control plane, so it is gated on a human identity rather than
+on the admin key. The two are deliberately separate credential types:
+
+| | API key | Console operator |
+| --- | --- | --- |
+| Material | 256 bits of CSPRNG output | Chosen by a person |
+| Stored as | SHA-256 digest | Argon2id hash, PHC-encoded |
+| Verified by | Index lookup | Key stretching, ~19 MiB and two iterations |
+| Abuse control | Rate limits per key | Rate limits plus per-account lockout |
+
+A fast hash would be wrong for a password: the whole point of key stretching is
+that verifying it is expensive, and an API key's fast digest is safe only because
+there is no dictionary to attack.
+
+Things to know:
+
+- **No default credentials.** The first operator is created through the setup
+  screen; nothing is seeded.
+- **First-run setup latches shut.** It is gated on a row in `settings`, not on the
+  absence of users, so deleting every operator does not hand setup back to
+  whoever can reach the console. There is deliberately no reset link and no
+  recovery backdoor — recovery is a database operation.
+- **Sessions are opaque and revocable.** The cookie holds 32 random bytes; only
+  the SHA-256 is stored. Logout revokes the row rather than deleting it, so the
+  record of who was signed in survives the session. A password change revokes
+  every existing session, because a change that leaves sessions valid has not
+  removed access from whoever held one.
+- **Cookies are `httpOnly` and `SameSite=Lax`.** `Secure` follows the actual
+  request scheme, so a plain-HTTP local install works; set `cookie_secure: true`
+  when TLS is terminated where the gateway cannot see it.
+- **Failed logins are indistinguishable.** A wrong password and an unknown
+  username return the same `401`, so the login form cannot be used to enumerate
+  accounts. A locked account returns `429` deliberately, because silently
+  reporting "incorrect" would leave a legitimate operator no way to tell a
+  lockout from a typo.
+- **Console auth does not replace the admin key.** Programmatic access to
+  `/admin/v1/*` still uses `CR_ADMIN_KEY`, which is what scripts and CI rely on.
+  The session gates the dashboard.
 - **Request bodies are not logged by default.** The redactor has a deny-list of
   headers and value patterns; extend it rather than bypassing it.
 - **Tunnel URLs are public.** Anyone holding a live `trycloudflare.com` URL can

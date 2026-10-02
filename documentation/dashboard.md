@@ -7,6 +7,71 @@ doing. It does not serve inference.
 The browser never holds the admin key. Next route handlers proxy `/admin/v1/*`
 server-side, so CORS never has to be widened to expose administrative routes.
 
+## Authentication
+
+The console requires an operator account. Opening it for the first time shows a
+setup screen that creates one administrator and then closes itself permanently;
+every visit after that shows a login form.
+
+### First run
+
+On a fresh installation the gateway reports that no operator exists, and the
+dashboard renders **Create the admin account**. The form asks for a username, a
+password and a confirmation, with a live strength meter.
+
+There are no default credentials. The account is created with the password you
+type, and nothing is written to the log or the response beyond the username.
+
+The form closes once you continue. It is gated on a latch in the settings table
+rather than on the absence of user rows, so **deleting every operator does not
+reopen it** — otherwise anyone who could reach the console would be able to claim
+it again. A second call to the setup endpoint returns `403`.
+
+### Signing in
+
+Username and password, checked against an Argon2id hash. After
+`max_failed_attempts` consecutive failures the account locks; the delay doubles on
+each further round up to `max_lockout_duration`. A locked account refuses the
+correct password too — that is the point of a lockout — and the response says so
+plainly rather than pretending the credentials were wrong.
+
+A wrong password and an unknown username return the **same** message, so the form
+cannot be used to discover which accounts exist.
+
+### Sessions
+
+A successful login sets an `httpOnly` cookie holding an opaque 32-byte token. Only
+the token's SHA-256 is stored, so a database disclosure yields no usable session.
+Sessions expire after `session_ttl`, and after `idle_ttl` without use — that check
+happens when the session is presented, so no background job is needed. Logging out
+revokes the row rather than deleting it, so the record of who was signed in
+survives the session.
+
+| Attribute | Value |
+| --- | --- |
+| `httpOnly` | Always. Script cannot read the session. |
+| `Secure` | Follows the request: on behind TLS, off over plain HTTP. Force it with `cookie_secure`. |
+| `SameSite` | `Lax`. `Strict` would drop the cookie when you arrive from a link and read as a broken login. |
+| `Path` | `/` |
+
+> **Recovering a lost password is a database operation.** There is no reset link and
+> no default account, by design — a recovery path is a backdoor. Set
+> `CR_CREDENTIALS_KEY` and keep a database backup.
+
+### What the login actually protects
+
+The dashboard's `/api/gateway/*` proxy refuses to attach the admin key unless the
+gateway has confirmed the session. Before this existed, that proxy accepted any
+`/admin/v1/*` call with no user authentication at all, which made "can reach the
+dashboard" equivalent to "is an operator".
+
+Route middleware redirects an unauthenticated visitor to `/login`, but that is a
+convenience, not the boundary: middleware runs in a different runtime and cannot
+reach the database. The gateway's answer is what enforces anything.
+
+The admin key still authenticates the admin API itself, so scripts, CI and the
+smoke suite are unaffected.
+
 ## Pages
 
 ### Overview
@@ -50,6 +115,15 @@ health; and kill or revive a provider. Provider rows show health state and
 
 Add, edit, disable and delete models under a provider. Discovery fills the list;
 your pricing, aliases, priorities and disables survive a re-sync.
+
+### Playground
+
+Test an endpoint live: pick a model, an endpoint scope and a policy, send a
+prompt, and read the answer next to the routing decision that produced it —
+provider, attempts, cache, fallback, tokens and the full debug decision. Both
+streaming and buffered runs, tool calling, and side-by-side compare of two
+targets. Runs go through the real inference API, not a simulation. See
+[Playground](playground.md).
 
 ### Policies
 
@@ -232,6 +306,11 @@ Adding a page means adding both plus a sidebar link.
 | A model you edited is missing after discovery | Discovery skips existing rows | Expected — your edits are preserved |
 | Charts are empty for a custom range | No data in that window | Check the range picker and that requests were flowing |
 | The page 404s on a new route | Route entry missing | Add `src/app/<name>/page.tsx` |
+| Redirected to `/login` but you are signed in | The cookie expired or was revoked | Sign in again; the session cookie has no `Secure` attribute over plain HTTP, so a browser may drop it on some networks |
+| Login always returns "the username or password is incorrect" with the right password | The account is locked out | Wait for `lockout_duration`; the delay doubles on each further round. `429` says so explicitly when locked |
+| Login says the body is not valid JSON | A stale dashboard build against a newer gateway | Rebuild the dashboard image |
+| Every panel 401s after login | The gateway rejected the session | Check the gateway log; `docker compose logs gateway` |
+| The setup form will not submit | First-run setup already completed | Expected — setup is latched. Recover access in the database if the credentials are lost |
 
 ---
 

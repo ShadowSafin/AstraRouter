@@ -41,10 +41,23 @@ empty directory to a working inference call in about five minutes.
 | --- | --- |
 | [API reference](api.md) | Every endpoint, header and error code |
 | [Dashboard](dashboard.md) | The operator console and its workflows |
+| [Analytics](analytics.md) | Where the report's numbers come from, and their limits |
+| [Playground](playground.md) | How the endpoint testing console runs a real request |
 | [Observability](observability.md) | Metrics, traces, logs and dashboards |
 | [Troubleshooting](troubleshooting.md) | Something is broken and you need the cause |
 | [FAQ](faq.md) | A short answer to a common question |
 | [Changelog](changelog.md) | What each delivery phase added |
+
+### Security and governance
+
+These stay at the repository root, where tooling expects to find them.
+
+| Document | Covers |
+| --- | --- |
+| [SECURITY.md](../SECURITY.md) | Reporting a vulnerability, the credential model, console operator login, hardening before production |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Conventions, tests, commit style, which document owns which fact |
+| [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Expectations for conduct, including technical disagreement |
+| [LICENSE](../LICENSE) | Apache 2.0 |
 
 ## Conventions used here
 

@@ -23,6 +23,7 @@ OpenAI clients ignore.
 - [Routing intent](#routing-intent)
 - [Inference](#inference)
 - [Operations](#operations)
+- [Console authentication](#console-authentication)
 - [Administration](#administration)
 
 ## Authentication
@@ -305,6 +306,66 @@ answer rather than a 404 that reads as a misconfigured base URL.
 
 Redis being degraded does **not** fail readiness — rate limiting falls back to a
 per-process limiter and the gateway can still serve.
+
+## Console authentication
+
+Five endpoints under `/admin/v1/auth`. They are mounted **outside** the admin
+group and outside `adminMiddleware`, because they are how an operator obtains a
+credential in the first place and gating them would be circular. They are not
+unprotected in the sense that matters: setup is latched shut after the first
+operator, and login is rate limited and locked out.
+
+The dashboard proxies these. See
+[dashboard.md](dashboard.md#authentication).
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/auth/state` | none | `{setup_required, authenticated, username?, policy}`. Discloses no account detail. |
+| `POST` | `/auth/setup` | none | Creates the single initial operator. `403` once setup is closed. |
+| `POST` | `/auth/login` | none | Verifies credentials and sets the session cookie. |
+| `POST` | `/auth/logout` | cookie | Revokes the session and clears the cookie. Always `204`. |
+| `GET` | `/auth/me` | cookie | The current operator. |
+
+**Setup** (`POST /admin/v1/auth/setup`):
+
+```json
+{ "username": "admin", "password": "…", "confirm": "…" }
+```
+
+`201` with `{username, expires_at}` and a session cookie. `400` for a mismatched
+confirmation or a password that fails the policy. `403` when setup is already
+closed — which includes the case where every operator has been deleted, because
+the latch is stored in `settings` rather than inferred from the user count.
+
+**Login** (`POST /admin/v1/auth/login`):
+
+```json
+{ "username": "admin", "password": "…", "confirm": "" }
+```
+
+`confirm` is accepted and ignored; the setup and login screens post the same three
+fields. `401` for a wrong password *and* for an unknown username, with an
+identical message, so the form cannot enumerate accounts. `429` with `Retry-After`
+while the account is locked out.
+
+**Session cookie.** `httpOnly` always, `SameSite=Lax`, `Path=/`, and `Secure`
+whenever the request arrived over TLS — or unconditionally if
+`cookie_secure: true`. The token is 32 bytes of CSPRNG output; only its SHA-256 is
+stored.
+
+```bash
+# The whole first-run flow, by hand.
+curl -s $GATEWAY/admin/v1/auth/state | jq
+curl -s -c jar -X POST $GATEWAY/admin/v1/auth/setup \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"a-long-passphrase","confirm":"a-long-passphrase"}' | jq
+curl -s -b jar $GATEWAY/admin/v1/auth/me | jq
+curl -s -b jar -X POST $GATEWAY/admin/v1/auth/logout -o /dev/null -w '%{http_code}\n'
+```
+
+Metrics: `corerouter_dashboard_auth_events_total{outcome}`. Labelled by outcome
+only — a username label would let an attacker inflate cardinality by guessing
+names.
 
 ## Administration
 
