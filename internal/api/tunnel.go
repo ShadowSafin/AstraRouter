@@ -25,7 +25,7 @@ type TunnelService interface {
 func (s *Server) tunnelDisabled() error {
 	return domain.NewError(domain.ErrCodeNotImplemented,
 		"temporary tunnels are disabled; set tunnel.enabled: true (or AR_TUNNEL_ENABLED=true) "+
-			"and install cloudflared to use them")
+			"and restart the gateway to use them (native installs also need cloudflared on PATH)")
 }
 
 // tunnelManager returns the manager or the disabled error when the feature is

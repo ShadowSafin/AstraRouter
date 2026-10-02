@@ -4,87 +4,293 @@
 <meta charset="utf-8" />
 <title>AstraRouter</title>
 <style>
-  :root { color-scheme: dark; }
+  /*
+   * Desktop splash — mirrors the console sign-in screen (dashboard Login03):
+   * same dark tokens, same serif headline, same staggered fade-and-rise
+   * entrance, same flowing-paths brand panel. Single self-contained file: no
+   * network, no external assets — the WebView loads it from a data URL before
+   * anything is serving.
+   *
+   * Contracts used by cmd/app (main.go) — do not rename:
+   *   setStep(name, label)   boot progress; 'ready' marks every row done
+   *   showError(msg)         boot failure; reveals the error card
+   *   desktop_retry() / desktop_openlogs() / desktop_quit()  bound by Go
+   */
+  :root {
+    color-scheme: dark;
+    --background: #090909;   /* hsl(0 0% 3.5%)   */
+    --card: #121212;         /* hsl(0 0% 7%)     */
+    --foreground: #f5f5f5;   /* hsl(0 0% 96%)    */
+    --muted: #9e9e9e;       /* hsl(0 0% 62%)    */
+    --border: #1f1f1f;       /* hsl(0 0% 12%)    */
+    --input: #242424;        /* hsl(0 0% 14%)    */
+    --primary: #3d7ef7;      /* hsl(221 83% 58%) */
+    --success: #3ddc84;      /* hsl(142 60% 52%) */
+    --danger: #f2555a;       /* hsl(0 74% 64%)   */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
-    font-family: "Segoe UI", system-ui, sans-serif;
-    background: #0b1220; color: #e2e8f0;
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--background); color: var(--foreground);
+    min-height: 100vh; overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
-  .card { width: 400px; text-align: center; }
-  .mark {
-    width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 18px;
-    background: linear-gradient(160deg, #1e1b4b, #0b1220);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 60px rgba(139, 92, 246, .35);
+
+  /* Entrance — the login screen's staggered fade-and-rise. */
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-  h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
-  .sub { color: #94a3b8; font-size: 13px; margin-top: 6px; }
-  .steps { list-style: none; margin-top: 28px; text-align: left; }
+  .enter { opacity: 0; animation: enter 500ms var(--ease-out) forwards; }
+
+  .login { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+
+  /* -- Brand panel (the login aside) -------------------------------------- */
+  .aside {
+    position: relative; display: flex; flex-direction: column;
+    background: var(--card); border-right: 1px solid var(--border);
+    padding: 40px; overflow: hidden;
+  }
+  .aside .fade {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom, transparent, transparent, var(--background));
+  }
+  .paths { position: absolute; inset: 0; pointer-events: none; }
+  .paths svg { width: 100%; height: 100%; display: block; }
+  .paths path {
+    fill: none; stroke: var(--primary);
+    animation: draw linear infinite;
+  }
+  /* The login screen's draw-sweep: each line draws itself down the curve
+     and undraws, forever. pathLength="1" (set in JS) makes the fractions
+     below resolve against the whole curve, so offset -0.98 ≡ 0.02 and the
+     loop is seamless. */
+  @keyframes draw {
+    0% { stroke-dasharray: 0.02 0.98; stroke-dashoffset: 0.02; }
+    50% { stroke-dasharray: 0.55 0.45; stroke-dashoffset: -0.25; }
+    100% { stroke-dasharray: 0.02 0.98; stroke-dashoffset: -0.98; }
+  }
+  .brand {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; font-weight: 600; letter-spacing: -0.025em;
+  }
+  .brand svg { display: block; }
+  .brand img.markimg { display: block; width: 24px; height: 24px; border-radius: 6px; }
+  .quote { position: relative; z-index: 1; margin-top: auto; }
+  .quote blockquote {
+    font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+    font-size: 30px; line-height: 1.25; letter-spacing: -0.01em; font-weight: 500;
+  }
+  .quote blockquote em { font-style: italic; }
+  .quote figcaption {
+    margin-top: 12px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+  .quote figcaption .sep { color: var(--border); }
+
+  /* -- Status panel (the login form side) ---------------------------------- */
+  .main { position: relative; display: flex; flex-direction: column; justify-content: center; padding: 32px; }
+  .glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0.6; }
+  .glow::before, .glow::after {
+    content: ""; position: absolute; right: 0; top: 0; border-radius: 9999px;
+  }
+  .glow::before {
+    width: 560px; height: 1280px; transform: translate(5%, -28%);
+    background: radial-gradient(68.54% 68.72% at 55.02% 31.46%,
+      rgba(245, 245, 245, 0.06) 0, rgba(245, 245, 245, 0.02) 50%,
+      rgba(245, 245, 245, 0.01) 80%);
+  }
+  .glow::after {
+    width: 240px; height: 1280px; transform: translate(5%, -50%);
+    background: radial-gradient(50% 50% at 50% 50%,
+      rgba(245, 245, 245, 0.04) 0, rgba(245, 245, 245, 0.01) 80%, transparent 100%);
+  }
+  .panel { position: relative; z-index: 1; width: 100%; max-width: 380px; margin: 0 auto; }
+  .brand.mobile { display: none; margin-bottom: 24px; }
+  .panel h1 {
+    font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+    font-size: 48px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.05;
+  }
+  .desc { margin-top: 8px; font-size: 14px; color: var(--muted); min-height: 21px; }
+
+  .steps { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 8px; }
   .steps li {
-    display: flex; gap: 10px; align-items: center; padding: 7px 12px;
-    border-radius: 8px; font-size: 13px; color: #64748b;
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+    font-size: 13px; color: var(--muted); background: transparent;
+    transition: border-color 300ms var(--ease-out), background 300ms var(--ease-out), color 300ms;
   }
-  .steps li.active { color: #e2e8f0; background: rgba(139, 92, 246, .08); }
-  .steps li.done { color: #34d399; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; flex: none; }
-  .steps li.active .dot { background: #8b5cf6; animation: pulse 1s infinite; }
-  .steps li.done .dot { background: #34d399; }
-  @keyframes pulse { 50% { opacity: .35; } }
-  .status { margin-top: 18px; font-size: 12px; color: #64748b; min-height: 18px; }
-  #error { display: none; margin-top: 20px; text-align: left;
-    background: rgba(239, 68, 68, .08); border: 1px solid rgba(239, 68, 68, .3);
-    border-radius: 10px; padding: 14px 16px; }
-  #error h2 { font-size: 14px; color: #fca5a5; margin-bottom: 6px; }
-  #error p { font-size: 12px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
-  #error .row { display: flex; gap: 8px; margin-top: 12px; }
+  .steps li.active {
+    color: var(--foreground); border-color: rgba(61, 126, 247, 0.45);
+    background: rgba(61, 126, 247, 0.07);
+  }
+  .steps li.done { color: var(--muted); }
+  .box {
+    position: relative; flex: none; width: 18px; height: 18px;
+    border: 1px solid var(--input); border-radius: 9999px;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 300ms, background 300ms;
+  }
+  .steps li.active .box { border-color: var(--primary); }
+  .steps li.done .box { border-color: var(--success); background: rgba(61, 220, 132, 0.1); }
+  .box .spin {
+    display: none; width: 10px; height: 10px; border-radius: 9999px;
+    border: 2px solid rgba(61, 126, 247, 0.25); border-top-color: var(--primary);
+    animation: spin 0.9s linear infinite;
+  }
+  .steps li.active .box .spin { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .box .check { display: none; }
+  .steps li.done .box .check { display: block; }
+  .steps li.done .box .spin { display: none; }
+  .foot { margin-top: 24px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+
+  /* -- Error card (dashboard destructive tones) ----------------------------- */
+  #error {
+    display: none; margin-top: 24px; text-align: left;
+    background: rgba(242, 85, 90, 0.06); border: 1px solid rgba(242, 85, 90, 0.3);
+    border-radius: 12px; padding: 16px;
+  }
+  #error h2 { font-size: 14px; font-weight: 600; color: #fca5a5; margin-bottom: 6px; }
+  #error p { font-size: 12px; color: #d4d4d4; white-space: pre-wrap; word-break: break-word; }
+  #error .row { display: flex; gap: 8px; margin-top: 14px; }
   #error button {
-    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #334155;
-    background: #1e293b; color: #e2e8f0; font-size: 12px; cursor: pointer;
+    flex: 1; padding: 9px 8px; border-radius: 8px; border: 1px solid var(--input);
+    background: #1a1a1a; color: var(--foreground); font-size: 12px; cursor: pointer;
+    font-family: inherit; transition: background 150ms;
   }
-  #error button:hover { background: #334155; }
+  #error button:hover { background: #262626; }
+
+  /* -- Narrow window: single column, like the login below lg ---------------- */
+  @media (max-width: 900px) {
+    .login { grid-template-columns: 1fr; }
+    .aside { display: none; }
+    .brand.mobile { display: flex; }
+    .panel h1 { font-size: 40px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .enter { opacity: 1; animation: none; }
+    .paths path, .box .spin { animation: none; }
+    .box .spin { border-top-color: rgba(61, 126, 247, 0.25); }
+  }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="mark">
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-      <path d="M18 2 L21 15 L34 18 L21 21 L18 34 L15 21 L2 18 L15 15 Z" fill="#a78bfa"/>
-      <circle cx="18" cy="18" r="3.5" fill="#fff"/>
-    </svg>
-  </div>
-  <h1>AstraRouter</h1>
-  <p class="sub">Starting your local control plane&hellip;</p>
-  <ul class="steps" id="steps">
-    <li data-step="db"><span class="dot"></span>Local database</li>
-    <li data-step="migrate"><span class="dot"></span>Migrations</li>
-    <li data-step="gateway"><span class="dot"></span>Gateway</li>
-    <li data-step="dashboard"><span class="dot"></span>Dashboard</li>
-  </ul>
-  <p class="status" id="status"></p>
-  <div id="error">
-    <h2>Something failed to start</h2>
-    <p id="errmsg"></p>
-    <div class="row">
-      <button onclick="desktop_retry()">Retry</button>
-      <button onclick="desktop_openlogs()">Open logs</button>
-      <button onclick="desktop_quit()">Quit</button>
+<section class="login">
+  <aside class="aside">
+    <div class="paths" aria-hidden="true">
+      <svg id="paths-a" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice"></svg>
+      <svg id="paths-b" viewBox="0 0 696 316" preserveAspectRatio="xMidYMid slice"
+           style="position:absolute;inset:0"></svg>
     </div>
-  </div>
-</div>
+    <div class="fade" aria-hidden="true"></div>
+    <div class="brand enter" style="animation-delay:0ms">
+      <!--AR-ICON-->
+      <img class="markimg" src="__AR_BRAND_ICON__" alt="" aria-hidden="true" width="24" height="24" />
+      <span>AstraRouter</span>
+    </div>
+    <figure class="quote enter" style="animation-delay:240ms">
+      <blockquote>
+        One control plane for every provider &mdash; routing, spend and health,
+        <em>without the spreadsheets</em>.
+      </blockquote>
+      <figcaption><span>AstraRouter</span><span class="sep">|</span><span>Control plane</span></figcaption>
+    </figure>
+  </aside>
+
+  <main class="main">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="panel">
+      <div class="brand mobile enter" style="animation-delay:0ms">
+        <!--AR-ICON-->
+        <img class="markimg" src="__AR_BRAND_ICON__" alt="" aria-hidden="true" width="24" height="24" />
+        <span>AstraRouter</span>
+      </div>
+      <h1 class="enter" style="animation-delay:60ms">Starting.</h1>
+      <p class="desc enter" id="status" style="animation-delay:120ms">Waking your local control plane&hellip;</p>
+      <ul class="steps enter" id="steps" style="animation-delay:180ms">
+        <li data-step="db">
+          <span class="box"><span class="spin"></span><svg class="check" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="#3ddc84" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Local database</span>
+        </li>
+        <li data-step="migrate">
+          <span class="box"><span class="spin"></span><svg class="check" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="#3ddc84" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Migrations</span>
+        </li>
+        <li data-step="gateway">
+          <span class="box"><span class="spin"></span><svg class="check" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="#3ddc84" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Gateway</span>
+        </li>
+        <li data-step="dashboard">
+          <span class="box"><span class="spin"></span><svg class="check" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.2 4 7.5 8.5 2.5" stroke="#3ddc84" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Dashboard</span>
+        </li>
+      </ul>
+      <p class="foot enter" style="animation-delay:240ms">Local-first &middot; nothing leaves this machine until you create a tunnel.</p>
+      <div id="error">
+        <h2>Something failed to start</h2>
+        <p id="errmsg"></p>
+        <div class="row">
+          <button onclick="desktop_retry()">Retry</button>
+          <button onclick="desktop_openlogs()">Open logs</button>
+          <button onclick="desktop_quit()">Quit</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</section>
 <script>
-  const items = [...document.querySelectorAll('#steps li')];
+  // Flowing paths — the login screen's FloatingPaths, hand-rolled: same curve
+  // family, drawn once, drifted forever with a dash-offset loop. Respects the
+  // viewer's reduced-motion setting via the CSS kill-switch above.
+  (function () {
+    var NS = 'http://www.w3.org/2000/svg';
+    function build(svg, position, count) {
+      for (var i = 0; i < count; i++) {
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d',
+          'M-' + (380 - i * 5 * position) + ' -' + (189 + i * 6) +
+          'C-' + (380 - i * 5 * position) + ' -' + (189 + i * 6) +
+          ' -' + (312 - i * 5 * position) + ' ' + (216 - i * 6) +
+          ' ' + (152 - i * 5 * position) + ' ' + (343 - i * 6) +
+          'C' + (616 - i * 5 * position) + ' ' + (470 - i * 6) +
+          ' ' + (684 - i * 5 * position) + ' ' + (875 - i * 6) +
+          ' ' + (684 - i * 5 * position) + ' ' + (875 - i * 6));
+        p.setAttribute('pathLength', '1');
+        p.setAttribute('stroke-width', String(0.5 + i * 0.03));
+        /* Same presence as the login screen: 0.1 + id * 0.03 per line. */
+        p.setAttribute('stroke-opacity', String(Math.min(0.1 + i * 0.03, 1)));
+        p.style.animationDuration = String(20 + ((Math.sin(i + 1) * 10000) % 1 + 1) % 1 * 10) + 's';
+        p.style.animationDelay = String(-(i * 1.7)) + 's';
+        svg.appendChild(p);
+      }
+    }
+    /* Two layers of 36, exactly like the login screen's pair of FloatingPaths. */
+    build(document.getElementById('paths-a'), 1, 36);
+    build(document.getElementById('paths-b'), -1, 36);
+  })();
+
+  var items = Array.prototype.slice.call(document.querySelectorAll('#steps li'));
   function setStep(name, label) {
-    const i = items.findIndex(li => li.dataset.step === name);
-    items.forEach((li, j) => {
-      li.classList.toggle('done', j < i);
+    var i = -1;
+    for (var k = 0; k < items.length; k++) {
+      if (items[k].getAttribute('data-step') === name) { i = k; break; }
+    }
+    items.forEach(function (li, j) {
+      li.classList.toggle('done', i >= 0 && j < i);
       li.classList.toggle('active', j === i);
     });
     if (label) document.getElementById('status').textContent = label;
-    if (name === 'ready') items.forEach(li => { li.classList.add('done'); li.classList.remove('active'); });
+    if (name === 'ready') {
+      items.forEach(function (li) { li.classList.add('done'); li.classList.remove('active'); });
+    }
   }
   function showError(msg) {
-    items.forEach(li => li.classList.remove('active'));
+    items.forEach(function (li) { li.classList.remove('active'); });
     document.getElementById('errmsg').textContent = msg;
     document.getElementById('error').style.display = 'block';
     document.getElementById('status').textContent = '';

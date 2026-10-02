@@ -41,6 +41,17 @@ telemetry:
 # nats:
 #   url: nats://127.0.0.1:4222
 
+# Temporary public tunnels (Cloudflare quick tunnels). Off by default: nothing
+# is exposed until you create one from the dashboard (/tunnels) or
+# POST /admin/v1/tunnels/create. Every request through a tunnel still passes
+# auth, policy and rate limits. Native installs need cloudflared on PATH (or
+# AR_TUNNEL_BINARY pointing at it) — unlike the Docker image, this bundle
+# does not ship it.
+tunnel:
+  enabled: false # or AR_TUNNEL_ENABLED=true to allow creation
+  # Where the "dashboard" target points: this install's dashboard port.
+  dashboard_target: http://127.0.0.1:__DASH_PORT__
+
 # A local-model slot so the gateway reports ready out of the box. It needs
 # no key: install Ollama and pull a model, or add a cloud provider in the
 # dashboard — the catalogue is editable there without reinstalling.

@@ -41,23 +41,39 @@ if ($LASTEXITCODE -ne 0) { throw "rsrc (installer) failed" }
 $Bin = Join-Path ([IO.Path]::GetTempPath()) "astrarouter-build"
 if (Test-Path $Bin) { Remove-Item $Bin -Recurse -Force }
 New-Item -ItemType Directory $Bin -Force | Out-Null
+# NOTE: the app and gateway MUST stage in separate directories. "AstraRouter.exe"
+# (app) and "astrarouter.exe" (gateway) are the same filename on Windows'
+# case-insensitive filesystem, so building both into $Bin flat makes the gateway
+# silently overwrite the app and the installer ships the gateway as the app
+# (double-click then flashes a console and exits).
+$BinApp = Join-Path $Bin "app-stage"
+$BinGw = Join-Path $Bin "gw-stage"
+New-Item -ItemType Directory $BinApp, $BinGw -Force | Out-Null
 
 Step "standalone app exe (runtime, no payload)"
-if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
+if (Test-Path $Dist) {
+  try {
+    Remove-Item $Dist -Recurse -Force -ErrorAction Stop
+  } catch {
+    # A stray directory handle (Explorer, AV scan) can block removing the
+    # folder itself; empty it instead and carry on.
+    Get-ChildItem $Dist -Force -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
+  }
+}
 New-Item -ItemType Directory $Dist -Force | Out-Null
 Push-Location $Desktop
 try {
   & $Go build ./...
   if ($LASTEXITCODE -ne 0) { throw "desktop go build failed" }
-  & $Go build -trimpath -ldflags "-H windowsgui" -o (Join-Path $Bin "AstraRouter.exe") ./cmd/app
+  & $Go build -trimpath -ldflags "-H windowsgui" -o (Join-Path $BinApp "AstraRouter.exe") ./cmd/app
   if ($LASTEXITCODE -ne 0) { throw "app build failed" }
-  Copy-Item (Join-Path $Bin "AstraRouter.exe") (Join-Path $Dist "AstraRouter.exe") -Force
+  Copy-Item (Join-Path $BinApp "AstraRouter.exe") (Join-Path $Dist "AstraRouter.exe") -Force
 } finally { Pop-Location }
 
 Step "gateway binary"
 Push-Location $Repo
 try {
-  & $Go build -trimpath -o (Join-Path $Bin "astrarouter.exe") ./cmd/astrarouter
+  & $Go build -trimpath -o (Join-Path $BinGw "astrarouter.exe") ./cmd/astrarouter
   if ($LASTEXITCODE -ne 0) { throw "gateway build failed" }
 } finally { Pop-Location }
 
@@ -91,10 +107,15 @@ $pBin = Join-Path $Payload "bin"
 $pStandalone = Join-Path $Payload "dashboard\.next\standalone"
 New-Item -ItemType Directory $pBin -Force | Out-Null
 New-Item -ItemType Directory $pStandalone -Force | Out-Null
-Copy-Item (Join-Path $Bin "astrarouter.exe") (Join-Path $pBin "astrarouter.exe") -Force
+Copy-Item (Join-Path $BinGw "astrarouter.exe") (Join-Path $pBin "astrarouter.exe") -Force
 Copy-Item $NodeExe (Join-Path $pBin "node.exe") -Force
 # The standalone app is what the installer installs.
-Copy-Item (Join-Path $Bin "AstraRouter.exe") (Join-Path $Payload "AstraRouter.exe") -Force
+Copy-Item (Join-Path $BinApp "AstraRouter.exe") (Join-Path $Payload "AstraRouter.exe") -Force
+# Guard against the case-collision regression above: the staged app must never
+# be the gateway binary under a different name.
+$appHash = (Get-FileHash (Join-Path $Payload "AstraRouter.exe")).Hash
+$gwHash = (Get-FileHash (Join-Path $pBin "astrarouter.exe")).Hash
+if ($appHash -eq $gwHash) { throw "payload app and gateway are byte-identical; staging collision (see NOTE above)" }
 # Next resolves static assets relative to server.js, so they live INSIDE it.
 Copy-Item (Join-Path $Repo "dashboard\.next\standalone\*") $pStandalone -Recurse -Force
 if (-not (Test-Path (Join-Path $pStandalone "server.js"))) { throw "standalone server.js missing after build" }
@@ -113,7 +134,11 @@ Remove-Item $unzip -Recurse -Force -ErrorAction SilentlyContinue
 
 Step "setup-only installer exe"
 $stamp = (Get-Date -Format o)
-try { $stamp += " " + (git -C $Repo rev-parse --short HEAD 2>$null) } catch {}
+# NOTE: joined with "_" (no spaces) because a space inside the -X value breaks
+# go's argv parsing when this script runs under Windows PowerShell 5.1, which
+# does not re-quote embedded quotes for native commands (the hash would be
+# treated as a package path: "package <hash> is not in std").
+try { $stamp += "_" + (git -C $Repo rev-parse --short HEAD 2>$null) } catch {}
 Push-Location $Desktop
 try {
   $vetted = "github.com/shadowsafin/astrarouter/desktop/internal/payload.version=$stamp"

@@ -119,9 +119,12 @@ export function TunnelsView() {
             </CardTitle>
             <CardDescription>
               Set <code className="font-mono">tunnel.enabled: true</code> (or{' '}
-              <code className="font-mono">AR_TUNNEL_ENABLED=true</code>) and install{' '}
-              <code className="font-mono">cloudflared</code> on the gateway host, then restart
-              the gateway. Nothing is exposed until you create a tunnel below.
+              <code className="font-mono">AR_TUNNEL_ENABLED=true</code>), then restart
+              the gateway. Nothing is exposed until you create a tunnel below. The
+              Docker gateway image already includes{' '}
+              <code className="font-mono">cloudflared</code>; native installs need it
+              on <code className="font-mono">PATH</code> (or set{' '}
+              <code className="font-mono">tunnel.binary</code> to its absolute path).
             </CardDescription>
           </CardHeader>
         </Card>
