@@ -1,4 +1,4 @@
-# OpenTelemetry collector configuration for AstraRouter.
+# OpenTelemetry collector configuration for Synapass.
 #
 # The collector is the seam between the gateway and whatever backend an operator
 # chooses. The gateway speaks OTLP and nothing else; swapping a Jaeger for a
@@ -47,10 +47,10 @@ processors:
   resource:
     attributes:
       - key: deployment.environment.name
-        value: ${env:AR_ENVIRONMENT}
+        value: ${env:SYNAPASS_ENVIRONMENT}
         action: upsert
       - key: service.namespace
-        value: astrarouter
+        value: synapass
         action: upsert
 
   # Batching is what makes the collector worth running at all: it converts a
@@ -79,7 +79,7 @@ exporters:
       localtime: true
 
   # Collector self-telemetry, scraped by prometheus.yml. This is what makes
-  # AstraRouterSpanExporterFailing and AstraRouterCollectorQueueSaturated possible:
+  # SynapassSpanExporterFailing and SynapassCollectorQueueSaturated possible:
   # a collector dropping data still looks idle from the application's side.
   prometheus:
     endpoint: 0.0.0.0:8889
@@ -87,11 +87,11 @@ exporters:
       enabled: true
 
   # Point traces at a real backend (Tempo, Jaeger, another collector) by setting
-  # AR_OTEL_TRACES_ENDPOINT and enabling this exporter in the pipeline below.
+  # SYNAPASS_OTEL_TRACES_ENDPOINT and enabling this exporter in the pipeline below.
   # otlp/traces:
-  #   endpoint: ${env:AR_OTEL_TRACES_ENDPOINT:-localhost:4317}
+  #   endpoint: ${env:SYNAPASS_OTEL_TRACES_ENDPOINT:-localhost:4317}
   #   tls:
-  #     insecure: ${env:AR_OTEL_TRACES_INSECURE:-true}
+  #     insecure: ${env:SYNAPASS_OTEL_TRACES_INSECURE:-true}
 
 service:
   extensions: [health_check]

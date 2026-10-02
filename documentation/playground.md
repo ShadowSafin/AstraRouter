@@ -93,14 +93,14 @@ There is nothing in either surface that is decorative.
 | response format | `response_format` |
 | Tools | `tools` |
 | Extra body | merged into the body |
-| Endpoint scope | `X-AstraRouter-Endpoint` |
-| Routing policy | `X-AstraRouter-Policy` |
-| No fallback | `X-AstraRouter-No-Fallback` |
-| Bypass cache | `X-AstraRouter-No-Cache` |
-| Region | `X-AstraRouter-Region` |
-| Sensitivity | `X-AstraRouter-Sensitivity` |
-| Max cost, latency target | `X-AstraRouter-Max-Cost-USD`, `X-AstraRouter-Latency-Target-Ms` |
-| Debug metadata | `X-AstraRouter-Debug` |
+| Endpoint scope | `X-Synapass-Endpoint` |
+| Routing policy | `X-Synapass-Policy` |
+| No fallback | `X-Synapass-No-Fallback` |
+| Bypass cache | `X-Synapass-No-Cache` |
+| Region | `X-Synapass-Region` |
+| Sensitivity | `X-Synapass-Sensitivity` |
+| Max cost, latency target | `X-Synapass-Max-Cost-USD`, `X-Synapass-Latency-Target-Ms` |
+| Debug metadata | `X-Synapass-Debug` |
 
 A field left at "not sent" is omitted rather than sent as a zero. Filling in
 `temperature` when the operator did not choose it would silently change the
@@ -123,7 +123,7 @@ override there would make the panel lie.
 This is the most common expectation and the most important omission, so it is
 stated plainly.
 
-`X-AstraRouter-Provider` exists — as a **response** header naming the provider
+`X-Synapass-Provider` exists — as a **response** header naming the provider
 that served the request. There is no request-side equivalent. Similarly, the
 tenant is derived from the API key that authenticates the call; it cannot be set
 per request.

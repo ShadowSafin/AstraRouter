@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // NormalizeHTTPError converts an upstream HTTP failure into a domain.Error.
@@ -157,7 +157,7 @@ func defaultMessageFor(status int, provider string) string {
 	}
 }
 
-// errorBodyEnvelope covers the error shapes AstraRouter encounters in practice:
+// errorBodyEnvelope covers the error shapes Synapass encounters in practice:
 // OpenAI's nested object, Anthropic's nested object with a different shape, and
 // a bare message string.
 type errorBodyEnvelope struct {

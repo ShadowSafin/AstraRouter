@@ -1,4 +1,4 @@
-// Package domain holds AstraRouter's first-class domain objects.
+// Package domain holds Synapass's first-class domain objects.
 //
 // Everything in this package is deliberately dependency-free: it imports only
 // the standard library. Services (routing, policy, storage, providers) depend on
@@ -99,7 +99,7 @@ const (
 	RequestTypeEmbedding      RequestType = "embeddings"
 )
 
-// Valid reports whether the request type is one AstraRouter understands.
+// Valid reports whether the request type is one Synapass understands.
 func (r RequestType) Valid() bool {
 	switch r {
 	case RequestTypeChatCompletion, RequestTypeCompletion, RequestTypeEmbedding:

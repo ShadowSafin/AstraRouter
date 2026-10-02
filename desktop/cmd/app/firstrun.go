@@ -28,11 +28,11 @@ func ensureFirstRunEnv(root string) error {
 
 	envTmpl, err := os.ReadFile(filepath.Join(root, "templates", "native.env.template"))
 	if err != nil {
-		return fmt.Errorf("no native.env and no template to create one (run the AstraRouter installer): %w", err)
+		return fmt.Errorf("no native.env and no template to create one (run the Synapass installer): %w", err)
 	}
 	cfgTmpl, err := os.ReadFile(filepath.Join(root, "templates", "config.yaml"))
 	if err != nil {
-		return fmt.Errorf("no native.env and no config template (run the AstraRouter installer): %w", err)
+		return fmt.Errorf("no native.env and no config template (run the Synapass installer): %w", err)
 	}
 
 	gwPort, err := freePort(18081)
@@ -84,7 +84,7 @@ func ensureFirstRunEnv(root string) error {
 	if err := os.WriteFile(filepath.Join(root, "config.yaml"), []byte(cfg), 0o640); err != nil {
 		return fmt.Errorf("write config.yaml: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "astrarouter: first run — wrote native.env (gateway %d, dashboard %d, postgres %d)\n",
+	fmt.Fprintf(os.Stderr, "synapass: first run — wrote native.env (gateway %d, dashboard %d, postgres %d)\n",
 		gwPort, dashPort, pgPort)
 	return nil
 }

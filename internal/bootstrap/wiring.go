@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/admin"
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/providers"
-	"github.com/shadowsafin/astrarouter/internal/storage"
-	"github.com/shadowsafin/astrarouter/internal/telemetry"
+	"github.com/shadowsafin/synapass/internal/admin"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/storage"
+	"github.com/shadowsafin/synapass/internal/telemetry"
 )
 
 // AdapterOptions builds provider options from configuration.
@@ -86,7 +86,7 @@ func BuildAdapters(
 }
 
 // credentialStore builds the sealing store for database-held provider
-// credentials. An explicit AR_CREDENTIALS_KEY wins; otherwise the data key is
+// credentials. An explicit SYNAPASS_CREDENTIALS_KEY wins; otherwise the data key is
 // derived from the admin key, so stock deployments need no new configuration.
 func credentialStore(cfg *config.Config) (*admin.Store, error) {
 	key, err := admin.KeyMaterial(

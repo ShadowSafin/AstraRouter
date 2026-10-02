@@ -104,7 +104,7 @@ func (c *Config) validateHTTP(v *ValidationError) {
 
 func (c *Config) validateDatabase(v *ValidationError) {
 	if strings.TrimSpace(c.Database.DSN) == "" {
-		v.add("database.dsn is empty; set database.dsn or AR_DATABASE_DSN")
+		v.add("database.dsn is empty; set database.dsn or SYNAPASS_DATABASE_DSN")
 		return
 	}
 	if c.Database.Port <= 0 || c.Database.Port > 65535 {
@@ -187,8 +187,8 @@ func (c *Config) validateAuth(v *ValidationError) {
 	if c.Auth.MinKeyLength < 16 {
 		v.add("auth.min_key_length %d is too short; 32 is recommended for 256-bit keys", c.Auth.MinKeyLength)
 	}
-	if !strings.HasPrefix(c.Auth.KeyPrefix, "ar_") && c.Auth.KeyPrefix != "" {
-		v.add("auth.key_prefix %q should start with \"ar_\" so keys are identifiable in logs and support tickets",
+	if !strings.HasPrefix(c.Auth.KeyPrefix, "syn_") && c.Auth.KeyPrefix != "" {
+		v.add("auth.key_prefix %q should start with \"syn_\" so keys are identifiable in logs and support tickets",
 			c.Auth.KeyPrefix)
 	}
 	if c.Auth.CacheTTL <= 0 {
@@ -345,7 +345,7 @@ func (c *Config) validateAdmin(v *ValidationError) {
 		v.add("admin retention days must not be negative")
 	}
 	if c.Admin.Enabled && c.Admin.RequireScope && c.Auth.AdminKey == "" && c.IsProduction() {
-		v.add("admin.require_scope is true but no bootstrap admin key is configured (set AR_ADMIN_KEY)")
+		v.add("admin.require_scope is true but no bootstrap admin key is configured (set SYNAPASS_ADMIN_KEY)")
 	}
 }
 
@@ -594,7 +594,7 @@ func splitHostPort(target string) (host, port string, ok bool) {
 }
 
 // isLoopbackHost reports whether a target host is this machine. Only loopback
-// destinations may be exposed: a tunnel must never turn AstraRouter into a
+// destinations may be exposed: a tunnel must never turn Synapass into a
 // proxy for someone else's infrastructure.
 func isLoopbackHost(host string) bool {
 	switch strings.ToLower(strings.TrimSuffix(host, ".")) {

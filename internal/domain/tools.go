@@ -10,7 +10,7 @@ import (
 //
 // The request/response wire types for tool calling already exist in chat.go
 // (Tool, ToolCall, FunctionCall). This file adds the control-plane model: what
-// a tool *is* in AstraRouter's registry, what happened when one ran, and the
+// a tool *is* in Synapass's registry, what happened when one ran, and the
 // rules that decide whether it may run at all.
 // ---------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ func (t *ToolSpec) Usable() bool { return t != nil && t.Enabled }
 // the form every adapter translates for its own provider.
 //
 // This is what makes the registry useful to clients that know nothing about
-// AstraRouter: a registered tool becomes an ordinary entry in the request's
+// Synapass: a registered tool becomes an ordinary entry in the request's
 // `tools` array, so the same tool works whichever provider ends up serving it.
 func (t *ToolSpec) Wire() Tool {
 	if t == nil {

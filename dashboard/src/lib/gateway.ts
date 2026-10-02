@@ -9,7 +9,7 @@
 import 'server-only';
 
 /** The gateway as seen from the dashboard server. */
-export const GATEWAY_URL = (process.env.ASTRAROUTER_API_URL ?? 'http://localhost:8080').replace(
+export const GATEWAY_URL = (process.env.SYNAPASS_API_URL ?? 'http://localhost:8080').replace(
   /\/+$/,
   '',
 );
@@ -19,7 +19,7 @@ export const GATEWAY_URL = (process.env.ASTRAROUTER_API_URL ?? 'http://localhost
  * never reaches the browser: the whole reason the dashboard proxies rather than
  * calling the gateway directly.
  */
-export const ADMIN_KEY = process.env.ASTRAROUTER_ADMIN_KEY ?? '';
+export const ADMIN_KEY = process.env.SYNAPASS_ADMIN_KEY ?? '';
 
 export function hasAdminKey(): boolean {
   return ADMIN_KEY.trim().length > 0;
@@ -120,7 +120,7 @@ export async function proxyAdmin(
         error: {
           message:
             `the dashboard could not reach the gateway at ${GATEWAY_URL}. ` +
-            'Check ASTRAROUTER_API_URL and that the gateway is running.',
+            'Check SYNAPASS_API_URL and that the gateway is running.',
           type: 'upstream_error',
           code: 'dashboard_upstream_unreachable',
           cause: cause instanceof Error ? cause.message : String(cause),

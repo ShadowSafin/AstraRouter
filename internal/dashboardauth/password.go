@@ -256,7 +256,7 @@ func ValidatePassword(password string, rules PasswordRules) error {
 // stub that pretends to check.
 var commonPasswordStems = []string{
 	"password", "passwd", "qwerty", "letmein", "welcome",
-	"administrator", "admin", "astrarouter", "changeme", "default",
+	"administrator", "admin", "synapass", "changeme", "default",
 	"iloveyou", "trustno", "sunshine", "abc123", "123456", "654321",
 }
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/providers"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/providers"
 )
 
 // These tests pin the two defects that made long answers stop mid-sentence:

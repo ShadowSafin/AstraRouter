@@ -1,4 +1,4 @@
--- AstraRouter Phase 2.5: widen audit event enumerations for Phase 2 resources.
+-- Synapass Phase 2.5: widen audit event enumerations for Phase 2 resources.
 --
 -- Phase 2 added control-plane actions (override/probe/allow/deny) and resources
 -- (endpoint, override, replay_job, evaluation, cache, feedback) in the domain

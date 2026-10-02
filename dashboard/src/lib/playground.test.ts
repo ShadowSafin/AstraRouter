@@ -184,10 +184,10 @@ describe('buildChatBody', () => {
 
 describe('buildHeaders', () => {
   it('sends the transport headers and the bearer token', () => {
-    const headers = buildHeaders(config({ debug: false }), 'ar_live_x');
+    const headers = buildHeaders(config({ debug: false }), 'syn_live_x');
     expect(headers['content-type']).toBe('application/json');
-    expect(headers.authorization).toBe('Bearer ar_live_x');
-    expect(headers).not.toHaveProperty('X-AstraRouter-Debug');
+    expect(headers.authorization).toBe('Bearer syn_live_x');
+    expect(headers).not.toHaveProperty('X-Synapass-Debug');
   });
 
   it('omits the authorization header when no key is present', () => {
@@ -201,8 +201,8 @@ describe('buildHeaders', () => {
 
   it('never sends a provider or tenant header, which the gateway ignores', () => {
     const headers = buildHeaders(config({ debug: true, endpoint: 'prod', policy: 'fast' }), 'k');
-    expect(headers).not.toHaveProperty('X-AstraRouter-Provider');
-    expect(headers).not.toHaveProperty('X-AstraRouter-Tenant');
+    expect(headers).not.toHaveProperty('X-Synapass-Provider');
+    expect(headers).not.toHaveProperty('X-Synapass-Tenant');
   });
 });
 
@@ -226,31 +226,31 @@ describe('intentHeaders', () => {
       }),
     );
     expect(headers).toEqual({
-      'X-AstraRouter-Debug': 'true',
-      'X-AstraRouter-Endpoint': 'prod-chat',
-      'X-AstraRouter-Policy': 'policy_1',
-      'X-AstraRouter-No-Fallback': 'true',
-      'X-AstraRouter-No-Cache': 'true',
-      'X-AstraRouter-Region': 'eu',
-      'X-AstraRouter-Sensitivity': 'pii,public',
-      'X-AstraRouter-Max-Cost-USD': '0.02',
-      'X-AstraRouter-Latency-Target-Ms': '1500',
+      'X-Synapass-Debug': 'true',
+      'X-Synapass-Endpoint': 'prod-chat',
+      'X-Synapass-Policy': 'policy_1',
+      'X-Synapass-No-Fallback': 'true',
+      'X-Synapass-No-Cache': 'true',
+      'X-Synapass-Region': 'eu',
+      'X-Synapass-Sensitivity': 'pii,public',
+      'X-Synapass-Max-Cost-USD': '0.02',
+      'X-Synapass-Latency-Target-Ms': '1500',
     });
   });
 
   it('treats a zero cost ceiling and a zero latency target as unset', () => {
     const headers = intentHeaders(config({ maxCostUsd: -1, latencyTargetMs: 0 }));
-    expect(headers).not.toHaveProperty('X-AstraRouter-Max-Cost-USD');
-    expect(headers).not.toHaveProperty('X-AstraRouter-Latency-Target-Ms');
+    expect(headers).not.toHaveProperty('X-Synapass-Max-Cost-USD');
+    expect(headers).not.toHaveProperty('X-Synapass-Latency-Target-Ms');
   });
 });
 
 describe('buildCurl', () => {
   it('redacts the credential instead of pasting a real key', () => {
     const curl = buildCurl(config(), [userMessage('hello')], 'http://localhost:8080/');
-    expect(curl).toContain('$ASTRAROUTER_API_KEY');
+    expect(curl).toContain('$SYNAPASS_API_KEY');
     expect(curl).toContain('http://localhost:8080/v1/chat/completions');
-    expect(curl).not.toContain('ar_live_');
+    expect(curl).not.toContain('syn_live_');
   });
 
   it('reproduces the routing intent as real headers', () => {
@@ -259,9 +259,9 @@ describe('buildCurl', () => {
       [userMessage('hello')],
       'http://localhost:8080',
     );
-    expect(curl).toContain('X-AstraRouter-Endpoint: prod-chat');
-    expect(curl).toContain('X-AstraRouter-No-Fallback: true');
-    expect(curl).not.toContain('X-AstraRouter-Provider');
+    expect(curl).toContain('X-Synapass-Endpoint: prod-chat');
+    expect(curl).toContain('X-Synapass-No-Fallback: true');
+    expect(curl).not.toContain('X-Synapass-Provider');
   });
 });
 
@@ -269,7 +269,7 @@ describe('response parsing', () => {
   const envelope = {
     choices: [{ message: { role: 'assistant', content: 'hello there' }, finish_reason: 'stop' }],
     usage: { prompt_tokens: 10, completion_tokens: 3, total_tokens: 13 },
-    astrarouter: {
+    synapass: {
       request_id: 'req_1',
       trace_id: 'trace_1',
       fallback_used: true,
@@ -305,7 +305,7 @@ describe('response parsing', () => {
 
   it('reads the flattened debug block the gateway actually sends', () => {
     const flattened = {
-      astrarouter: {
+      synapass: {
         request_id: 'req_2',
         trace_id: 'trace_2',
         policy_name: 'default',
@@ -337,7 +337,7 @@ describe('response parsing', () => {
   it('reports no decision when debug was not requested', () => {
     // Without the debug header the block is correlation ids and counters only.
     const plain = {
-      astrarouter: {
+      synapass: {
         request_id: 'req_3',
         fallback_used: false,
         cache_hit: false,

@@ -5,7 +5,7 @@ workers must run on a bare interpreter -- that is what makes the scoring and
 analysis logic testable without an install -- so every counter here degrades to a
 no-op recorder when the library is missing.
 
-Metric names follow the same ``astrarouter_`` prefix and ``_total``/``_seconds``
+Metric names follow the same ``synapass_`` prefix and ``_total``/``_seconds``
 suffix conventions as the Go control plane, so one scrape config and one Grafana
 dashboard can cover both processes. Label cardinality is bounded deliberately: no
 request ids, no free-form model names from unknown sources.
@@ -19,7 +19,7 @@ from typing import Any, Mapping
 logger = logging.getLogger(__name__)
 
 # Namespace shared with the Go control plane's metrics.
-NAMESPACE = "astrarouter"
+NAMESPACE = "synapass"
 
 
 class NullMetrics:
@@ -98,7 +98,7 @@ class Metrics:
         if existing is not None:
             return existing
         created = self._counter_cls(
-            name, f"AstraRouter worker counter: {name}", label_names, registry=self._registry
+            name, f"Synapass worker counter: {name}", label_names, registry=self._registry
         )
         self._counters[key] = created
         return created
@@ -109,7 +109,7 @@ class Metrics:
         if existing is not None:
             return existing
         created = self._gauge_cls(
-            name, f"AstraRouter worker gauge: {name}", label_names, registry=self._registry
+            name, f"Synapass worker gauge: {name}", label_names, registry=self._registry
         )
         self._gauges[key] = created
         return created
@@ -121,7 +121,7 @@ class Metrics:
             return existing
         created = self._histogram_cls(
             name,
-            f"AstraRouter worker histogram: {name}",
+            f"Synapass worker histogram: {name}",
             label_names,
             registry=self._registry,
         )

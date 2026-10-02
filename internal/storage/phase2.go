@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Phase2 repositories for new entities. They follow the same patterns as the

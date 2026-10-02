@@ -19,7 +19,7 @@ import (
 func deployableDefaults() *Config {
 	cfg := Default()
 	cfg.Telemetry.OTLPEndpoint = "localhost:4318"
-	cfg.Auth.AdminKey = "ar_admin_test_key_value_000000000000"
+	cfg.Auth.AdminKey = "syn_admin_test_key_value_000000000000"
 	return cfg
 }
 
@@ -28,7 +28,7 @@ func TestShippedDefaultsFailFastOnIncompleteTelemetry(t *testing.T) {
 	// that rather than starting a gateway that silently exports nothing: an
 	// operator who enabled tracing should be told, not left guessing.
 	cfg := Default()
-	cfg.Auth.AdminKey = "ar_admin_test_key_value_000000000000"
+	cfg.Auth.AdminKey = "syn_admin_test_key_value_000000000000"
 
 	err := cfg.Finalize()
 	if err == nil {
@@ -89,14 +89,14 @@ func TestFinalizeBuildsDSNFromDiscreteFields(t *testing.T) {
 	cfg.Database.Password = "p@ss:word" // needs escaping in a URI userinfo section
 	cfg.Database.Host = "db.internal"
 	cfg.Database.Port = 5433
-	cfg.Database.Name = "astrarouter"
+	cfg.Database.Name = "synapass"
 
 	if err := cfg.Finalize(); err != nil {
 		t.Fatalf("Finalize: %v", err)
 	}
 
 	dsn := cfg.Database.DSN
-	for _, want := range []string{"app", "db.internal", "5433", "astrarouter", "sslmode="} {
+	for _, want := range []string{"app", "db.internal", "5433", "synapass", "sslmode="} {
 		if !strings.Contains(dsn, want) {
 			t.Errorf("dsn %q is missing %q", dsn, want)
 		}
@@ -125,16 +125,16 @@ func TestFinalizeDoesNotOverrideAnExplicitDSN(t *testing.T) {
 }
 
 func TestAdminKeyIsResolvedFromItsEnvironmentVariable(t *testing.T) {
-	t.Setenv("AR_TEST_ADMIN_KEY", "ar_admin_from_env")
+	t.Setenv("SYNAPASS_TEST_ADMIN_KEY", "syn_admin_from_env")
 
 	cfg := deployableDefaults()
 	cfg.Auth.AdminKey = ""
-	cfg.Auth.AdminKeyEnv = "AR_TEST_ADMIN_KEY"
+	cfg.Auth.AdminKeyEnv = "SYNAPASS_TEST_ADMIN_KEY"
 
 	if err := cfg.Finalize(); err != nil {
 		t.Fatalf("Finalize: %v", err)
 	}
-	if cfg.Auth.AdminKey != "ar_admin_from_env" {
+	if cfg.Auth.AdminKey != "syn_admin_from_env" {
 		t.Errorf("admin key = %q, want the value read from the named variable", cfg.Auth.AdminKey)
 	}
 }
@@ -158,25 +158,25 @@ func TestFirstNATSURLWins(t *testing.T) {
 
 func TestEnvironmentOverridesEveryLayer(t *testing.T) {
 	env := map[string]string{
-		"AR_APP_NAME":                 "astrarouter-edge",
-		"AR_ENVIRONMENT":              "staging",
-		"AR_HTTP_ADDR":                ":9090",
-		"AR_HTTP_MAX_BODY_BYTES":      "1048576",
-		"AR_HTTP_TRUSTED_PROXIES":     "10.0.0.0/8,192.168.0.0/16",
-		"AR_DATABASE_DSN":             "postgres://u:p@db:5432/cr",
-		"AR_REDIS_ADDR":               "redis:6379",
-		"AR_REDIS_REQUIRED":           "true",
-		"AR_CLICKHOUSE_ADDR":          "clickhouse:9000",
-		"AR_NATS_URL":                 "nats://nats:4222",
-		"AR_AUTH_MIN_KEY_LENGTH":      "24",
-		"AR_ADMIN_ENABLED":            "false",
-		"AR_ROUTING_DEFAULT_STRATEGY": "lowest_cost", "AR_ROUTING_MAX_OUTPUT_TOKENS": "2048",
-		"AR_ROUTING_TIMEOUT_TOTAL":       "45s",
-		"AR_ROUTING_TIMEOUT_PER_ATTEMPT": "30s",
-		"AR_PROMETHEUS_ENABLED":          "false",
-		"AR_LOG_LEVEL":                   "debug", "AR_OTEL_ENDPOINT": "collector:4318",
-		"AR_OTEL_TRACE_SAMPLE_RATIO": "0.25",
-		"AR_CORS_ALLOWED_ORIGINS":    "https://console.example,https://ops.example",
+		"SYNAPASS_APP_NAME":                 "synapass-edge",
+		"SYNAPASS_ENVIRONMENT":              "staging",
+		"SYNAPASS_HTTP_ADDR":                ":9090",
+		"SYNAPASS_HTTP_MAX_BODY_BYTES":      "1048576",
+		"SYNAPASS_HTTP_TRUSTED_PROXIES":     "10.0.0.0/8,192.168.0.0/16",
+		"SYNAPASS_DATABASE_DSN":             "postgres://u:p@db:5432/cr",
+		"SYNAPASS_REDIS_ADDR":               "redis:6379",
+		"SYNAPASS_REDIS_REQUIRED":           "true",
+		"SYNAPASS_CLICKHOUSE_ADDR":          "clickhouse:9000",
+		"SYNAPASS_NATS_URL":                 "nats://nats:4222",
+		"SYNAPASS_AUTH_MIN_KEY_LENGTH":      "24",
+		"SYNAPASS_ADMIN_ENABLED":            "false",
+		"SYNAPASS_ROUTING_DEFAULT_STRATEGY": "lowest_cost", "SYNAPASS_ROUTING_MAX_OUTPUT_TOKENS": "2048",
+		"SYNAPASS_ROUTING_TIMEOUT_TOTAL":       "45s",
+		"SYNAPASS_ROUTING_TIMEOUT_PER_ATTEMPT": "30s",
+		"SYNAPASS_PROMETHEUS_ENABLED":          "false",
+		"SYNAPASS_LOG_LEVEL":                   "debug", "SYNAPASS_OTEL_ENDPOINT": "collector:4318",
+		"SYNAPASS_OTEL_TRACE_SAMPLE_RATIO": "0.25",
+		"SYNAPASS_CORS_ALLOWED_ORIGINS":    "https://console.example,https://ops.example",
 	}
 	for name, value := range env {
 		t.Setenv(name, value)
@@ -190,7 +190,7 @@ func TestEnvironmentOverridesEveryLayer(t *testing.T) {
 		t.Fatalf("Finalize: %v", err)
 	}
 
-	if cfg.App.Name != "astrarouter-edge" {
+	if cfg.App.Name != "synapass-edge" {
 		t.Errorf("app name = %q", cfg.App.Name)
 	}
 	if cfg.App.Environment != "staging" {
@@ -253,9 +253,9 @@ func TestMalformedEnvironmentValueIsIgnoredRatherThanCorruptingConfig(t *testing
 	// A bad numeric value must leave the default in place. Overwriting with the
 	// zero value would silently disable a limit because of a typo in a YAML file
 	// or a compose file.
-	t.Setenv("AR_AUTH_MIN_KEY_LENGTH", "not-a-number")
-	t.Setenv("AR_HTTP_MAX_BODY_BYTES", "8MiB")
-	t.Setenv("AR_ADMIN_ENABLED", "maybe")
+	t.Setenv("SYNAPASS_AUTH_MIN_KEY_LENGTH", "not-a-number")
+	t.Setenv("SYNAPASS_HTTP_MAX_BODY_BYTES", "8MiB")
+	t.Setenv("SYNAPASS_ADMIN_ENABLED", "maybe")
 
 	cfg := Default()
 	want := cfg.Auth.MinKeyLength
@@ -278,7 +278,7 @@ func TestMalformedEnvironmentValueIsIgnoredRatherThanCorruptingConfig(t *testing
 }
 
 func TestEnvironmentIsCaseInsensitiveForBooleans(t *testing.T) {
-	t.Setenv("AR_REDIS_REQUIRED", "TRUE")
+	t.Setenv("SYNAPASS_REDIS_REQUIRED", "TRUE")
 	cfg := Default()
 	if err := cfg.applyEnv(); err != nil {
 		t.Fatalf("applyEnv: %v", err)
@@ -360,7 +360,7 @@ func TestValidationRejectsInvalidConfigurations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := Default()
 			// A DSN is required, so seed one before applying the mutation.
-			cfg.Database.DSN = "postgres://u:p@localhost:5432/astrarouter"
+			cfg.Database.DSN = "postgres://u:p@localhost:5432/synapass"
 			tc.mutate(cfg)
 
 			err := cfg.Validate()
@@ -401,16 +401,16 @@ func TestValidationAggregatesEveryProblem(t *testing.T) {
 func TestRedactedHidesEverySecret(t *testing.T) {
 	cfg := Default()
 	cfg.Database.Password = "hunter2"
-	cfg.Database.DSN = "postgres://app:hunter2@db:5432/astrarouter"
+	cfg.Database.DSN = "postgres://app:hunter2@db:5432/synapass"
 	cfg.Redis.Password = "redis-secret"
 	cfg.ClickHouse.Password = "ch-secret"
 	cfg.NATS.Token = "nats-token"
-	cfg.Auth.AdminKey = "ar_admin_super_secret"
+	cfg.Auth.AdminKey = "syn_admin_super_secret"
 
 	redacted := cfg.Redacted()
 	encoded := redactedToJSON(t, redacted)
 
-	for _, secret := range []string{"hunter2", "redis-secret", "ch-secret", "nats-token", "ar_admin_super_secret"} {
+	for _, secret := range []string{"hunter2", "redis-secret", "ch-secret", "nats-token", "syn_admin_super_secret"} {
 		if strings.Contains(encoded, secret) {
 			t.Errorf("the redacted configuration still contains %q: %s", secret, encoded)
 		}
@@ -421,18 +421,18 @@ func TestRedactedHidesEverySecret(t *testing.T) {
 	if cfg.Database.Password != "hunter2" {
 		t.Error("Redacted must return a copy, not mutate the receiver")
 	}
-	if cfg.Auth.AdminKey != "ar_admin_super_secret" {
+	if cfg.Auth.AdminKey != "syn_admin_super_secret" {
 		t.Error("Redacted must not clear the live admin key")
 	}
 }
 
 func TestRedactedKeepsNonSecrets(t *testing.T) {
 	cfg := Default()
-	cfg.App.Name = "astrarouter-edge"
+	cfg.App.Name = "synapass-edge"
 	cfg.Database.Host = "db.internal"
 
 	redacted := cfg.Redacted()
-	if redacted.App.Name != "astrarouter-edge" {
+	if redacted.App.Name != "synapass-edge" {
 		t.Errorf("app name = %q", redacted.App.Name)
 	}
 	if redacted.Database.Host != "db.internal" {
@@ -448,10 +448,10 @@ func TestLoadReadsAYAMLFile(t *testing.T) {
 	// The administrator credential is deliberately not settable from a file: the
 	// file names an environment variable that holds it, so a checked-in config can
 	// be committed without carrying a secret.
-	t.Setenv("AR_TEST_LOAD_ADMIN_KEY", "ar_admin_from_the_environment")
+	t.Setenv("SYNAPASS_TEST_LOAD_ADMIN_KEY", "syn_admin_from_the_environment")
 
 	dir := t.TempDir()
-	path := filepath.Join(dir, "astrarouter.yaml")
+	path := filepath.Join(dir, "synapass.yaml")
 	writeFile(t, path, `
 app:
   name: from-file
@@ -459,11 +459,11 @@ app:
 http:
   addr: ":18080"
 database:
-  dsn: "postgres://file:file@filehost:5432/astrarouter"
+  dsn: "postgres://file:file@filehost:5432/synapass"
 telemetry:
   otlp_endpoint: "collector:4318"
 auth:
-  admin_key_env: AR_TEST_LOAD_ADMIN_KEY
+  admin_key_env: SYNAPASS_TEST_LOAD_ADMIN_KEY
 logging:
   level: warn
 routing:
@@ -481,7 +481,7 @@ routing:
 	if cfg.HTTP.Addr != ":18080" {
 		t.Errorf("http addr = %q", cfg.HTTP.Addr)
 	}
-	if cfg.Database.DSN != "postgres://file:file@filehost:5432/astrarouter" {
+	if cfg.Database.DSN != "postgres://file:file@filehost:5432/synapass" {
 		t.Errorf("dsn = %q", cfg.Database.DSN)
 	}
 	if cfg.Logging.Level != "warn" {
@@ -498,17 +498,17 @@ routing:
 	if cfg.ConfigFile != path {
 		t.Errorf("config file = %q, want %q recorded for diagnostics", cfg.ConfigFile, path)
 	}
-	if cfg.Auth.AdminKey != "ar_admin_from_the_environment" {
+	if cfg.Auth.AdminKey != "syn_admin_from_the_environment" {
 		t.Errorf("admin key = %q, want it resolved through the named variable", cfg.Auth.AdminKey)
 	}
 }
 
 func TestLoadEnvironmentBeatsFile(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "astrarouter.yaml")
+	path := filepath.Join(dir, "synapass.yaml")
 	writeFile(t, path, "app:\n  name: from-file\nhttp:\n  addr: \":18080\"\ntelemetry:\n  otlp_endpoint: \"collector:4318\"\n")
 
-	t.Setenv("AR_APP_NAME", "from-env")
+	t.Setenv("SYNAPASS_APP_NAME", "from-env")
 
 	cfg, err := Load(path, true)
 	if err != nil {
@@ -532,7 +532,7 @@ func TestLoadRejectsAnExplicitlyNamedMissingFile(t *testing.T) {
 
 func TestLoadRejectsMalformedYAML(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "astrarouter.yaml")
+	path := filepath.Join(dir, "synapass.yaml")
 	writeFile(t, path, "app: [this is not a mapping]\n")
 
 	if _, err := Load(path, true); err == nil {

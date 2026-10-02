@@ -9,8 +9,8 @@ package shaping
 import (
 	"strings"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/tokens"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/tokens"
 )
 
 // Options configures shaping defaults.

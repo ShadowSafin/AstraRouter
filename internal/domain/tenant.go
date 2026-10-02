@@ -105,7 +105,7 @@ type APIKey struct {
 	ID       string `json:"id"`
 	TenantID string `json:"tenant_id"`
 	Name     string `json:"name"`
-	// Prefix is the display form, e.g. "ar_live_7f3a".
+	// Prefix is the display form, e.g. "syn_live_7f3a".
 	Prefix string `json:"prefix"`
 	// KeyHash is the hex-encoded SHA-256 of the full token. Never serialized
 	// to clients: the struct tag keeps it out of JSON responses.

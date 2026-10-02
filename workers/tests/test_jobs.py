@@ -5,17 +5,17 @@ from __future__ import annotations
 import json
 import unittest
 
-from astrarouter_workers.bus import (
+from synapass_workers.bus import (
     SUBJECT_EVAL_RESULT,
     SUBJECT_PROMPT_ANALYSIS,
     SUBJECT_TELEMETRY_ROLLUP,
     NullBus,
     decode,
 )
-from astrarouter_workers.config import Config, ConfigError
-from astrarouter_workers.jobs import UnknownJobKind, analyze_job, dispatch, evaluate_job, parse_job
-from astrarouter_workers.metrics import NullMetrics
-from astrarouter_workers.models import (
+from synapass_workers.config import Config, ConfigError
+from synapass_workers.jobs import UnknownJobKind, analyze_job, dispatch, evaluate_job, parse_job
+from synapass_workers.metrics import NullMetrics
+from synapass_workers.models import (
     KIND_EVAL,
     KIND_PROMPT_ANALYSIS,
     KIND_REPLAY,
@@ -25,8 +25,8 @@ from astrarouter_workers.models import (
     EvalCandidate,
     EvalJob,
 )
-from astrarouter_workers.telemetry import Aggregator
-from astrarouter_workers.worker import Worker
+from synapass_workers.telemetry import Aggregator
+from synapass_workers.worker import Worker
 
 
 def eval_payload(**overrides):
@@ -357,16 +357,16 @@ class TestConfiguration(unittest.TestCase):
         config = Config()
         self.assertTrue(config.metrics_enabled)
         self.assertFalse(config.judging_enabled)
-        self.assertEqual(config.queue_group, "astrarouter-workers")
+        self.assertEqual(config.queue_group, "synapass-workers")
 
     def test_environment_overrides(self) -> None:
         config = Config.from_env({
-            "AR_WORKER_NATS_URL": "nats://nats:4222",
-            "AR_WORKER_METRICS_ADDR": "127.0.0.1:9200",
-            "AR_WORKER_LOG_LEVEL": "debug",
-            "AR_WORKER_EVAL_CONCURRENCY": "8",
-            "AR_WORKER_METRICS_ENABLED": "false",
-            "AR_WORKER_LABELS": "pool=eval,region=eu",
+            "SYNAPASS_WORKER_NATS_URL": "nats://nats:4222",
+            "SYNAPASS_WORKER_METRICS_ADDR": "127.0.0.1:9200",
+            "SYNAPASS_WORKER_LOG_LEVEL": "debug",
+            "SYNAPASS_WORKER_EVAL_CONCURRENCY": "8",
+            "SYNAPASS_WORKER_METRICS_ENABLED": "false",
+            "SYNAPASS_WORKER_LABELS": "pool=eval,region=eu",
         })
 
         self.assertEqual(config.nats_url, "nats://nats:4222")
@@ -382,19 +382,19 @@ class TestConfiguration(unittest.TestCase):
 
     def test_rejects_a_malformed_boolean(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"AR_WORKER_METRICS_ENABLED": "perhaps"})
+            Config.from_env({"SYNAPASS_WORKER_METRICS_ENABLED": "perhaps"})
 
     def test_rejects_a_non_numeric_integer(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"AR_WORKER_EVAL_CONCURRENCY": "many"})
+            Config.from_env({"SYNAPASS_WORKER_EVAL_CONCURRENCY": "many"})
 
     def test_rejects_a_zero_concurrency(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"AR_WORKER_EVAL_CONCURRENCY": "0"})
+            Config.from_env({"SYNAPASS_WORKER_EVAL_CONCURRENCY": "0"})
 
     def test_rejects_an_unknown_log_level(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"AR_WORKER_LOG_LEVEL": "chatty"})
+            Config.from_env({"SYNAPASS_WORKER_LOG_LEVEL": "chatty"})
 
     def test_rejects_a_judge_endpoint_without_a_model(self) -> None:
         with self.assertRaises(ConfigError):
@@ -402,7 +402,7 @@ class TestConfiguration(unittest.TestCase):
 
     def test_rejects_malformed_labels(self) -> None:
         with self.assertRaises(ConfigError):
-            Config.from_env({"AR_WORKER_LABELS": "pool"})
+            Config.from_env({"SYNAPASS_WORKER_LABELS": "pool"})
 
     def test_redacts_secrets_when_rendered(self) -> None:
         config = Config(

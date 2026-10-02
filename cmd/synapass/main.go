@@ -1,15 +1,15 @@
-// Command astrarouter is the AstraRouter control plane.
+// Command synapass is the Synapass control plane.
 //
 // One binary serves every role so that a native install is a single file to copy,
 // a single systemd unit to enable, and a single thing to upgrade. Subcommands
 // select the role:
 //
-//	astrarouter serve          run the gateway and its background loops (default)
-//	astrarouter migrate        apply database migrations and exit
-//	astrarouter config         print the resolved configuration and exit
-//	astrarouter version        print build identity and exit
-//	astrarouter health         probe a running instance and exit
-//	astrarouter native         install, supervise or check a host installation
+//	synapass serve          run the gateway and its background loops (default)
+//	synapass migrate        apply database migrations and exit
+//	synapass config         print the resolved configuration and exit
+//	synapass version        print build identity and exit
+//	synapass health         probe a running instance and exit
+//	synapass native         install, supervise or check a host installation
 //	                          (install | up | doctor)
 //
 // The Docker image uses the same binary, which is what keeps the containerised and
@@ -28,9 +28,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/logging"
-	"github.com/shadowsafin/astrarouter/internal/version"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/logging"
+	"github.com/shadowsafin/synapass/internal/version"
 )
 
 // exit codes
@@ -52,8 +52,8 @@ func main() {
 
 // run parses arguments and dispatches a subcommand.
 func run(args []string) int {
-	// A leading flag is accepted before the subcommand so both `astrarouter serve`
-	// and `astrarouter -config x.yaml serve` work, which is what operators expect
+	// A leading flag is accepted before the subcommand so both `synapass serve`
+	// and `synapass -config x.yaml serve` work, which is what operators expect
 	// from a service binary.
 	command := "serve"
 	var commandArgs []string
@@ -64,7 +64,7 @@ func run(args []string) int {
 		commandArgs = args
 	}
 
-	fs := flag.NewFlagSet("astrarouter", flag.ContinueOnError)
+	fs := flag.NewFlagSet("synapass", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	configPath := fs.String("config", "", "path to a YAML or JSON configuration file")
 	logLevel := fs.String("log-level", "", "override the configured log level (debug, info, warn, error)")
@@ -72,8 +72,8 @@ func run(args []string) int {
 	showVersion := fs.Bool("version", false, "print build identity and exit")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "AstraRouter %s\n\n", version.Short())
-		fmt.Fprintf(os.Stderr, "Usage: astrarouter [flags] [command]\n\nCommands:\n")
+		fmt.Fprintf(os.Stderr, "Synapass %s\n\n", version.Short())
+		fmt.Fprintf(os.Stderr, "Usage: synapass [flags] [command]\n\nCommands:\n")
 		fmt.Fprintf(os.Stderr, "  serve     run the gateway and its background loops (default)\n")
 		fmt.Fprintf(os.Stderr, "  migrate   apply database migrations and exit\n")
 		fmt.Fprintf(os.Stderr, "  config    print the resolved configuration and exit\n")
@@ -95,10 +95,10 @@ func run(args []string) int {
 	if err := dispatch(command, *configPath, *logLevel, *logFormat, fs.Args()); err != nil {
 		var exitErr *exitError
 		if ok := asExitError(err, &exitErr); ok {
-			fmt.Fprintf(os.Stderr, "astrarouter: %v\n", exitErr.err)
+			fmt.Fprintf(os.Stderr, "synapass: %v\n", exitErr.err)
 			return exitErr.code
 		}
-		fmt.Fprintf(os.Stderr, "astrarouter: %v\n", err)
+		fmt.Fprintf(os.Stderr, "synapass: %v\n", err)
 		return exitFailure
 	}
 	return exitOK
@@ -198,7 +198,7 @@ func dispatchNative(configPath, logLevel, logFormat string, rest []string) error
 // is otherwise a matter of reasoning about four layers of overrides.
 func runConfig(cfg *config.Config) error {
 	fmt.Printf("# configuration source: %s\n", configSource(cfg))
-	fmt.Printf("# resolved with defaults + config file + AR_* environment variables\n\n")
+	fmt.Printf("# resolved with defaults + config file + SYNAPASS_* environment variables\n\n")
 
 	encoder := yaml.NewEncoder(os.Stdout)
 	// An explicit indent keeps the output readable when it is long enough to scroll.

@@ -70,7 +70,7 @@ export function SettingsView() {
                 <GitBranch className="size-4" />
                 Build
               </CardTitle>
-              <CardDescription>Stamped into the binary at build time and exported on astrarouter_build_info.</CardDescription>
+              <CardDescription>Stamped into the binary at build time and exported on synapass_build_info.</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
               <Fact label="Version" value={version?.version || 'unknown'} mono />

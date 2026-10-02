@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/shadowsafin/astrarouter/internal/routing"
+	"github.com/shadowsafin/synapass/internal/routing"
 )
 
 // osGetenv reads an environment variable.

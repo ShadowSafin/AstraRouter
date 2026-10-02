@@ -36,7 +36,7 @@ export function ErrorState({
   if (apiError?.isConfigurationError) {
     icon = <KeyRound className="size-5 text-warning" />;
     title = 'The dashboard is not connected';
-    hint = 'Set ASTRAROUTER_ADMIN_KEY on the dashboard to match the gateway\'s AR_ADMIN_KEY, then restart it.';
+    hint = 'Set SYNAPASS_ADMIN_KEY to the admin key the gateway accepts, then restart it.';
   } else if (apiError?.isUnauthorized) {
     icon = <KeyRound className="size-5 text-warning" />;
     title = 'Not authorized';
@@ -48,7 +48,7 @@ export function ErrorState({
   } else if (apiError?.status === 502) {
     icon = <ServerCrash className="size-5 text-danger" />;
     title = 'The gateway is unreachable';
-    hint = 'Check that the gateway is running and that ASTRAROUTER_API_URL points at it.';
+    hint = 'Check that the gateway is running and that SYNAPASS_API_URL points at it.';
   } else if (apiError && apiError.status >= 500) {
     title = 'The gateway reported a failure';
   }

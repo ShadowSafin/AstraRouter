@@ -10,7 +10,7 @@ import (
 // passed by pointer; nothing downstream mutates it except the fields explicitly
 // documented as mutable (Resolution, so a chain can record its own progress).
 type RequestContext struct {
-	// RequestID is AstraRouter's correlation id and is echoed to the client.
+	// RequestID is Synapass's correlation id and is echoed to the client.
 	RequestID RequestID `json:"request_id"`
 	// TraceID and SpanID are the OpenTelemetry identifiers, so a request id in
 	// a client bug report maps directly to a trace.

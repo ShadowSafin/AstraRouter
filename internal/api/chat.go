@@ -11,29 +11,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/providers"
-	"github.com/shadowsafin/astrarouter/internal/routing"
-	"github.com/shadowsafin/astrarouter/internal/telemetry"
-	"github.com/shadowsafin/astrarouter/internal/tokens"
-	"github.com/shadowsafin/astrarouter/internal/tools"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/routing"
+	"github.com/shadowsafin/synapass/internal/telemetry"
+	"github.com/shadowsafin/synapass/internal/tokens"
+	"github.com/shadowsafin/synapass/internal/tools"
 )
 
 // Header names a client can use to express routing intent.
 //
-// These are namespaced rather than standard because they are AstraRouter's own
+// These are namespaced rather than standard because they are Synapass's own
 // extension: a client that does not send them gets the policy's defaults, which
 // keeps the gateway drop-in compatible with an OpenAI SDK.
 const (
-	headerMaxCostUSD      = "X-AstraRouter-Max-Cost-USD"
-	headerLatencyTargetMS = "X-AstraRouter-Latency-Target-Ms"
-	headerPolicyID        = "X-AstraRouter-Policy"
-	headerNoFallback      = "X-AstraRouter-No-Fallback"
-	headerEndpointID      = "X-AstraRouter-Endpoint"
-	headerRegion          = "X-AstraRouter-Region"
-	headerSensitivity     = "X-AstraRouter-Sensitivity"
-	headerBatch           = "X-AstraRouter-Batch"
-	headerNoCache         = "X-AstraRouter-No-Cache"
+	headerMaxCostUSD      = "X-Synapass-Max-Cost-USD"
+	headerLatencyTargetMS = "X-Synapass-Latency-Target-Ms"
+	headerPolicyID        = "X-Synapass-Policy"
+	headerNoFallback      = "X-Synapass-No-Fallback"
+	headerEndpointID      = "X-Synapass-Endpoint"
+	headerRegion          = "X-Synapass-Region"
+	headerSensitivity     = "X-Synapass-Sensitivity"
+	headerBatch           = "X-Synapass-Batch"
+	headerNoCache         = "X-Synapass-No-Cache"
 )
 
 // handleChatCompletions serves POST /v1/chat/completions.
@@ -422,12 +422,12 @@ func (s *Server) runCompletion(
 				return domain.Errorf(domain.ErrCodeInvalidRequest,
 					"the response did not match the requested JSON schema: %s", structured.Error)
 			}
-			if response.AstraRouter != nil {
-				response.AstraRouter.Structured = structured
+			if response.Synapass != nil {
+				response.Synapass.Structured = structured
 			}
 		}
-		if response.AstraRouter != nil {
-			response.AstraRouter.Completion = completion
+		if response.Synapass != nil {
+			response.Synapass.Completion = completion
 		}
 		writeJSON(w, http.StatusOK, response)
 		logTruncation(s.logger, s.metrics, rc, decision, completion, "")
@@ -468,7 +468,7 @@ func (s *Server) serveCacheHit(w http.ResponseWriter, rc *domain.RequestContext,
 		// Corrupt cache entry: fall through to live execution would require
 		// restructuring; instead return the raw bytes with cache metadata.
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("X-AstraRouter-Cache", string(lookup.Kind))
+		w.Header().Set("X-Synapass-Cache", string(lookup.Kind))
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(lookup.Body)
 		bctx, cancel := bookkeepingContext()
@@ -477,7 +477,7 @@ func (s *Server) serveCacheHit(w http.ResponseWriter, rc *domain.RequestContext,
 		return
 	}
 	// Refresh request-scoped metadata.
-	cached.AstraRouter = publicMetaFrom(rc, func(m *domain.ResponseMetadata) {
+	cached.Synapass = publicMetaFrom(rc, func(m *domain.ResponseMetadata) {
 		m.CacheHit = true
 		m.CacheKind = string(lookup.Kind)
 		m.LatencyMS = time.Since(started).Milliseconds()
@@ -810,7 +810,7 @@ func (s *Server) streamHandler(sse *sseWriter, rc *domain.RequestContext, decisi
 				Delta:        &delta,
 				FinishReason: chunk.FinishReason,
 			}},
-			AstraRouter: meta,
+			Synapass: meta,
 		}
 		if frame.Created == 0 {
 			frame.Created = time.Now().Unix()
@@ -845,7 +845,7 @@ func (s *Server) usageChunk(resp *providers.Response, rc *domain.RequestContext,
 		Model:      resp.Model,
 		Choices:    []domain.Choice{},
 		Usage:      &usageCopy,
-		AstraRouter: meta,
+		Synapass: meta,
 	}
 }
 
@@ -889,7 +889,7 @@ func (s *Server) buildResponse(
 		Choices:           resp.Choices,
 		Usage:             &usageCopy,
 		SystemFingerprint: resp.SystemFingerprint,
-		AstraRouter:        meta,
+		Synapass:        meta,
 	}
 }
 
@@ -1102,7 +1102,7 @@ func (s *Server) enforcePreflight(ctx context.Context, rc *domain.RequestContext
 	return nil
 }
 
-// applyRoutingIntent reads the AstraRouter extension headers.
+// applyRoutingIntent reads the Synapass extension headers.
 func applyRoutingIntent(r *http.Request, rc *domain.RequestContext) {
 	if raw := r.Header.Get(headerMaxCostUSD); raw != "" {
 		if value, err := strconv.ParseFloat(raw, 64); err == nil && value > 0 {
@@ -1178,7 +1178,7 @@ func noFallbackRequested(r *http.Request) bool {
 }
 
 // applyEndpointScope loads the admin-managed endpoint scope named by the
-// X-AstraRouter-Endpoint header onto the request context.
+// X-Synapass-Endpoint header onto the request context.
 //
 // Without a header this is a no-op. With one, the scope must exist and be
 // enabled: silently ignoring an unknown scope would route the request under
@@ -1395,7 +1395,7 @@ func (s *Server) runToolCompletion(
 		Model:      firstNonEmptyString(response.Model, decision.Chosen.Model),
 		Choices:    []domain.Choice{toolFinalChoiceBounded(response, content, boundedWithoutAnswer)},
 		Usage:      &usageCopy,
-		AstraRouter: meta,
+		Synapass: meta,
 	})
 
 	s.recordOutcome(ctx, rc, decision, nil, usage, cost, elapsed, http.StatusOK, nil)

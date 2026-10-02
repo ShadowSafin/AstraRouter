@@ -3,7 +3,7 @@ package shaping
 import (
 	"testing"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 func TestNormalizeMergesSystem(t *testing.T) {

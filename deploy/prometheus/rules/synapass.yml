@@ -9,34 +9,34 @@
 #
 # Every metric named here exists in code, and the metric that records it is the
 # single source of truth. The gateway's collectors live in
-# internal/telemetry/metrics.go (namespace `astrarouter`, subsystems
+# internal/telemetry/metrics.go (namespace `synapass`, subsystems
 # gateway/provider/routing/usage/cache/policy/auth/async); the workers' live in
-# workers/astrarouter_workers/metrics.py. If a rename lands in either file, the
+# workers/synapass_workers/metrics.py. If a rename lands in either file, the
 # rule that references the old name must change in the same commit -- a rule whose
 # expression matches nothing is silently inert and fails exactly when it is needed.
 #
 # Worker counters are registered lazily on first use, so an expression over
-# `astrarouter_worker_*` is empty until a worker has actually handled a message.
+# `synapass_worker_*` is empty until a worker has actually handled a message.
 # This is intended: an idle worker should not page anyone.
 
 groups:
-  - name: astrarouter-gateway
+  - name: synapass-gateway
     interval: 30s
     rules:
-      - alert: AstraRouterDown
-        expr: up{job="astrarouter-gateway"} == 0
+      - alert: SynapassDown
+        expr: up{job="synapass-gateway"} == 0
         for: 2m
         labels:
           severity: critical
           component: control-plane
         annotations:
-          summary: "AstraRouter gateway is not responding"
+          summary: "Synapass gateway is not responding"
           description: >-
             Prometheus has failed to scrape {{ $labels.instance }} for two minutes.
             Check the process and its /health endpoint. Inference is failing for
             every client while this is firing.
 
-      - alert: AstraRouterHighErrorRate
+      - alert: SynapassHighErrorRate
         # The gateway's own success ratio, not an upstream one: this is what the
         # client experienced. 5% over ten minutes is above the noise floor of a
         # healthy multi-provider deployment.
@@ -45,9 +45,9 @@ groups:
         # rejected | canceled. Cancellations are excluded because a client that
         # hangs up is not a platform fault.
         expr: |
-          sum(rate(astrarouter_gateway_requests_total{outcome=~"error|rejected"}[10m]))
+          sum(rate(synapass_gateway_requests_total{outcome=~"error|rejected"}[10m]))
             /
-          sum(rate(astrarouter_gateway_requests_total[10m])) > 0.05
+          sum(rate(synapass_gateway_requests_total[10m])) > 0.05
         for: 10m
         labels:
           severity: critical
@@ -60,19 +60,19 @@ groups:
             dashboard, then provider health: a fallback chain masks an individual
             provider outage as an elevated fallback rate, not as errors.
 
-      - alert: AstraRouterHighFallbackRate
+      - alert: SynapassHighFallbackRate
         # A rising fallback rate is the earliest signal that a provider is
         # unhealthy, because the chain absorbs the failures before any client sees
         # an error. It must be watched separately from the error rate.
         #
-        # This counts failovers (astrarouter_routing_fallbacks_total) against total
+        # This counts failovers (synapass_routing_fallbacks_total) against total
         # requests rather than counting requests whose terminal outcome was
         # "fallback", because the router records every individual failover and a
         # request can fail over more than once.
         expr: |
-          sum(rate(astrarouter_routing_fallbacks_total[15m]))
+          sum(rate(synapass_routing_fallbacks_total[15m]))
             /
-          sum(rate(astrarouter_gateway_requests_total[15m])) > 0.20
+          sum(rate(synapass_gateway_requests_total[15m])) > 0.20
         for: 15m
         labels:
           severity: warning
@@ -84,13 +84,13 @@ groups:
             target over the last fifteen minutes. One provider is likely degraded;
             check the providers page before it exhausts the chain.
 
-      - alert: AstraRouterLatencyRegression
+      - alert: SynapassLatencyRegression
         # p95 against the platform's own target. A latency alert on the average
         # hides the tail, and the tail is what users notice.
         expr: |
           histogram_quantile(
             0.95,
-            sum(rate(astrarouter_gateway_request_duration_seconds_bucket[10m])) by (le)
+            sum(rate(synapass_gateway_request_duration_seconds_bucket[10m])) by (le)
           ) > 10
         for: 10m
         labels:
@@ -103,13 +103,13 @@ groups:
             minutes. Check provider latency in the dashboard: this is usually an
             upstream problem, not a gateway one.
 
-      - alert: AstraRouterProviderUnhealthy
+      - alert: SynapassProviderUnhealthy
         # ProviderHealth is a one-hot gauge: exactly one state label is 1. An
         # unhealthy provider is expected to fail over silently, so a single one is
         # not worth alerting on. The `> 1` count below only fires once the chain
         # has too few healthy providers left to absorb another failure.
         expr: |
-          count(astrarouter_provider_health{state="unhealthy"} == 1) > 1
+          count(synapass_provider_health{state="unhealthy"} == 1) > 1
         for: 10m
         labels:
           severity: warning
@@ -121,11 +121,11 @@ groups:
             unhealthy provider is normal and handled by fallback; several at once
             means clients are about to see errors when the chain runs out.
 
-      - alert: AstraRouterBudgetBlocked
+      - alert: SynapassBudgetBlocked
         # A budget block is a business event, not a fault. It is alerted so the
         # operator can raise the limit before the customer notices, not because the
         # platform is broken.
-        expr: increase(astrarouter_policy_budget_blocked_total[1h]) > 10
+        expr: increase(synapass_policy_budget_blocked_total[1h]) > 10
         for: 5m
         labels:
           severity: warning
@@ -137,11 +137,11 @@ groups:
             for tenant {{ $labels.tenant }} over the {{ $labels.period }} window.
             The service is working as configured; the limit may need raising.
 
-      - alert: AstraRouterTelemetryPipelineFailing
+      - alert: SynapassTelemetryPipelineFailing
         # The async pipeline is best-effort by design: it must never block
         # inference. That makes a silently failing pipeline invisible in latency,
         # so dropped records are alerted directly.
-        expr: rate(astrarouter_async_dropped_total[10m]) > 1
+        expr: rate(synapass_async_dropped_total[10m]) > 1
         for: 10m
         labels:
           severity: warning
@@ -153,18 +153,18 @@ groups:
             for reason {{ $labels.reason }} ({{ $labels.kind }}). Request logs and
             usage records are incomplete until this clears.
 
-  - name: astrarouter-workers
+  - name: synapass-workers
     interval: 30s
     rules:
-      - alert: AstraRouterWorkersStalled
+      - alert: SynapassWorkersStalled
         # A background worker has no user-visible symptom, so the absence of
         # progress is the only signal. Comparing against a flat zero over an hour
         # catches a consumer that is connected but not consuming, which a port
         # check would miss entirely.
         expr: |
-          sum(rate(astrarouter_worker_jobs_total[1h])) == 0
+          sum(rate(synapass_worker_jobs_total[1h])) == 0
           and
-          sum(increase(astrarouter_worker_usage_events_total[1h])) > 0
+          sum(increase(synapass_worker_usage_events_total[1h])) > 0
         for: 15m
         labels:
           severity: warning
@@ -176,11 +176,11 @@ groups:
             hour. This is normal only if nothing is enqueuing work; check the
             ar.eval.job subject and the durable consumer's pending count.
 
-      - alert: AstraRouterWorkerJobFailures
+      - alert: SynapassWorkerJobFailures
         expr: |
-          sum(rate(astrarouter_worker_job_errors_total[15m]))
+          sum(rate(synapass_worker_job_errors_total[15m]))
             /
-          sum(rate(astrarouter_worker_jobs_total[15m])) > 0.10
+          sum(rate(synapass_worker_jobs_total[15m])) > 0.10
         for: 15m
         labels:
           severity: warning
@@ -192,8 +192,8 @@ groups:
             name the worker does not implement. Check the worker logs for the
             rejected payload.
 
-      - alert: AstraRouterWorkerBusDisconnected
-        expr: sum(increase(astrarouter_worker_bus_reconnects_total[1h])) > 0 and up{job="astrarouter-workers"} == 0
+      - alert: SynapassWorkerBusDisconnected
+        expr: sum(increase(synapass_worker_bus_reconnects_total[1h])) > 0 and up{job="synapass-workers"} == 0
         for: 5m
         labels:
           severity: critical
@@ -205,10 +205,10 @@ groups:
             flapping. Evaluation results and telemetry rollups are not being
             produced.
 
-  - name: astrarouter-observability
+  - name: synapass-observability
     interval: 60s
     rules:
-      - alert: AstraRouterSpanExporterFailing
+      - alert: SynapassSpanExporterFailing
         # A failing exporter means traces are being dropped silently: the gateway
         # keeps serving and every graph that reads traces just shows less data.
         expr: rate(otelcol_exporter_send_failed_spans[10m]) > 0
@@ -222,7 +222,7 @@ groups:
             Spans are being dropped by the collector at {{ $value | humanize }}
             per second. Trace data is incomplete until this clears.
 
-      - alert: AstraRouterCollectorQueueSaturated
+      - alert: SynapassCollectorQueueSaturated
         expr: otelcol_exporter_queue_size / otelcol_exporter_queue_capacity > 0.8
         for: 10m
         labels:

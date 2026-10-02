@@ -36,7 +36,7 @@ func splitHostPort(target string) (host, port string, ok bool) {
 }
 
 // isLoopbackHost reports whether a target host is this machine. Only loopback
-// destinations may be exposed: a tunnel must never turn AstraRouter into a
+// destinations may be exposed: a tunnel must never turn Synapass into a
 // proxy for infrastructure it does not own.
 func isLoopbackHost(host string) bool {
 	switch strings.ToLower(strings.TrimSuffix(host, ".")) {

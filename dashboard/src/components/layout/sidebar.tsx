@@ -44,7 +44,7 @@ export function SidebarBrand({ compact = false }: { compact?: boolean }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icon.png" alt="" aria-hidden className="size-8 rounded-lg" />
       <span className={cn('leading-tight', compact && 'sr-only min-[400px]:not-sr-only')}>
-        <span className="block text-sm font-semibold tracking-tight">AstraRouter</span>
+        <span className="block text-sm font-semibold tracking-tight">Synapass</span>
         <span className="block text-[11px] text-muted-foreground">Control plane</span>
       </span>
     </span>

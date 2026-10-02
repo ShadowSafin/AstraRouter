@@ -1,6 +1,6 @@
 # Installation: Cloudflare tunnel
 
-AstraRouter can expose one local service to the public internet through a
+Synapass can expose one local service to the public internet through a
 temporary Cloudflare tunnel — no port forwarding, no DNS, no firewall changes.
 Creating a tunnel mints a disposable `*.trycloudflare.com` URL that works from
 anywhere until you stop it.
@@ -16,7 +16,7 @@ anywhere until you stop it.
 4. Stopping (or restarting, or gateway shutdown) kills the process and the URL
    dies with it. A restart always mints a **new** URL.
 
-Everything through the tunnel is still AstraRouter: the same authentication,
+Everything through the tunnel is still Synapass: the same authentication,
 routing policies, rate limits, budgets and cache. The tunnel is a network path,
 not a bypass. Admin surfaces stay behind the admin credential, exactly as on
 localhost.
@@ -31,7 +31,7 @@ where to go, not look broken.
 | --- | --- | --- |
 | `gateway` (default) | The inference API on the gateway's own port | What remote apps and phones usually need. API keys still required. |
 | `dashboard` | The Next.js UI | Convenient, but it is an admin surface: anyone with the URL still needs the admin credential. Prefer `gateway` unless you need the UI remotely. The dashboard warns you. |
-| `127.0.0.1:port` | Any local port you name | Loopback only — the manager refuses remote hosts, so a tunnel can never turn AstraRouter into a proxy for someone else's infrastructure. |
+| `127.0.0.1:port` | Any local port you name | Loopback only — the manager refuses remote hosts, so a tunnel can never turn Synapass into a proxy for someone else's infrastructure. |
 
 ## Docker
 
@@ -40,7 +40,7 @@ install:
 
 ```dotenv
 # One-time: allow creation. This exposes nothing by itself.
-AR_TUNNEL_ENABLED=true
+SYNAPASS_TUNNEL_ENABLED=true
 ```
 
 ```bash
@@ -51,12 +51,12 @@ Then open the dashboard → **Tunnels** → Create, or:
 
 ```bash
 curl -s $GATEWAY/admin/v1/tunnels/create \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"target":"gateway"}' | jq
 ```
 
-The compose file already sets `AR_TUNNEL_DASHBOARD_TARGET=http://dashboard:3000`,
+The compose file already sets `SYNAPASS_TUNNEL_DASHBOARD_TARGET=http://dashboard:3000`,
 so the `dashboard` target resolves inside the network.
 
 Quick tunnels need outbound HTTPS (and ideally UDP) to Cloudflare from the
@@ -73,7 +73,7 @@ gateway container. No inbound ports are required — that is the point.
    # or the .deb / .rpm from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
    ```
 
-2. Enable creation in `/etc/astrarouter/config.yaml`:
+2. Enable creation in `/etc/synapass/config.yaml`:
 
    ```yaml
    tunnel:
@@ -83,13 +83,13 @@ gateway container. No inbound ports are required — that is the point.
 3. Restart and create the tunnel from the dashboard or API as above.
 
 ```bash
-sudo systemctl edit astrarouter
+sudo systemctl edit synapass
 ```
 
 ```ini
 [Service]
-Environment=AR_TUNNEL_ENABLED=true
-Environment=AR_TUNNEL_BINARY=/usr/local/bin/cloudflared
+Environment=SYNAPASS_TUNNEL_ENABLED=true
+Environment=SYNAPASS_TUNNEL_BINARY=/usr/local/bin/cloudflared
 ```
 
 If `cloudflared` is missing, creation fails with a `404` naming the binary and
@@ -117,9 +117,9 @@ Every mutation writes an audit event (`resource: tunnel`) and publishes a
 
 - Dashboard `/tunnels`: status cards, copyable URL, target selector with an
   admin-surface warning, session history and binary-missing guidance.
-- Prometheus: `astrarouter_tunnel_up{target}` (1 while exposed),
-  `astrarouter_tunnel_sessions_total{target,outcome}`,
-  `astrarouter_tunnel_restarts_total{target}`.
+- Prometheus: `synapass_tunnel_up{target}` (1 while exposed),
+  `synapass_tunnel_sessions_total{target,outcome}`,
+  `synapass_tunnel_restarts_total{target}`.
 - Logs: creation, public URL capture, unexpected exits with reconnect counts,
   shutdown teardown — all tagged with the session id.
 - PostgreSQL `tunnel_sessions`: the full audit trail. A restart crash-marks

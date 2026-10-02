@@ -53,7 +53,7 @@ _SAFE_KEY = re.compile(r"[^A-Za-z0-9_]")
 class JsonFormatter(logging.Formatter):
     """Render a log record as a single JSON object."""
 
-    def __init__(self, service: str = "astrarouter-workers", labels: Mapping[str, str] | None = None) -> None:
+    def __init__(self, service: str = "synapass-workers", labels: Mapping[str, str] | None = None) -> None:
         super().__init__()
         self.service = service
         self.labels = dict(labels or {})
@@ -120,7 +120,7 @@ def configure(
     level: str = "info",
     fmt: str = "json",
     *,
-    service: str = "astrarouter-workers",
+    service: str = "synapass-workers",
     labels: Mapping[str, str] | None = None,
 ) -> None:
     """Install the process-wide logging configuration."""

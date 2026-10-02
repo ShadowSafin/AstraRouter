@@ -14,7 +14,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * here is advisory by construction. Treating it as the boundary would be the
  * mistake this comment exists to prevent.
  */
-const SESSION_COOKIE = process.env.ASTRAROUTER_SESSION_COOKIE ?? 'astrarouter_session';
+const SESSION_COOKIE = process.env.SYNAPASS_SESSION_COOKIE ?? 'synapass_session';
 
 /** Routes reachable without a session. */
 const PUBLIC_PATHS = new Set(['/login', '/setup']);

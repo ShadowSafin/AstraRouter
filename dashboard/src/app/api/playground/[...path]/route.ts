@@ -37,15 +37,15 @@ const ALLOWED_ROUTES = new Set(['v1/chat/completions']);
  * imply control it does not have.
  */
 const INTENT_HEADERS = [
-  'x-astrarouter-debug',
-  'x-astrarouter-endpoint',
-  'x-astrarouter-policy',
-  'x-astrarouter-no-fallback',
-  'x-astrarouter-no-cache',
-  'x-astrarouter-region',
-  'x-astrarouter-sensitivity',
-  'x-astrarouter-max-cost-usd',
-  'x-astrarouter-latency-target-ms',
+  'x-synapass-debug',
+  'x-synapass-endpoint',
+  'x-synapass-policy',
+  'x-synapass-no-fallback',
+  'x-synapass-no-cache',
+  'x-synapass-region',
+  'x-synapass-sensitivity',
+  'x-synapass-max-cost-usd',
+  'x-synapass-latency-target-ms',
 ];
 
 interface RouteContext {
@@ -85,7 +85,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 
   // The credential is supplied per session by the operator. It is read from a
   // header, used once, and never written anywhere — not to a log, not to disk.
-  const apiKey = request.headers.get('x-astrarouter-key')?.trim() ?? '';
+  const apiKey = request.headers.get('x-synapass-key')?.trim() ?? '';
   if (!apiKey) {
     return NextResponse.json(
       {
@@ -129,7 +129,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
         error: {
           message:
             `the dashboard could not reach the gateway at ${GATEWAY_URL}. ` +
-            'Check ASTRAROUTER_API_URL and that the gateway is running.',
+            'Check SYNAPASS_API_URL and that the gateway is running.',
           type: 'upstream_error',
           code: 'dashboard_upstream_unreachable',
           cause: cause instanceof Error ? cause.message : String(cause),

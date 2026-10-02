@@ -8,10 +8,10 @@
 apiVersion: 1
 
 providers:
-  - name: astrarouter
+  - name: synapass
     orgId: 1
-    folder: AstraRouter
-    folderUid: astrarouter
+    folder: Synapass
+    folderUid: synapass
     type: file
     disableDeletion: true
     # A dashboard removed from disk is removed from Grafana. With

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# AstraRouter single-pipe installer.
+# Synapass single-pipe installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.sh | bash
 #
-# Clones (or fast-forward updates) the repository into $ASTRAROUTER_DIR
-# (default ~/astrarouter) and hands off to scripts/deploy.sh, which bootstraps
+# Clones (or fast-forward updates) the repository into $SYNAPASS_DIR
+# (default ~/synapass) and hands off to scripts/deploy.sh, which bootstraps
 # .env, starts the full Docker Compose stack, waits for readiness and prints
 # the URLs. Idempotent: re-running updates the checkout and re-verifies the
 # stack without touching .env or volumes.
@@ -12,14 +12,14 @@
 # Piped-stdin safe: this script never reads from stdin (bash itself owns stdin
 # when piped), and every child command that might is given </dev/null.
 #
-#   ASTRAROUTER_DIR=~/apps/astrarouter curl -fsSL <url> | bash   # custom dir
-#   ASTRAROUTER_REF=main        # branch/tag to check out (default: main)
-#   ASTRAROUTER_NO_DEPLOY=1     # clone/update only, skip starting the stack
+#   SYNAPASS_DIR=~/apps/synapass curl -fsSL <url> | bash   # custom dir
+#   SYNAPASS_REF=main        # branch/tag to check out (default: main)
+#   SYNAPASS_NO_DEPLOY=1     # clone/update only, skip starting the stack
 set -euo pipefail
 
-REPO_URL="https://github.com/shadowsafin/astrarouter.git"
-REF="${ASTRAROUTER_REF:-main}"
-TARGET="${ASTRAROUTER_DIR:-$HOME/astrarouter}"
+REPO_URL="https://github.com/shadowsafin/synapass.git"
+REF="${SYNAPASS_REF:-main}"
+TARGET="${SYNAPASS_DIR:-$HOME/synapass}"
 STEP="starting up"
 
 info()    { printf '  %s\n' "$*"; }
@@ -35,7 +35,7 @@ need_cmd() { # $1=cmd [$2=hint]
   command -v "$1" >/dev/null 2>&1 || fail "missing required tool: $1. ${2:-Install it and re-run.}"
 }
 
-echo "AstraRouter installer: ${REPO_URL} @ ${REF} -> ${TARGET}"
+echo "Synapass installer: ${REPO_URL} @ ${REF} -> ${TARGET}"
 
 STEP="prerequisite checks"
 need_cmd git "Install git (https://git-scm.com/downloads) and re-run."
@@ -50,7 +50,7 @@ if [ -d "$TARGET/.git" ]; then
   git -C "$TARGET" reset -q --hard "FETCH_HEAD" </dev/null || fail "could not update the checkout."
   success "checkout updated"
 elif [ -e "$TARGET" ]; then
-  fail "$TARGET exists but is not a git checkout. Move it aside or set ASTRAROUTER_DIR to another path."
+  fail "$TARGET exists but is not a git checkout. Move it aside or set SYNAPASS_DIR to another path."
 else
   git clone --depth 1 --branch "$REF" "$REPO_URL" "$TARGET" </dev/null \
     || fail "could not clone ${REPO_URL}. Check network access to github.com."
@@ -58,10 +58,10 @@ else
 fi
 
 DEPLOY="$TARGET/scripts/deploy.sh"
-[ -f "$DEPLOY" ] || fail "checkout at $TARGET has no scripts/deploy.sh. Re-clone or pick another ASTRAROUTER_REF."
+[ -f "$DEPLOY" ] || fail "checkout at $TARGET has no scripts/deploy.sh. Re-clone or pick another SYNAPASS_REF."
 
-if [ "${ASTRAROUTER_NO_DEPLOY:-0}" = "1" ]; then
-  success "checkout ready at $TARGET (stack start skipped by ASTRAROUTER_NO_DEPLOY=1)"
+if [ "${SYNAPASS_NO_DEPLOY:-0}" = "1" ]; then
+  success "checkout ready at $TARGET (stack start skipped by SYNAPASS_NO_DEPLOY=1)"
   info "Start it later with: bash \"$DEPLOY\""
   exit 0
 fi

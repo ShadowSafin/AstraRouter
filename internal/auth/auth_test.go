@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // ---------------------------------------------------------------------------
@@ -188,13 +188,13 @@ func newAuthenticator(t *testing.T, opts Options) (*Authenticator, *fakeStore, *
 
 func TestExtractToken(t *testing.T) {
 	cases := map[string]string{
-		"Bearer ar_live_abc123":       "ar_live_abc123",
-		"bearer ar_live_abc123":       "ar_live_abc123",
-		"BEARER ar_live_abc123":       "ar_live_abc123",
-		"  Bearer   ar_live_abc123  ": "ar_live_abc123",
+		"Bearer syn_live_abc123":       "syn_live_abc123",
+		"bearer syn_live_abc123":       "syn_live_abc123",
+		"BEARER syn_live_abc123":       "syn_live_abc123",
+		"  Bearer   syn_live_abc123  ": "syn_live_abc123",
 		// A bare token is accepted because several SDK configurations and shell
 		// one-liners send the key without the scheme.
-		"ar_live_abc123": "ar_live_abc123",
+		"syn_live_abc123": "syn_live_abc123",
 		"":               "",
 		"   ":            "",
 	}
@@ -233,7 +233,7 @@ func TestAuthenticateRejectsUndersizedTokenBeforeLookup(t *testing.T) {
 func TestAuthenticateRejectsUnknownKey(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
 
-	token := "ar_live_" + strings.Repeat("z", 40)
+	token := "syn_live_" + strings.Repeat("z", 40)
 	if _, err := authenticator.Authenticate(context.Background(), token); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
 	}
@@ -244,7 +244,7 @@ func TestAuthenticateRejectsUnknownKey(t *testing.T) {
 
 func TestAuthenticateAcceptsValidKey(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
-	token := "ar_live_" + strings.Repeat("a", 40)
+	token := "syn_live_" + strings.Repeat("a", 40)
 	store.put(activeTenant("t-1"), activeKey("k-1", "t-1", token, string(domain.ScopeInference)))
 
 	principal, err := authenticator.Authenticate(context.Background(), token)
@@ -273,7 +273,7 @@ func TestAuthenticateAcceptsValidKey(t *testing.T) {
 
 func TestAuthenticateAcceptsBearerScheme(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
-	token := "ar_live_" + strings.Repeat("b", 40)
+	token := "syn_live_" + strings.Repeat("b", 40)
 	store.put(activeTenant("t-1"), activeKey("k-1", "t-1", token, string(domain.ScopeInference)))
 
 	principal, err := authenticator.Authenticate(context.Background(), ExtractToken("Bearer "+token))
@@ -287,7 +287,7 @@ func TestAuthenticateAcceptsBearerScheme(t *testing.T) {
 
 func TestAuthenticateCachesSuccessfulLookup(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{CacheTTL: time.Minute})
-	token := "ar_live_" + strings.Repeat("c", 40)
+	token := "syn_live_" + strings.Repeat("c", 40)
 	store.put(activeTenant("t-1"), activeKey("k-1", "t-1", token, string(domain.ScopeInference)))
 
 	for i := 0; i < 5; i++ {
@@ -303,7 +303,7 @@ func TestAuthenticateCachesSuccessfulLookup(t *testing.T) {
 
 func TestAuthenticateNegativeCacheShortCircuits(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{CacheTTL: time.Minute})
-	token := "ar_live_" + strings.Repeat("d", 40)
+	token := "syn_live_" + strings.Repeat("d", 40)
 
 	for i := 0; i < 4; i++ {
 		if _, err := authenticator.Authenticate(context.Background(), token); !errors.Is(err, ErrInvalidCredentials) {
@@ -321,7 +321,7 @@ func TestAuthenticateNegativeCacheShortCircuits(t *testing.T) {
 func TestAuthenticateAWorksWithoutCache(t *testing.T) {
 	store := newFakeStore()
 	authenticator := New(Options{Store: store})
-	token := "ar_live_" + strings.Repeat("e", 40)
+	token := "syn_live_" + strings.Repeat("e", 40)
 	store.put(activeTenant("t-1"), activeKey("k-1", "t-1", token, string(domain.ScopeInference)))
 
 	for i := 0; i < 3; i++ {
@@ -336,7 +336,7 @@ func TestAuthenticateAWorksWithoutCache(t *testing.T) {
 
 func TestAuthenticateRejectsRevokedKey(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
-	token := "ar_live_" + strings.Repeat("f", 40)
+	token := "syn_live_" + strings.Repeat("f", 40)
 
 	key := activeKey("k-1", "t-1", token, string(domain.ScopeInference))
 	key.Status = domain.APIKeyRevoked
@@ -349,7 +349,7 @@ func TestAuthenticateRejectsRevokedKey(t *testing.T) {
 
 func TestAuthenticateRejectsExpiredKey(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
-	token := "ar_live_" + strings.Repeat("g", 40)
+	token := "syn_live_" + strings.Repeat("g", 40)
 
 	past := domain.Now().Add(-time.Hour)
 	key := activeKey("k-1", "t-1", token, string(domain.ScopeInference))
@@ -363,7 +363,7 @@ func TestAuthenticateRejectsExpiredKey(t *testing.T) {
 
 func TestAuthenticateRejectsInactiveTenant(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
-	token := "ar_live_" + strings.Repeat("h", 40)
+	token := "syn_live_" + strings.Repeat("h", 40)
 
 	tenant := activeTenant("t-1")
 	tenant.Status = domain.StatusDisabled
@@ -378,7 +378,7 @@ func TestAuthenticateSurfacesStoreFailure(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{})
 	store.err = errors.New("connection refused")
 
-	token := "ar_live_" + strings.Repeat("i", 40)
+	token := "syn_live_" + strings.Repeat("i", 40)
 	_, err := authenticator.Authenticate(context.Background(), token)
 
 	normalized := domain.AsError(err)
@@ -391,7 +391,7 @@ func TestAuthenticateSurfacesStoreFailure(t *testing.T) {
 }
 
 func TestAuthenticateBootstrapAdminKey(t *testing.T) {
-	const adminKey = "ar_admin_bootstrap_key_value_1234567"
+	const adminKey = "syn_admin_bootstrap_key_value_1234567"
 	store := newFakeStore()
 	authenticator := New(Options{Store: store, AdminKey: adminKey})
 
@@ -446,7 +446,7 @@ func TestAuthenticateAnonymousDisabledByDefault(t *testing.T) {
 
 func TestInvalidateRemovesCachedCredential(t *testing.T) {
 	authenticator, store, _ := newAuthenticator(t, Options{CacheTTL: time.Minute})
-	token := "ar_live_" + strings.Repeat("j", 40)
+	token := "syn_live_" + strings.Repeat("j", 40)
 	store.put(activeTenant("t-1"), activeKey("k-1", "t-1", token, string(domain.ScopeInference)))
 
 	if _, err := authenticator.Authenticate(context.Background(), token); err != nil {
@@ -468,7 +468,7 @@ func TestInvalidateRemovesCachedCredential(t *testing.T) {
 
 func TestCachedPrincipalExcludesTheKeyHash(t *testing.T) {
 	tenant := activeTenant("t-1")
-	key := activeKey("k-1", "t-1", "ar_live_"+strings.Repeat("k", 40), string(domain.ScopeInference))
+	key := activeKey("k-1", "t-1", "syn_live_"+strings.Repeat("k", 40), string(domain.ScopeInference))
 
 	raw := encodeCachedPrincipal(&Principal{Tenant: tenant, APIKey: key})
 	if raw == nil {
@@ -503,7 +503,7 @@ func TestDecodeCachedPrincipalRejectsStaleEntries(t *testing.T) {
 func TestGenerateKeyIsUniqueAndHashed(t *testing.T) {
 	seen := make(map[string]bool, 64)
 	for i := 0; i < 64; i++ {
-		generated, err := GenerateKey("ar_live_")
+		generated, err := GenerateKey("syn_live_")
 		if err != nil {
 			t.Fatalf("GenerateKey: %v", err)
 		}
@@ -512,7 +512,7 @@ func TestGenerateKeyIsUniqueAndHashed(t *testing.T) {
 		}
 		seen[generated.Plaintext] = true
 
-		if !strings.HasPrefix(generated.Plaintext, "ar_live_") {
+		if !strings.HasPrefix(generated.Plaintext, "syn_live_") {
 			t.Errorf("plaintext %q lost its prefix", generated.Plaintext)
 		}
 		if generated.Hash != HashKey(generated.Plaintext) {
@@ -535,7 +535,7 @@ func TestGenerateKeyDefaultPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateKey: %v", err)
 	}
-	if !strings.HasPrefix(generated.Plaintext, "ar_live_") {
+	if !strings.HasPrefix(generated.Plaintext, "syn_live_") {
 		t.Errorf("built-in prefix = %q", generated.Plaintext)
 	}
 }
@@ -543,8 +543,8 @@ func TestGenerateKeyDefaultPrefix(t *testing.T) {
 func TestGenerateKeyFromBytesIsDeterministic(t *testing.T) {
 	entropy := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 
-	first := GenerateKeyFromBytes("ar_test_", entropy)
-	second := GenerateKeyFromBytes("ar_test_", entropy)
+	first := GenerateKeyFromBytes("syn_test_", entropy)
+	second := GenerateKeyFromBytes("syn_test_", entropy)
 	if first.Plaintext != second.Plaintext {
 		t.Error("the same entropy must mint the same key")
 	}

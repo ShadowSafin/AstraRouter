@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Phase 2 service contracts. Defined here (consumer side) so the api package

@@ -1,10 +1,10 @@
-# AstraRouter desktop configuration.
+# Synapass desktop configuration.
 #
 # Written by install.ps1 with the install's ports baked in (__TOKENS__ are
 # replaced at install time). Loopback only: the desktop app never listens on
 # the LAN. Secrets live in native.env, never here.
 app:
-  name: astrarouter
+  name: synapass
   environment: production
 
 http:
@@ -16,12 +16,12 @@ http:
 database:
   host: 127.0.0.1
   # The desktop shell starts an embedded postgres on this port and hands the
-  # gateway its DSN through AR_POSTGRES_DSN, which wins over these fields.
+  # gateway its DSN through SYNAPASS_POSTGRES_DSN, which wins over these fields.
   # They remain as documentation and as the doctor's dial target.
   port: __PG_PORT__
-  user: astrarouter
-  # AR_POSTGRES_PASSWORD (native.env) — never committed.
-  name: astrarouter
+  user: synapass
+  # SYNAPASS_POSTGRES_PASSWORD (native.env) — never committed.
+  name: synapass
   ssl_mode: disable
 
 # No local Redis on a desktop: rate limiting uses the in-process limiter and
@@ -37,7 +37,7 @@ telemetry:
 # Uncomment when the host runs them; inference works without either.
 # clickhouse:
 #   addr: 127.0.0.1:9000
-#   database: astrarouter
+#   database: synapass
 # nats:
 #   url: nats://127.0.0.1:4222
 
@@ -45,10 +45,10 @@ telemetry:
 # is exposed until you create one from the dashboard (/tunnels) or
 # POST /admin/v1/tunnels/create. Every request through a tunnel still passes
 # auth, policy and rate limits. Native installs need cloudflared on PATH (or
-# AR_TUNNEL_BINARY pointing at it) — unlike the Docker image, this bundle
+# SYNAPASS_TUNNEL_BINARY pointing at it) — unlike the Docker image, this bundle
 # does not ship it.
 tunnel:
-  enabled: false # or AR_TUNNEL_ENABLED=true to allow creation
+  enabled: false # or SYNAPASS_TUNNEL_ENABLED=true to allow creation
   # Where the "dashboard" target points: this install's dashboard port.
   dashboard_target: http://127.0.0.1:__DASH_PORT__
 

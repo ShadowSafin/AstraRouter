@@ -1,4 +1,4 @@
-module github.com/shadowsafin/astrarouter
+module github.com/shadowsafin/synapass
 
 go 1.27.1
 

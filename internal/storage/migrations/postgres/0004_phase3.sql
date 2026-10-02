@@ -1,4 +1,4 @@
--- AstraRouter Phase 3: management and provisioning.
+-- Synapass Phase 3: management and provisioning.
 --
 -- Phase 3 turns the catalogue from bootstrap-owned data into operator-managed
 -- data. Providers, models and policies gain a managed_by marker so the

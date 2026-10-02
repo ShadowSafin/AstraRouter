@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // ModelStore is the persistence surface model sync needs. The storage model

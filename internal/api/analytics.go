@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/analytics"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/analytics"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 const (

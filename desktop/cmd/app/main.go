@@ -1,4 +1,4 @@
-// Command app is the standalone AstraRouter desktop application.
+// Command app is the standalone Synapass desktop application.
 //
 // It is the product users open every day: a WebView window plus a supervisor
 // that owns the whole local stack (embedded postgres, gateway, dashboard).
@@ -33,9 +33,9 @@ import (
 	webview "github.com/webview/webview_go"
 	"golang.org/x/sys/windows"
 
-	"github.com/shadowsafin/astrarouter/desktop/pkg/dbembed"
-	"github.com/shadowsafin/astrarouter/desktop/pkg/supervisor"
-	"github.com/shadowsafin/astrarouter/desktop/pkg/winproc"
+	"github.com/shadowsafin/synapass/desktop/pkg/dbembed"
+	"github.com/shadowsafin/synapass/desktop/pkg/supervisor"
+	"github.com/shadowsafin/synapass/desktop/pkg/winproc"
 )
 
 //go:embed splash.html
@@ -44,7 +44,7 @@ var splashHTML string
 // splashIconFallback is the brand mark used when assets/icon.png cannot be
 // read (a development launch outside an install). It approximates the real
 // raster; installed runs always get the real file below.
-const splashIconFallback = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%20viewBox='0%200%2048%2048'%3E%3Crect%20x='2'%20y='2'%20width='44'%20height='44'%20rx='11'%20fill='%230a0a0a'/%3E%3Ctext%20x='24'%20y='34'%20text-anchor='middle'%20font-family='Segoe%20UI,sans-serif'%20font-weight='800'%20font-size='27'%20fill='white'%3EA%3C/text%3E%3Cellipse%20cx='24'%20cy='25'%20rx='19'%20ry='6.5'%20fill='none'%20stroke='white'%20stroke-width='2.4'%20transform='rotate(-18%2024%2025)'/%3E%3C/svg%3E"
+const splashIconFallback = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%20viewBox='0%200%2048%2048'%3E%3Crect%20x='2'%20y='2'%20width='44'%20height='44'%20rx='11'%20fill='%230a0a0a'/%3E%3Ctext%20x='24'%20y='34'%20text-anchor='middle'%20font-family='Segoe%20UI,sans-serif'%20font-weight='800'%20font-size='31'%20fill='white'%3ES%3C/text%3E%3C/svg%3E"
 
 // splashFor returns the splash page with the brand mark inlined. The mark is
 // the same raster the dashboard sign-in screen and the tray icon use
@@ -52,10 +52,10 @@ const splashIconFallback = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org
 // runtime so a re-skin never needs a rebuild.
 func splashFor(root string) string {
 	if b, err := os.ReadFile(filepath.Join(root, "assets", "icon.png")); err == nil && len(b) > 0 && len(b) < 1<<20 {
-		return strings.ReplaceAll(splashHTML, "__AR_BRAND_ICON__",
+		return strings.ReplaceAll(splashHTML, "__SYNAPASS_BRAND_ICON__",
 			"data:image/png;base64,"+base64.StdEncoding.EncodeToString(b))
 	}
-	return strings.ReplaceAll(splashHTML, "__AR_BRAND_ICON__", splashIconFallback)
+	return strings.ReplaceAll(splashHTML, "__SYNAPASS_BRAND_ICON__", splashIconFallback)
 }
 
 // trayIcon holds the .ico bytes once loaded; the file lives in assets/ next
@@ -63,7 +63,7 @@ func splashFor(root string) string {
 // never needs a rebuild.
 var trayIcon []byte
 
-const appName = "AstraRouter"
+const appName = "Synapass"
 
 // bootRoot is the app directory, recorded as early as possible so a failure
 // before the settings load still has somewhere to write its explanation.
@@ -115,7 +115,7 @@ func main() {
 	rootFlag := flag.String("root", "", "app directory holding native.env, config.yaml, data/ and logs/ (default: beside the exe)")
 	smoke := flag.Bool("smoke", false, "no window: start everything, check the dashboard title, shut down, exit 0/1")
 	smokeTimeout := flag.Duration("smoke-timeout", 10*time.Minute, "bounds --smoke")
-	gatewayBinFlag := flag.String("gateway-bin", "", "astrarouter binary (default: <root>/bin/astrarouter.exe)")
+	gatewayBinFlag := flag.String("gateway-bin", "", "synapass binary (default: <root>/bin/synapass.exe)")
 	nodeBinFlag := flag.String("node-bin", "", "node binary (default: <root>/bin/node.exe, then PATH)")
 	dashboardFlag := flag.String("dashboard-dir", "", "dashboard dir (default: <root>/dashboard)")
 	flag.Parse()
@@ -133,7 +133,7 @@ func main() {
 	// The app runs an installed product. If nothing is installed here, say so
 	// plainly instead of silently building a half-installation.
 	if _, err := os.Stat(filepath.Join(root, "native.env")); os.IsNotExist(err) {
-		fatal(fmt.Errorf("AstraRouter is not installed in %s — run the AstraRouter installer first", root))
+		fatal(fmt.Errorf("Synapass is not installed in %s — run the Synapass installer first", root))
 	}
 	if err := ensureFirstRunEnv(root); err != nil {
 		fatal(err)
@@ -170,7 +170,7 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	envPath := filepath.Join(root, "native.env")
 	env, err := supervisor.LoadEnvFile(envPath)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w (run the AstraRouter installer to set it up)", envPath, err)
+		return nil, fmt.Errorf("read %s: %w (run the Synapass installer to set it up)", envPath, err)
 	}
 	get := func(key, def string) string {
 		if v := strings.TrimSpace(env[key]); v != "" {
@@ -181,38 +181,38 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	st := &settings{
 		root:         root,
 		env:          env,
-		gatewayAddr:  get("AR_HTTP_ADDR", "127.0.0.1:18081"),
+		gatewayAddr:  get("SYNAPASS_HTTP_ADDR", "127.0.0.1:18081"),
 		dashHost:     get("HOSTNAME", "127.0.0.1"),
 		dashPort:     get("PORT", "3100"),
-		pgUser:       get("AR_POSTGRES_USER", "astrarouter"),
-		pgPassword:   get("AR_POSTGRES_PASSWORD", ""),
-		pgDatabase:   get("AR_POSTGRES_DB", "astrarouter"),
-		logDir:       get("AR_LOG_DIR", filepath.Join(root, "logs")),
+		pgUser:       get("SYNAPASS_POSTGRES_USER", "synapass"),
+		pgPassword:   get("SYNAPASS_POSTGRES_PASSWORD", ""),
+		pgDatabase:   get("SYNAPASS_POSTGRES_DB", "synapass"),
+		logDir:       get("SYNAPASS_LOG_DIR", filepath.Join(root, "logs")),
 		dashboardDir: dashboardDir,
 	}
 	if st.pgPassword == "" {
-		return nil, fmt.Errorf("AR_POSTGRES_PASSWORD is empty in %s (run the AstraRouter installer)", envPath)
+		return nil, fmt.Errorf("SYNAPASS_POSTGRES_PASSWORD is empty in %s (run the Synapass installer)", envPath)
 	}
-	pgPort, err := strconv.Atoi(get("AR_POSTGRES_PORT", "5433"))
+	pgPort, err := strconv.Atoi(get("SYNAPASS_POSTGRES_PORT", "5433"))
 	if err != nil || pgPort <= 0 || pgPort > 65535 {
-		return nil, fmt.Errorf("AR_POSTGRES_PORT=%q is not a port", env["AR_POSTGRES_PORT"])
+		return nil, fmt.Errorf("SYNAPASS_POSTGRES_PORT=%q is not a port", env["SYNAPASS_POSTGRES_PORT"])
 	}
 	st.pgPort = uint32(pgPort)
 	// The database can live outside the install root (the installer offers a
 	// separate data folder); everything else stays under root.
-	dataDir := get("AR_DATA_DIR", filepath.Join(root, "data"))
+	dataDir := get("SYNAPASS_DATA_DIR", filepath.Join(root, "data"))
 	st.pgDir = filepath.Join(dataDir, "postgres")
 	st.gatewayURL = "http://" + st.gatewayAddr
 	st.dashURL = "http://" + st.dashHost + ":" + st.dashPort
 
 	st.configFile = filepath.Join(root, "config.yaml")
 	if _, err := os.Stat(st.configFile); err != nil {
-		return nil, fmt.Errorf("missing %s (run the AstraRouter installer)", st.configFile)
+		return nil, fmt.Errorf("missing %s (run the Synapass installer)", st.configFile)
 	}
 
 	st.gatewayBin = gatewayBin
 	if st.gatewayBin == "" {
-		st.gatewayBin = filepath.Join(root, "bin", "astrarouter.exe")
+		st.gatewayBin = filepath.Join(root, "bin", "synapass.exe")
 	}
 	if _, err := os.Stat(st.gatewayBin); err != nil {
 		return nil, fmt.Errorf("missing gateway binary %s", st.gatewayBin)
@@ -233,7 +233,7 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	}
 	serverJS := filepath.Join(st.dashboardDir, ".next", "standalone", "server.js")
 	if _, err := os.Stat(serverJS); err != nil {
-		return nil, fmt.Errorf("dashboard not built at %s (run the AstraRouter installer)", serverJS)
+		return nil, fmt.Errorf("dashboard not built at %s (run the Synapass installer)", serverJS)
 	}
 
 	if err := os.MkdirAll(st.logDir, 0o750); err != nil {
@@ -243,14 +243,14 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	for k, v := range env {
 		_ = os.Setenv(k, v)
 	}
-	_ = os.Setenv("AR_CONFIG_FILE", st.configFile)
+	_ = os.Setenv("SYNAPASS_CONFIG_FILE", st.configFile)
 	return st, nil
 }
 
 // childEnv is the environment every gateway child gets: file env, config
 // path, and the embedded DSN once the database is up.
 func (st *settings) childEnv() []string {
-	return append(os.Environ(), "AR_POSTGRES_DSN="+st.dsn)
+	return append(os.Environ(), "SYNAPASS_POSTGRES_DSN="+st.dsn)
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +281,7 @@ func (st *settings) startDatabase(ctx context.Context, logger *slog.Logger) (*db
 		return nil, err
 	}
 	st.dsn = pg.DSN
-	_ = os.Setenv("AR_POSTGRES_DSN", pg.DSN)
+	_ = os.Setenv("SYNAPASS_POSTGRES_DSN", pg.DSN)
 	return pg, nil
 }
 
@@ -307,20 +307,20 @@ func (st *settings) runMigrate(ctx context.Context, logger *slog.Logger) error {
 
 // children assembles gateway + dashboard in startup order.
 func (st *settings) children() []supervisor.Child {
-	apiURL := st.env["ASTRAROUTER_API_URL"]
+	apiURL := st.env["SYNAPASS_API_URL"]
 	if strings.TrimSpace(apiURL) == "" {
 		apiURL = st.gatewayURL
 	}
 	// The dashboard proxies the admin API with this credential; without it
 	// every admin call fails closed ("no administrative credential
-	// configured"). It mirrors the gateway's AR_ADMIN_KEY from the same
+	// configured"). Both processes read the same SYNAPASS_ADMIN_KEY from the same
 	// native.env, so one secret serves both sides and rotation is one edit.
-	adminKey := strings.TrimSpace(st.env["AR_ADMIN_KEY"])
+	adminKey := strings.TrimSpace(st.env["SYNAPASS_ADMIN_KEY"])
 	return []supervisor.Child{
 		{
 			Name:         "gateway",
 			Argv:         []string{st.gatewayBin, "serve"},
-			Env:          []string{"AR_CONFIG_FILE=" + st.configFile, "AR_POSTGRES_DSN=" + st.dsn},
+			Env:          []string{"SYNAPASS_CONFIG_FILE=" + st.configFile, "SYNAPASS_POSTGRES_DSN=" + st.dsn},
 			StdoutPath:   filepath.Join(st.logDir, "gateway.log"),
 			StderrPath:   filepath.Join(st.logDir, "gateway.log"),
 			RestartDelay: 3 * time.Second, StopTimeout: 60 * time.Second,
@@ -332,8 +332,8 @@ func (st *settings) children() []supervisor.Child {
 			Env: []string{
 				"PORT=" + st.dashPort,
 				"HOSTNAME=" + st.dashHost,
-				"ASTRAROUTER_API_URL=" + apiURL,
-				"ASTRAROUTER_ADMIN_KEY=" + adminKey,
+				"SYNAPASS_API_URL=" + apiURL,
+				"SYNAPASS_ADMIN_KEY=" + adminKey,
 			},
 			StdoutPath:   filepath.Join(st.logDir, "dashboard.log"),
 			StderrPath:   filepath.Join(st.logDir, "dashboard.log"),
@@ -552,7 +552,7 @@ func (a *windowApp) boot(ctx context.Context) {
 			a.logger.Warn("retry keeps previous settings", "error", err)
 		} else {
 			fresh.dsn = a.st.dsn
-			_ = os.Setenv("AR_POSTGRES_DSN", a.st.dsn)
+			_ = os.Setenv("SYNAPASS_POSTGRES_DSN", a.st.dsn)
 			a.st = fresh
 		}
 	}
@@ -614,7 +614,7 @@ func (a *windowApp) retry() {
 
 // alreadyRunning uses a named mutex so a second launch exits quietly.
 func alreadyRunning() bool {
-	name, _ := syscall.UTF16PtrFromString(`Local\AstraRouterDesktopV1`)
+	name, _ := syscall.UTF16PtrFromString(`Local\SynapassDesktopV1`)
 	h, err := windows.CreateMutex(nil, false, name)
 	if err != nil {
 		return true // fail closed: do not risk two stacks on one data dir
@@ -669,7 +669,7 @@ func defaultRoot() (string, error) {
 			return p, nil
 		}
 	}
-	if _, err := os.Stat(filepath.Join(dir, "bin", "astrarouter.exe")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "bin", "synapass.exe")); err == nil {
 		return dir, nil
 	}
 	if base := os.Getenv("LOCALAPPDATA"); base != "" {
@@ -687,7 +687,7 @@ func loadTrayIcon(root string) []byte {
 			return b
 		}
 	}
-	fmt.Fprintln(os.Stderr, "astrarouter: assets/icon.ico not found; tray runs without an icon")
+	fmt.Fprintln(os.Stderr, "synapass: assets/icon.ico not found; tray runs without an icon")
 	return nil
 }
 
@@ -704,13 +704,13 @@ func logFile(st *settings, name string) *os.File {
 // box for the common double-click launch. It never exits silently.
 func fatal(err error) {
 	msg := err.Error()
-	fmt.Fprintln(os.Stderr, "astrarouter:", msg)
+	fmt.Fprintln(os.Stderr, "synapass:", msg)
 	logPath := ""
 	if bootRoot != "" {
 		logPath = filepath.Join(bootRoot, "logs", "shell-bootstrap.log")
 		if e := os.MkdirAll(filepath.Dir(logPath), 0o750); e == nil {
 			if f, e := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o640); e == nil {
-				fmt.Fprintf(f, "%s astrarouter: %s\n", time.Now().Format(time.RFC3339), msg)
+				fmt.Fprintf(f, "%s synapass: %s\n", time.Now().Format(time.RFC3339), msg)
 				f.Close()
 			}
 		}

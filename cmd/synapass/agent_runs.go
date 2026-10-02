@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/storage"
-	"github.com/shadowsafin/astrarouter/internal/tools"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/storage"
+	"github.com/shadowsafin/synapass/internal/tools"
 )
 
 // agentRunSink adapts the storage repositories to the tool package's RunSink.

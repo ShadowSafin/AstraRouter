@@ -43,8 +43,8 @@ SUBJECT_PROMPT_ANALYSIS = "ar.prompt.analysis"
 # Durable consumer names. They are stable across restarts by design: a worker that
 # picked a random durable name would create a new consumer every deploy and
 # reprocess the whole stream.
-DURABLE_TELEMETRY = "astrarouter-telemetry-worker"
-DURABLE_INTELLIGENCE = "astrarouter-intelligence-worker"
+DURABLE_TELEMETRY = "synapass-telemetry-worker"
+DURABLE_INTELLIGENCE = "synapass-intelligence-worker"
 
 PayloadHandler = Callable[[bytes], None]
 DecodedHandler = Callable[[Mapping[str, Any]], None]
@@ -66,7 +66,7 @@ class Bus:
         self,
         url: str,
         *,
-        name: str = "astrarouter-workers",
+        name: str = "synapass-workers",
         credentials_file: str = "",
         token: str = "",
         jetstream: bool = True,

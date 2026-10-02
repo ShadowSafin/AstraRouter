@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // TestIntelligentRoutingTaskAware verifies score/task hooks influence order

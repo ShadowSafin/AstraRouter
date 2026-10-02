@@ -4,7 +4,7 @@ package feedback
 import (
 	"sync"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Store persists feedback events.

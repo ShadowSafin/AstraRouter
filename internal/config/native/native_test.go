@@ -106,7 +106,7 @@ func TestPortFreeCheck(t *testing.T) {
 }
 
 func TestExecutableCheck(t *testing.T) {
-	if got := ExecutableCheck("missing", "astrarouter-definitely-not-a-binary", "install it"); got.OK {
+	if got := ExecutableCheck("missing", "synapass-definitely-not-a-binary", "install it"); got.OK {
 		t.Fatalf("expected missing binary to fail: %+v", got)
 	} else if got.Hint == "" {
 		t.Fatal("failing check must name the fix")

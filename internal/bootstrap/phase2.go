@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/cache"
-	"github.com/shadowsafin/astrarouter/internal/classifier"
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/guardrails"
-	"github.com/shadowsafin/astrarouter/internal/policy"
-	"github.com/shadowsafin/astrarouter/internal/scoring"
-	"github.com/shadowsafin/astrarouter/internal/shaping"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/cache"
+	"github.com/shadowsafin/synapass/internal/classifier"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/guardrails"
+	"github.com/shadowsafin/synapass/internal/policy"
+	"github.com/shadowsafin/synapass/internal/scoring"
+	"github.com/shadowsafin/synapass/internal/shaping"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // Phase2Services bundles intelligence services.

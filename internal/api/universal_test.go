@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ func TestPublicMetadataHidesRoutingInternals(t *testing.T) {
 	raw := readBody(t, resp)
 
 	var decoded struct {
-		Core *domain.ResponseMetadata `json:"astrarouter"`
+		Core *domain.ResponseMetadata `json:"synapass"`
 	}
 	if err := json.Unmarshal([]byte(raw), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -124,12 +124,12 @@ func TestDebugHeaderRevealsRoutingInternals(t *testing.T) {
 	h := newHarness(t, harnessOptions{})
 
 	resp := h.do(t, http.MethodPost, "/v1/chat/completions", testToken, chatBody(""),
-		map[string]string{"X-AstraRouter-Debug": "true"})
+		map[string]string{"X-Synapass-Debug": "true"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", resp.StatusCode, readBody(t, resp))
 	}
 	var decoded struct {
-		Core *domain.ResponseMetadata `json:"astrarouter"`
+		Core *domain.ResponseMetadata `json:"synapass"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -154,7 +154,7 @@ func TestFallbackReturnsCleanAnswer(t *testing.T) {
 	}
 	var decoded struct {
 		Choices []domain.Choice          `json:"choices"`
-		Core    *domain.ResponseMetadata `json:"astrarouter"`
+		Core    *domain.ResponseMetadata `json:"synapass"`
 		Error   *domain.ErrorBody        `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
@@ -180,7 +180,7 @@ func TestAuthFailureEnvelope(t *testing.T) {
 	}
 	var decoded struct {
 		Error domain.ErrorBody         `json:"error"`
-		Core  *domain.ResponseMetadata `json:"astrarouter"`
+		Core  *domain.ResponseMetadata `json:"synapass"`
 	}
 	if err := json.Unmarshal([]byte(readBody(t, resp)), &decoded); err != nil {
 		t.Fatalf("decode: %v", err)

@@ -5,11 +5,11 @@ problem.
 
 ## Reporting a vulnerability
 
-Email **security@astrarouter.dev** with:
+Email **security@synapass.dev** with:
 
 - A description of the issue and its impact.
 - Steps to reproduce, ideally a request body.
-- The version or commit (`astrarouter version`).
+- The version or commit (`synapass version`).
 - Any `request_id` from a failing response.
 
 You will get an acknowledgement within **3 business days** and an assessment with a
@@ -21,7 +21,7 @@ Please give us a reasonable window to publish a fix before disclosing. We aim fo
 
 ## Scope
 
-AstraRouter holds credentials and forwards prompts, so it is in scope for:
+Synapass holds credentials and forwards prompts, so it is in scope for:
 
 | In scope | Out of scope |
 | --- | --- |
@@ -46,8 +46,8 @@ Things to know when you work with this codebase:
   `api_key` on a create or update is discarded on purpose.
 - **API keys are hashed.** Only a SHA-256 digest is stored; the plaintext is
   returned exactly once. A leaked database yields no usable credential.
-- **Provider credentials need `AR_CREDENTIALS_KEY`.** Without it the data key
-  derives from `AR_ADMIN_KEY`, so rotating the admin key orphans stored secrets.
+- **Provider credentials need `SYNAPASS_CREDENTIALS_KEY`.** Without it the data key
+  derives from `SYNAPASS_ADMIN_KEY`, so rotating the admin key orphans stored secrets.
   Set it explicitly for anything you intend to operate.
 - **The dashboard never holds the admin key in the browser.** Next route handlers
   proxy `/admin/v1/*` server-side, and refuse to attach the key at all unless the
@@ -91,7 +91,7 @@ Things to know:
   reporting "incorrect" would leave a legitimate operator no way to tell a
   lockout from a typo.
 - **Console auth does not replace the admin key.** Programmatic access to
-  `/admin/v1/*` still uses `AR_ADMIN_KEY`, which is what scripts and CI rely on.
+  `/admin/v1/*` still uses `SYNAPASS_ADMIN_KEY`, which is what scripts and CI rely on.
   The session gates the dashboard.
 - **Request bodies are not logged by default.** The redactor has a deny-list of
   headers and value patterns; extend it rather than bypassing it.
@@ -101,12 +101,12 @@ Things to know:
 
 ## Hardening before production
 
-AstraRouter refuses to start in a configuration it considers unsafe. These are the
+Synapass refuses to start in a configuration it considers unsafe. These are the
 settings worth reviewing:
 
 | Check | Setting |
 | --- | --- |
-| `AR_ADMIN_KEY` is set and strong | Required when `admin.require_scope: true` |
+| `SYNAPASS_ADMIN_KEY` is set and strong | Required when `admin.require_scope: true` |
 | CORS names real origins | A wildcard is rejected in production |
 | `X-Forwarded-For` only from your proxies | `http.trusted_proxies` |
 | Anonymous access is off | Never on in production |
@@ -114,7 +114,7 @@ settings worth reviewing:
 | The dashboard sits behind your own TLS terminator | It has no authentication of its own |
 | Scope minimums per key | A key only needs `inference` unless it also reads |
 
-`astrarouter config` prints the resolved configuration with every secret redacted —
+`synapass config` prints the resolved configuration with every secret redacted —
 the fastest way to confirm what the process actually sees. Redaction is applied to
 a copy, so printing never mutates the running configuration.
 

@@ -9,7 +9,7 @@
  * checkout nested under another lockfile (like this repository) makes Next
  * infer the workspace root above the dashboard, which nests the standalone
  * output one level deeper and breaks every launcher that expects
- * `.next/standalone/server.js` — the container build, `astrarouter native up`,
+ * `.next/standalone/server.js` — the container build, `synapass native up`,
  * and the systemd unit alike.
  *
  * @type {import('next').NextConfig}

@@ -51,14 +51,14 @@ func TestInstallerPageInlinesBrandIcon(t *testing.T) {
 // Returning a zeroed config made provisioning start postgres on port 0.
 func TestLoadExistingConfig(t *testing.T) {
 	dir := t.TempDir()
-	env := `# AstraRouter desktop environment.
-AR_ADMIN_KEY=abc123
-AR_HTTP_ADDR=127.0.0.1:18081
+	env := `# Synapass desktop environment.
+SYNAPASS_ADMIN_KEY=abc123
+SYNAPASS_HTTP_ADDR=127.0.0.1:18081
 PORT=3100
-AR_POSTGRES_PORT=5433
-AR_POSTGRES_USER=astrarouter
-AR_POSTGRES_PASSWORD=secretpw
-AR_POSTGRES_DB=astrarouter
+SYNAPASS_POSTGRES_PORT=5433
+SYNAPASS_POSTGRES_USER=synapass
+SYNAPASS_POSTGRES_PASSWORD=secretpw
+SYNAPASS_POSTGRES_DB=synapass
 `
 	if err := os.WriteFile(filepath.Join(dir, "native.env"), []byte(env), 0o600); err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ AR_POSTGRES_DB=astrarouter
 
 func TestLoadExistingConfigRejectsIncomplete(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "native.env"), []byte("AR_ADMIN_KEY=x\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "native.env"), []byte("SYNAPASS_ADMIN_KEY=x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := loadExistingConfig(dir, dir); err == nil {
@@ -95,8 +95,8 @@ func TestResolveDesktop(t *testing.T) {
 		t.Errorf("existing folder: got %q, want %q", got, dir)
 	}
 
-	t.Setenv("AR_TEST_DESKTOP", dir)
-	if got := resolveDesktop(`%AR_TEST_DESKTOP%`); got != dir {
+	t.Setenv("SYNAPASS_TEST_DESKTOP", dir)
+	if got := resolveDesktop(`%SYNAPASS_TEST_DESKTOP%`); got != dir {
 		t.Errorf("unexpanded env var: got %q, want %q", got, dir)
 	}
 

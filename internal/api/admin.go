@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/auth"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/auth"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // storageFilter is a local alias so the handler signatures stay readable.

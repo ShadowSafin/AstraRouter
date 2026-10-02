@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from astrarouter_workers.prompt_analysis import (
+from synapass_workers.prompt_analysis import (
     LONG_CONTEXT_TOKENS,
     analyze_request,
     analyze_text,

@@ -1,6 +1,6 @@
 # Database
 
-AstraRouter keeps state in four stores, chosen so each one is the right shape for
+Synapass keeps state in four stores, chosen so each one is the right shape for
 what it holds. This page covers what lives where, how migrations work, and the
 persistence boundaries that matter when something goes wrong.
 
@@ -74,16 +74,16 @@ They duplicate a few fields for that reason.
 
 | Table | Holds |
 | --- | --- |
-| `astrarouter.request_traces` | One row per request, with span timings |
-| `astrarouter.trace_attempts` | One row per provider attempt |
-| `astrarouter.route_decisions` | Chosen target, candidates, rejections |
-| `astrarouter.usage_events` | Raw token and cost events |
-| `astrarouter.usage_daily` | Pre-aggregated daily rollups |
-| `astrarouter.provider_status_snapshots` | Health over time |
-| `astrarouter.request_intelligence` | Task, shaping, policy verdict, cache kind, scores |
-| `astrarouter.provider_scores` | Score history |
-| `astrarouter.eval_results` | Evaluation and replay outcomes |
-| `astrarouter.cache_events` | Hit, miss and bypass events |
+| `synapass.request_traces` | One row per request, with span timings |
+| `synapass.trace_attempts` | One row per provider attempt |
+| `synapass.route_decisions` | Chosen target, candidates, rejections |
+| `synapass.usage_events` | Raw token and cost events |
+| `synapass.usage_daily` | Pre-aggregated daily rollups |
+| `synapass.provider_status_snapshots` | Health over time |
+| `synapass.request_intelligence` | Task, shaping, policy verdict, cache kind, scores |
+| `synapass.provider_scores` | Score history |
+| `synapass.eval_results` | Evaluation and replay outcomes |
+| `synapass.cache_events` | Hit, miss and bypass events |
 
 ## Redis keys
 
@@ -105,7 +105,7 @@ ever serving a stored body.
 | --- | --- |
 | Usage events | Per-request usage for rollups |
 | Eval and replay jobs | Durable work for the workers |
-| `ar.tool.run.completed` | Finished run summaries, retained 30 days in `ASTRAROUTER_EVENTS` |
+| `ar.tool.run.completed` | Finished run summaries, retained 30 days in `SYNAPASS_EVENTS` |
 | `ar.cache.invalidated` | Flush summary |
 | `ar.tunnel.status` | Tunnel lifecycle |
 | Audit stream | Control-plane events |
@@ -132,11 +132,11 @@ was applied means the two databases are not the same shape.
 
 ### Applying them
 
-Compose sets `AR_POSTGRES_AUTO_MIGRATE=true`, so the gateway migrates at startup.
+Compose sets `SYNAPASS_POSTGRES_AUTO_MIGRATE=true`, so the gateway migrates at startup.
 Under change control, turn that off and migrate as a release step:
 
 ```bash
-astrarouter migrate
+synapass migrate
 ```
 
 The same command migrates both Postgres and ClickHouse.
@@ -156,7 +156,7 @@ the next `docker compose up`.
 **The record pipeline is lossy on purpose.** Usage rows, traces and audit events
 are written asynchronously and batched. A response never blocks on a write. The
 cost is that a crash can lose the last few seconds of telemetry, which is why
-`astrarouter_async_dropped_total` and `astrarouter_async_queue_depth` exist. What is
+`synapass_async_dropped_total` and `synapass_async_queue_depth` exist. What is
 synchronous — authentication, policy, budgets — is never lossy.
 
 **Audit covers the control plane, not inference traffic.** A provider created
@@ -180,7 +180,7 @@ it is logged, counted and flagged on the event.
 | Usage records | Until you prune them; they are the billing basis |
 | Request traces in ClickHouse | TTL-managed; prune by partition |
 | Audit events | Until you prune them |
-| NATS `ASTRAROUTER_EVENTS` | 30 days |
+| NATS `SYNAPASS_EVENTS` | 30 days |
 | Redis response cache | `cache.response_ttl`, default `5m` |
 | Budget counters | TTL derived from the period label |
 
@@ -193,7 +193,7 @@ deletes.
 | --- | --- | --- |
 | `/ready` returns `503` | Postgres unreachable | Check connectivity and credentials |
 | `/ready` says `redis: degraded` | Redis down | Limits are per-process; caching stopped. Fix Redis, or accept degraded mode. |
-| `astrarouter_async_dropped_total` climbing | ClickHouse or NATS down, or the queue is saturated | Restore the dependency; watch queue depth |
+| `synapass_async_dropped_total` climbing | ClickHouse or NATS down, or the queue is saturated | Restore the dependency; watch queue depth |
 | `migration checksum mismatch` | A migration file changed after it was applied | Restore the original file, or reconcile deliberately |
 | Dashboard edits reverted on restart | The row is `bootstrap`-managed | Re-create it through the API so it becomes `api`-managed |
 | A budget never trips | Counter keyed under a different label | Do not hand-roll counter keys; use `policy.PeriodKey` |

@@ -1,8 +1,8 @@
--- AstraRouter Phase 2 ClickHouse additions: classifier, shaping, cache,
+-- Synapass Phase 2 ClickHouse additions: classifier, shaping, cache,
 -- scoring and eval analytics.
 
 -- Classification + policy + shaping per request.
-CREATE TABLE IF NOT EXISTS astrarouter.request_intelligence
+CREATE TABLE IF NOT EXISTS synapass.request_intelligence
 (
     request_id       String,
     tenant_id        String,
@@ -27,7 +27,7 @@ TTL toDateTime(created_at) + INTERVAL 90 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- Provider score history.
-CREATE TABLE IF NOT EXISTS astrarouter.provider_scores
+CREATE TABLE IF NOT EXISTS synapass.provider_scores
 (
     provider_name    LowCardinality(String),
     window           LowCardinality(String),
@@ -45,7 +45,7 @@ TTL toDateTime(captured_at) + INTERVAL 365 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- Evaluation results.
-CREATE TABLE IF NOT EXISTS astrarouter.eval_results
+CREATE TABLE IF NOT EXISTS synapass.eval_results
 (
     evaluation_id    String,
     request_id       String,
@@ -64,7 +64,7 @@ TTL toDateTime(created_at) + INTERVAL 365 DAY DELETE
 SETTINGS index_granularity = 8192;
 
 -- Cache hit/miss events for analytics.
-CREATE TABLE IF NOT EXISTS astrarouter.cache_events
+CREATE TABLE IF NOT EXISTS synapass.cache_events
 (
     request_id       String,
     tenant_id        String,

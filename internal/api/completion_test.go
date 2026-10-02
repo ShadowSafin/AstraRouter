@@ -18,14 +18,14 @@ func completionBlock(t *testing.T, body []byte) map[string]any {
 	t.Helper()
 
 	var envelope struct {
-		AstraRouter struct {
+		Synapass struct {
 			Completion map[string]any `json:"completion"`
-		} `json:"astrarouter"`
+		} `json:"synapass"`
 	}
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	return envelope.AstraRouter.Completion
+	return envelope.Synapass.Completion
 }
 
 // TestCompleteAnswerCarriesNoCompletionBlock keeps the additive contract: a
@@ -144,7 +144,7 @@ func TestDebugMetadataAlsoCarriesCompletion(t *testing.T) {
 	h.primary.lengthFinish = true
 
 	resp := h.do(t, "POST", "/v1/chat/completions", testToken, chatBody(""),
-		map[string]string{"X-AstraRouter-Debug": "true"})
+		map[string]string{"X-Synapass-Debug": "true"})
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d: %s", resp.StatusCode, readBody(t, resp))
 	}

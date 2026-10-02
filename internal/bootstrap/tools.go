@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/storage"
-	"github.com/shadowsafin/astrarouter/internal/tools"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/storage"
+	"github.com/shadowsafin/synapass/internal/tools"
 )
 
 // SeedBuiltinTools registers the gateway's built-in tools.

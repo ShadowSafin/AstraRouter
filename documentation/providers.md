@@ -1,6 +1,6 @@
 # Providers
 
-A provider is one upstream inference service. AstraRouter talks to it through an
+A provider is one upstream inference service. Synapass talks to it through an
 adapter, knows what it costs and what it can do, and routes requests to it
 according to policy. This page covers adding providers, credentials, kinds,
 testing and day-to-day management.
@@ -35,7 +35,7 @@ call; the per-row **Sync** button re-runs discovery later.
 
 ```bash
 curl -s $GATEWAY/admin/v1/providers \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "openai-prod",
@@ -68,7 +68,7 @@ silent.
 
 ```bash
 curl -s -X PUT $GATEWAY/admin/v1/providers/$ID/credential \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"secret":"sk-…","name":"primary"}' | jq
 ```
@@ -77,7 +77,7 @@ Stored credentials are sealed with AES-256-GCM in `provider_credentials`, one
 active credential per provider. Reads return metadata only:
 
 ```bash
-curl -s $GATEWAY/admin/v1/providers/$ID/credential -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+curl -s $GATEWAY/admin/v1/providers/$ID/credential -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 # → {"has_credential": true, "credential": {"name": "primary", "key_version": 3}}
 ```
 
@@ -88,10 +88,10 @@ first write audits `create`; overwriting audits `rotate`.
 
 | Setting | Behaviour |
 | --- | --- |
-| `AR_CREDENTIALS_KEY` (32 bytes, raw/hex/base64) | Used directly. Set this for serious deployments. |
-| Unset | The data key is derived from `AR_ADMIN_KEY` via HKDF-SHA256, so stock deployments need no new configuration. |
+| `SYNAPASS_CREDENTIALS_KEY` (32 bytes, raw/hex/base64) | Used directly. Set this for serious deployments. |
+| Unset | The data key is derived from `SYNAPASS_ADMIN_KEY` via HKDF-SHA256, so stock deployments need no new configuration. |
 
-Rotating `AR_ADMIN_KEY` without setting `AR_CREDENTIALS_KEY` orphans stored
+Rotating `SYNAPASS_ADMIN_KEY` without setting `SYNAPASS_CREDENTIALS_KEY` orphans stored
 credentials — re-save them after a rotation.
 
 ### Resolution timing
@@ -106,7 +106,7 @@ A model is a servable name, its context window, its price and its capabilities.
 
 ```bash
 curl -s $GATEWAY/admin/v1/models \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "provider_id": "'"$PROVIDER_ID"'",
@@ -152,7 +152,7 @@ Three checks, each persisted with latency and status:
 
 ```bash
 curl -s -X POST $GATEWAY/admin/v1/providers/$ID/test \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"checks":["connectivity","models","sample"],"model":"gpt-4o-mini","prompt":"say ok"}' | jq
 ```
@@ -183,13 +183,13 @@ an open circuit — a probe that succeeds while live traffic fails would flap.
 Run an on-demand probe:
 
 ```bash
-curl -s -X POST $GATEWAY/admin/v1/providers/$ID/probe -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+curl -s -X POST $GATEWAY/admin/v1/providers/$ID/probe -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 ```
 
 Inspect current state:
 
 ```bash
-curl -s "$GATEWAY/admin/v1/providers/health?provider_id=$ID" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/providers/health?provider_id=$ID" -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 ```
 
 ## Managing providers

@@ -1,4 +1,4 @@
-# Prometheus configuration for the AstraRouter stack.
+# Prometheus configuration for the Synapass stack.
 #
 # The gateway exposes its own metrics on /metrics. The OpenTelemetry collector is
 # scraped too, because a pipeline that drops spans is invisible in the gateway's
@@ -11,27 +11,27 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
-    cluster: astrarouter
-    environment: ${AR_ENVIRONMENT:-local}
+    cluster: synapass
+    environment: ${SYNAPASS_ENVIRONMENT:-local}
 
 rule_files:
   - /etc/prometheus/rules/*.yml
 
 scrape_configs:
-  - job_name: astrarouter-gateway
+  - job_name: synapass-gateway
     metrics_path: /metrics
     static_configs:
       - targets: ["gateway:8080"]
         labels:
-          service: astrarouter-gateway
+          service: synapass-gateway
           component: control-plane
 
-  - job_name: astrarouter-workers
+  - job_name: synapass-workers
     metrics_path: /metrics
     static_configs:
       - targets: ["workers:9101"]
         labels:
-          service: astrarouter-workers
+          service: synapass-workers
           component: intelligence
 
   - job_name: otel-collector

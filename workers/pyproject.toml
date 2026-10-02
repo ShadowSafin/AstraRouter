@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "astrarouter-workers"
+name = "synapass-workers"
 version = "1.0.0"
-description = "AstraRouter intelligence workers: evaluation, prompt analysis and telemetry rollups"
+description = "Synapass intelligence workers: evaluation, prompt analysis and telemetry rollups"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -31,16 +31,16 @@ dev = [
 ]
 
 [project.scripts]
-astrarouter-worker = "astrarouter_workers.cli:main"
+synapass-worker = "synapass_workers.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/shadowsafin/astrarouter"
-Documentation = "https://github.com/shadowsafin/astrarouter/blob/main/documentation/README.md"
-Source = "https://github.com/shadowsafin/astrarouter"
-Issues = "https://github.com/shadowsafin/astrarouter/issues"
+Homepage = "https://github.com/shadowsafin/synapass"
+Documentation = "https://github.com/shadowsafin/synapass/blob/main/documentation/README.md"
+Source = "https://github.com/shadowsafin/synapass"
+Issues = "https://github.com/shadowsafin/synapass/issues"
 
 [tool.setuptools]
-packages = ["astrarouter_workers"]
+packages = ["synapass_workers"]
 
 [tool.ruff]
 line-length = 110

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/dashboardauth"
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/dashboardauth"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Dashboard operator authentication.
@@ -27,7 +27,7 @@ import (
 
 const (
 	// sessionCookieDefault is the fallback cookie name when configuration omits it.
-	sessionCookieDefault = "astrarouter_session"
+	sessionCookieDefault = "synapass_session"
 )
 
 // authStateResponse is the body of GET /admin/v1/auth/state.

@@ -1,21 +1,21 @@
-# AstraRouter single-command installer (Windows PowerShell).
+# Synapass single-command installer (Windows PowerShell).
 #
-#   irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.ps1 | iex
 #
-# Clones (or fast-forward updates) the repository into $env:ASTRAROUTER_DIR
-# (default "$HOME\astrarouter") and hands off to scripts/deploy.ps1, which
+# Clones (or fast-forward updates) the repository into $env:SYNAPASS_DIR
+# (default "$HOME\synapass") and hands off to scripts/deploy.ps1, which
 # bootstraps .env, starts the full Docker Compose stack, waits for readiness
 # and prints the URLs. Idempotent: re-running updates the checkout and
 # re-verifies the stack without touching .env or volumes.
 #
-#   $env:ASTRAROUTER_DIR="$HOME\apps\astrarouter"; irm <url> | iex  # custom dir
-#   $env:ASTRAROUTER_REF="main"        # branch/tag to check out (default: main)
-#   $env:ASTRAROUTER_NO_DEPLOY="1"     # clone/update only, skip starting the stack
+#   $env:SYNAPASS_DIR="$HOME\apps\synapass"; irm <url> | iex  # custom dir
+#   $env:SYNAPASS_REF="main"        # branch/tag to check out (default: main)
+#   $env:SYNAPASS_NO_DEPLOY="1"     # clone/update only, skip starting the stack
 $ErrorActionPreference = "Stop"
 
-$RepoUrl = "https://github.com/shadowsafin/astrarouter.git"
-$Ref = if ($env:ASTRAROUTER_REF) { $env:ASTRAROUTER_REF } else { "main" }
-$Target = if ($env:ASTRAROUTER_DIR) { $env:ASTRAROUTER_DIR } else { Join-Path $HOME "astrarouter" }
+$RepoUrl = "https://github.com/shadowsafin/synapass.git"
+$Ref = if ($env:SYNAPASS_REF) { $env:SYNAPASS_REF } else { "main" }
+$Target = if ($env:SYNAPASS_DIR) { $env:SYNAPASS_DIR } else { Join-Path $HOME "synapass" }
 
 function Fail([string]$Step, [string]$Message) {
   Write-Host ""
@@ -24,7 +24,7 @@ function Fail([string]$Step, [string]$Message) {
   exit 1
 }
 
-Write-Host "AstraRouter installer: $RepoUrl @ $Ref -> $Target"
+Write-Host "Synapass installer: $RepoUrl @ $Ref -> $Target"
 
 # 1. Prerequisites.
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -46,7 +46,7 @@ if ((Test-Path -LiteralPath (Join-Path $Target ".git")) -and (Test-Path -Literal
   if ($LASTEXITCODE -ne 0) { Fail "fetching the repository" "could not update the checkout." }
   Write-Host "  OK  checkout updated"
 } elseif (Test-Path -LiteralPath $Target) {
-  Fail "fetching the repository" "$Target exists but is not a git checkout. Move it aside or set `$env:ASTRAROUTER_DIR to another path."
+  Fail "fetching the repository" "$Target exists but is not a git checkout. Move it aside or set `$env:SYNAPASS_DIR to another path."
 } else {
   & git clone --depth 1 --branch $Ref $RepoUrl $Target
   if ($LASTEXITCODE -ne 0) { Fail "fetching the repository" "could not clone ${RepoUrl}. Check network access to github.com." }
@@ -55,11 +55,11 @@ if ((Test-Path -LiteralPath (Join-Path $Target ".git")) -and (Test-Path -Literal
 
 $Deploy = Join-Path $Target "scripts\deploy.ps1"
 if (-not (Test-Path -LiteralPath $Deploy)) {
-  Fail "fetching the repository" "checkout at $Target has no scripts\deploy.ps1. Re-clone or pick another ASTRAROUTER_REF."
+  Fail "fetching the repository" "checkout at $Target has no scripts\deploy.ps1. Re-clone or pick another SYNAPASS_REF."
 }
 
-if ($env:ASTRAROUTER_NO_DEPLOY -eq "1") {
-  Write-Host "  OK  checkout ready at $Target (stack start skipped by ASTRAROUTER_NO_DEPLOY=1)"
+if ($env:SYNAPASS_NO_DEPLOY -eq "1") {
+  Write-Host "  OK  checkout ready at $Target (stack start skipped by SYNAPASS_NO_DEPLOY=1)"
   Write-Host "  Start it later with: & `"$Deploy`""
   return
 }

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  AstraRouter Phase 3 smoke test: verify a running stack end to end.
+  Synapass Phase 3 smoke test: verify a running stack end to end.
 
 .DESCRIPTION
   Checks gateway health/readiness, datastores (via readiness), dashboard +
@@ -15,7 +15,7 @@
   the full pipeline (auth -> policy -> classify -> shape -> route -> execute
   -> record). The script fails only when the pipeline itself is broken.
 
-  Reads .env in the repository root for AR_ADMIN_KEY and GATEWAY_PORT.
+  Reads .env in the repository root for SYNAPASS_ADMIN_KEY and GATEWAY_PORT.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
@@ -102,8 +102,8 @@ function Invoke-Json([string]$Uri, [string]$Method = "GET", $Body = $null, [hash
   }
 }
 
-$adminKey = Get-DotEnvValue "AR_ADMIN_KEY"
-if ([string]::IsNullOrWhiteSpace($adminKey)) { throw "AR_ADMIN_KEY is empty. Copy .env.example to .env and set it." }
+$adminKey = Get-DotEnvValue "SYNAPASS_ADMIN_KEY"
+if ([string]::IsNullOrWhiteSpace($adminKey)) { throw "SYNAPASS_ADMIN_KEY is empty. Copy .env.example to .env and set it." }
 $gatewayPort = Get-DotEnvValue "GATEWAY_PORT" "8080"
 if ([string]::IsNullOrWhiteSpace($GatewayUrl)) { $GatewayUrl = "http://127.0.0.1:$gatewayPort" }
 $adminHeaders = @{ Authorization = "Bearer $adminKey" }
@@ -171,11 +171,11 @@ Step "sample inference request (pipeline proof)" {
   $h = @{ Authorization = "Bearer $script:apiKeyPlaintext" }
   $r = Invoke-Json "$GatewayUrl/v1/chat/completions" "POST" @{ model = $script:sampleModel; messages = @(@{ role = "user"; content = "hello from smoke test" }) } -Headers $h
   if ($r.ok) {
-    Write-Host ("      200 OK via {0}, cost {1}" -f $r.body.astrarouter.provider, $r.body.astrarouter.estimated_cost_usd)
-    $script:sampleRequestId = $r.body.astrarouter.request_id
+    Write-Host ("      200 OK via {0}, cost {1}" -f $r.body.synapass.provider, $r.body.synapass.estimated_cost_usd)
+    $script:sampleRequestId = $r.body.synapass.request_id
   } else {
     $code = $r.body.error.code
-    $reqId = $r.body.astrarouter.request_id
+    $reqId = $r.body.synapass.request_id
     $script:sampleRequestId = $reqId
     # Without upstream credentials the provider call fails AFTER routing: that
     # still proves auth, policy, classification, shaping, routing, execution
@@ -200,7 +200,7 @@ Step "request recorded (GET /admin/v1/requests)" {
 Step "metrics flowing (GET /metrics)" {
   $resp = Invoke-WebRequest -Uri "$GatewayUrl/metrics" -UseBasicParsing -TimeoutSec 15
   $text = $resp.Content
-  foreach ($name in @("astrarouter_gateway_requests_total", "astrarouter_async_flushed_total")) {
+  foreach ($name in @("synapass_gateway_requests_total", "synapass_async_flushed_total")) {
     if ($text -notmatch $name) { throw "metric $name missing" }
   }
   Write-Host "      requests_total + async_flushed_total present"
@@ -228,10 +228,10 @@ Step "dashboard home + gateway proxy" {
   }
 
   # Authenticated path, when a console password is available. That password is
-  # chosen interactively on first run, so CI sets AR_DASHBOARD_PASSWORD and a
+  # chosen interactively on first run, so CI sets SYNAPASS_DASHBOARD_PASSWORD and a
   # developer machine skips this half.
-  $dashPassword = $env:AR_DASHBOARD_PASSWORD
-  $dashUser = if ($env:AR_DASHBOARD_USERNAME) { $env:AR_DASHBOARD_USERNAME } else { "admin" }
+  $dashPassword = $env:SYNAPASS_DASHBOARD_PASSWORD
+  $dashUser = if ($env:SYNAPASS_DASHBOARD_USERNAME) { $env:SYNAPASS_DASHBOARD_USERNAME } else { "admin" }
   if ($dashPassword) {
     $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     $login = Invoke-Json "$DashboardUrl/api/gateway/auth/login" "POST" @{ username = $dashUser; password = $dashPassword } -WebSession $webSession
@@ -248,7 +248,7 @@ Step "dashboard home + gateway proxy" {
     if ($after.status -ne 401) { throw "the proxy still answered after logout (HTTP $($after.status))" }
     Write-Host "      logout revokes the session"
   } else {
-    Write-Host "      proxy refuses anonymous; set AR_DASHBOARD_PASSWORD to also exercise login"
+    Write-Host "      proxy refuses anonymous; set SYNAPASS_DASHBOARD_PASSWORD to also exercise login"
   }
 }
 

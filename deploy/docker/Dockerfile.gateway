@@ -1,9 +1,9 @@
-# AstraRouter control plane.
+# Synapass control plane.
 #
 # The whole Go module is one binary: the gateway, its background loops, the
 # migration command and the health probe. That is what keeps the containerised and
 # native deployment paths from drifting apart -- a native install copies this same
-# binary and runs this same `astrarouter` command.
+# binary and runs this same `synapass` command.
 
 # ---------------------------------------------------------------------------
 # Build stage.
@@ -38,11 +38,11 @@ ARG DIRTY=""
 RUN go build \
       -trimpath \
       -ldflags "-s -w \
-        -X github.com/shadowsafin/astrarouter/internal/version.Version=${VERSION} \
-        -X github.com/shadowsafin/astrarouter/internal/version.Commit=${COMMIT} \
-        -X github.com/shadowsafin/astrarouter/internal/version.BuildDate=${BUILD_DATE} \
-        -X github.com/shadowsafin/astrarouter/internal/version.Dirty=${DIRTY}" \
-      -o /out/astrarouter ./cmd/astrarouter
+        -X github.com/shadowsafin/synapass/internal/version.Version=${VERSION} \
+        -X github.com/shadowsafin/synapass/internal/version.Commit=${COMMIT} \
+        -X github.com/shadowsafin/synapass/internal/version.BuildDate=${BUILD_DATE} \
+        -X github.com/shadowsafin/synapass/internal/version.Dirty=${DIRTY}" \
+      -o /out/synapass ./cmd/synapass
 
 # Vet runs in the build stage so an obvious mistake fails the image build rather
 # than reaching a runtime.
@@ -57,10 +57,10 @@ FROM alpine:3.20 AS runtime
 # budgets and retention windows are computed in calendar time, and a container
 # without zone data silently falls back to UTC.
 RUN apk add --no-cache ca-certificates tzdata \
- && addgroup -g 10001 -S astrarouter \
- && adduser -u 10001 -S -G astrarouter -h /var/lib/astrarouter astrarouter \
- && mkdir -p /etc/astrarouter /var/lib/astrarouter \
- && chown -R astrarouter:astrarouter /etc/astrarouter /var/lib/astrarouter
+ && addgroup -g 10001 -S synapass \
+ && adduser -u 10001 -S -G synapass -h /var/lib/synapass synapass \
+ && mkdir -p /etc/synapass /var/lib/synapass \
+ && chown -R synapass:synapass /etc/synapass /var/lib/synapass
 
 # cloudflared powers the opt-in temporary tunnels (tunnel.enabled). The version
 # is pinned so image rebuilds are reproducible; bump the ARG deliberately, not
@@ -74,24 +74,24 @@ RUN wget -q -O /usr/local/bin/cloudflared \
 
 # The example config is shipped as the image's starting point. It is named
 # config.yaml because that is one of the loader's default search paths
-# (`/etc/astrarouter/config.yaml`), so the image has a valid configuration even if
-# AR_CONFIG_FILE is never set.
-COPY --from=builder /out/astrarouter /usr/local/bin/astrarouter
-COPY config.example.yaml /etc/astrarouter/config.yaml
+# (`/etc/synapass/config.yaml`), so the image has a valid configuration even if
+# SYNAPASS_CONFIG_FILE is never set.
+COPY --from=builder /out/synapass /usr/local/bin/synapass
+COPY config.example.yaml /etc/synapass/config.yaml
 
 # The executable is owned by root and world-readable but not writable, so a
 # compromised process cannot replace its own binary.
-RUN chmod 0555 /usr/local/bin/astrarouter
+RUN chmod 0555 /usr/local/bin/synapass
 
-USER astrarouter:astrarouter
-WORKDIR /var/lib/astrarouter
+USER synapass:synapass
+WORKDIR /var/lib/synapass
 
 # Sensible container defaults. Every one of these is overridable, and the config
 # file is optional because environment variables alone are a valid configuration.
-ENV AR_ENVIRONMENT=production \
-    AR_HTTP_ADDR=":8080" \
-    AR_LOG_FORMAT=json \
-    AR_CONFIG_FILE=/etc/astrarouter/config.yaml
+ENV SYNAPASS_ENVIRONMENT=production \
+    SYNAPASS_HTTP_ADDR=":8080" \
+    SYNAPASS_LOG_FORMAT=json \
+    SYNAPASS_CONFIG_FILE=/etc/synapass/config.yaml
 
 EXPOSE 8080
 
@@ -99,9 +99,9 @@ EXPOSE 8080
 # needs no HTTP client and the container check exercises the same code path as the
 # systemd unit.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=4 \
-  CMD ["astrarouter", "health", "http://127.0.0.1:8080/health"]
+  CMD ["synapass", "health", "http://127.0.0.1:8080/health"]
 
 # exec form so SIGTERM reaches the binary directly; the shell form would make the
 # shell PID 1 and swallow the signal, turning every deploy into a hard kill.
-ENTRYPOINT ["/usr/local/bin/astrarouter"]
+ENTRYPOINT ["/usr/local/bin/synapass"]
 CMD ["serve"]

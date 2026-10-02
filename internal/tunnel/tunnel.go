@@ -1,7 +1,7 @@
 // Package tunnel manages temporary public tunnels (Cloudflare quick tunnels).
 //
 // A quick tunnel mints a disposable *.trycloudflare.com URL that proxies to
-// one local AstraRouter service — no port forwarding, no DNS, no account. The
+// one local Synapass service — no port forwarding, no DNS, no account. The
 // manager owns exactly one cloudflared child process: it spawns it, captures
 // the public URL from its log output, supervises it, and tears it down on
 // request or shutdown. Session rows in PostgreSQL are the audit trail.
@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Store persists tunnel sessions. *storage.TunnelSessionRepository satisfies
@@ -130,7 +130,7 @@ func (m *Manager) BinaryAvailable() (string, error) {
 // ResolveTarget maps a requested target to the local address cloudflared
 // proxies to. Named targets come from configuration; anything else must be an
 // explicit loopback host:port, otherwise the tunnel could be pointed at
-// infrastructure AstraRouter does not own.
+// infrastructure Synapass does not own.
 func (m *Manager) ResolveTarget(target string) (name, addr string, err error) {
 	if target == "" {
 		target = m.cfg.DefaultTarget

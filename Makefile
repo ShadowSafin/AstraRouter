@@ -1,4 +1,4 @@
-# AstraRouter developer entry points.
+# Synapass developer entry points.
 #
 # Every target is a thin wrapper over a command the documentation also shows, so
 # reading this file is a reasonable way to learn how the pieces are built. Nothing
@@ -10,14 +10,14 @@
 
 SHELL := /bin/bash
 
-MODULE      := github.com/shadowsafin/astrarouter
-CMD         := ./cmd/astrarouter
+MODULE      := github.com/shadowsafin/synapass
+CMD         := ./cmd/synapass
 BIN_DIR     := bin
 GO          ?= go
 PYTHON      ?= python3
 NPM         ?= npm
 
-# Stamped into the binary and exported as astrarouter_build_info.
+# Stamped into the binary and exported as synapass_build_info.
 VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE  ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -33,7 +33,7 @@ LDFLAGS     := -s -w \
         desktop-build desktop-test
 
 help: ## Show this help.
-	@awk 'BEGIN {FS = ":.*?## "; printf "\nAstraRouter\n\nUsage: make <target>\n\nTargets:\n"} \
+	@awk 'BEGIN {FS = ":.*?## "; printf "\nSynapass\n\nUsage: make <target>\n\nTargets:\n"} \
 	     /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo
 
@@ -43,8 +43,8 @@ help: ## Show this help.
 
 build: ## Build the gateway binary into ./bin.
 	@mkdir -p $(BIN_DIR)
-	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/astrarouter $(CMD)
-	@echo "built $(BIN_DIR)/astrarouter ($(VERSION))"
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/synapass $(CMD)
+	@echo "built $(BIN_DIR)/synapass ($(VERSION))"
 
 install: ## Install the gateway into $GOBIN (or $GOPATH/bin).
 	$(GO) install -trimpath -ldflags "$(LDFLAGS)" $(CMD)
@@ -63,7 +63,7 @@ docker-build: ## Build the gateway image.
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		-t astrarouter-gateway:$(VERSION) .
+		-t synapass-gateway:$(VERSION) .
 
 # ---------------------------------------------------------------------------
 # Quality
@@ -88,7 +88,7 @@ lint: ## Run go vet plus the configured linters.
 		|| echo "golangci-lint not installed; skipping"
 	@command -v ruff >/dev/null && (cd workers && ruff check . && ruff format --check .) \
 		|| echo "ruff not installed; skipping Python lint"
-	@command -v mypy >/dev/null && (cd workers && mypy astrarouter_workers) \
+	@command -v mypy >/dev/null && (cd workers && mypy synapass_workers) \
 		|| echo "mypy not installed; skipping Python types"
 
 test: test-go test-workers ## Run every test suite.

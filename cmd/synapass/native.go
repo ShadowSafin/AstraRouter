@@ -17,13 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/bootstrap"
-	"github.com/shadowsafin/astrarouter/internal/config"
-	nativecfg "github.com/shadowsafin/astrarouter/internal/config/native"
-	"github.com/shadowsafin/astrarouter/internal/dashboardauth"
-	"github.com/shadowsafin/astrarouter/internal/logging"
-	"github.com/shadowsafin/astrarouter/internal/runtime"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/bootstrap"
+	"github.com/shadowsafin/synapass/internal/config"
+	nativecfg "github.com/shadowsafin/synapass/internal/config/native"
+	"github.com/shadowsafin/synapass/internal/dashboardauth"
+	"github.com/shadowsafin/synapass/internal/logging"
+	"github.com/shadowsafin/synapass/internal/runtime"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // nativeOptions holds the flags shared by every native subcommand.
@@ -79,12 +79,12 @@ func nativeSetup(configPath, logLevel, logFormat string, opts *nativeOptions) (*
 	}
 	paths := nativecfg.DefaultPaths()
 
-	// The native config file is discovered like any --config/AR_CONFIG_FILE
+	// The native config file is discovered like any --config/SYNAPASS_CONFIG_FILE
 	// value: an explicit choice always wins, otherwise a written native config
 	// is picked up automatically so install, up and doctor agree on the file.
-	if configPath == "" && os.Getenv("AR_CONFIG_FILE") == "" {
+	if configPath == "" && os.Getenv("SYNAPASS_CONFIG_FILE") == "" {
 		if _, err := os.Stat(paths.ConfigFile); err == nil {
-			_ = os.Setenv("AR_CONFIG_FILE", paths.ConfigFile)
+			_ = os.Setenv("SYNAPASS_CONFIG_FILE", paths.ConfigFile)
 		}
 	}
 
@@ -126,7 +126,7 @@ func nativeSetup(configPath, logLevel, logFormat string, opts *nativeOptions) (*
 // runNative dispatches the native deployment wrapper.
 func runNative(cfg *config.Config, logger *slog.Logger, configPath, logLevel, logFormat string, args []string) error {
 	if len(args) == 0 {
-		return &exitError{code: exitUsage, err: fmt.Errorf("usage: astrarouter native [install|up|doctor]")}
+		return &exitError{code: exitUsage, err: fmt.Errorf("usage: synapass native [install|up|doctor]")}
 	}
 	switch args[0] {
 	case "install":
@@ -217,7 +217,7 @@ func runNativeDoctor(_ *config.Config, _ *slog.Logger, configPath, logLevel, log
 	}
 
 	add(nativecfg.PortFreeCheck("gateway-port", cfg.HTTP.Addr,
-		"free the port or set AR_HTTP_ADDR to another one"), true)
+		"free the port or set SYNAPASS_HTTP_ADDR to another one"), true)
 
 	if !opts.skipDashboard {
 		add(nativecfg.ExecutableCheck("node", "node",
@@ -237,8 +237,8 @@ func runNativeDoctor(_ *config.Config, _ *slog.Logger, configPath, logLevel, log
 		}
 	}
 
-	if os.Getenv("AR_ADMIN_KEY") == "" {
-		fmt.Printf("%-16s %s\n", "admin-key", "WARN: AR_ADMIN_KEY is empty (gateway validation may refuse to start in production; generate one with `openssl rand -hex 24`)")
+	if os.Getenv("SYNAPASS_ADMIN_KEY") == "" {
+		fmt.Printf("%-16s %s\n", "admin-key", "WARN: SYNAPASS_ADMIN_KEY is empty (gateway validation may refuse to start in production; generate one with `openssl rand -hex 24`)")
 	}
 
 	failedRequired := 0
@@ -311,11 +311,11 @@ func runNativeInstall(_ *config.Config, _ *slog.Logger, configPath, logLevel, lo
 		if err != nil {
 			return &exitError{code: exitFailure, err: err}
 		}
-		content := strings.Replace(string(template), "AR_ADMIN_KEY=\n", "AR_ADMIN_KEY="+key+"\n", 1)
+		content := strings.Replace(string(template), "SYNAPASS_ADMIN_KEY=\n", "SYNAPASS_ADMIN_KEY="+key+"\n", 1)
 		if err := writePrivateFile(envPath, []byte(content)); err != nil {
 			return &exitError{code: exitFailure, err: err}
 		}
-		fmt.Println("      wrote template with a fresh AR_ADMIN_KEY (mode 0600)")
+		fmt.Println("      wrote template with a fresh SYNAPASS_ADMIN_KEY (mode 0600)")
 	}
 
 	fmt.Printf("[3/5] gateway config: %s\n", paths.ConfigFile)
@@ -333,7 +333,7 @@ func runNativeInstall(_ *config.Config, _ *slog.Logger, configPath, logLevel, lo
 		if err := writeConfigFile(paths.ConfigFile, template); err != nil {
 			return &exitError{code: exitFailure, err: err}
 		}
-		fmt.Println("      wrote minimal localhost template (edit it, or point AR_CONFIG_FILE at config.example.yaml)")
+		fmt.Println("      wrote minimal localhost template (edit it, or point SYNAPASS_CONFIG_FILE at config.example.yaml)")
 	}
 
 	// Reload now that the env file exists: the generated admin key and any
@@ -344,7 +344,7 @@ func runNativeInstall(_ *config.Config, _ *slog.Logger, configPath, logLevel, lo
 		return err
 	}
 	if nctx.validationErr != nil {
-		return &exitError{code: exitConfig, err: fmt.Errorf("configuration still invalid after writing templates: %w (run `astrarouter native doctor` for the full report)", nctx.validationErr)}
+		return &exitError{code: exitConfig, err: fmt.Errorf("configuration still invalid after writing templates: %w (run `synapass native doctor` for the full report)", nctx.validationErr)}
 	}
 	cfg, logger := nctx.cfg, nctx.logger
 
@@ -372,12 +372,12 @@ func runNativeInstall(_ *config.Config, _ *slog.Logger, configPath, logLevel, lo
 native install complete.
 
   gateway:   http://127.0.0.1:%s  (health: /health, readiness: /ready)
-  dashboard: http://127.0.0.1:%d  (after 'astrarouter native up')
+  dashboard: http://127.0.0.1:%d  (after 'synapass native up')
   secrets:   %s
 
 next:
-  astrarouter native up            # foreground supervisor: gateway + dashboard
-  astrarouter native up --with-workers
+  synapass native up            # foreground supervisor: gateway + dashboard
+  synapass native up --with-workers
 
 then open the dashboard: first visit shows the setup screen that creates the
 single console administrator and closes itself permanently.
@@ -399,15 +399,15 @@ func nativeBuild(paths nativecfg.Paths, opts *nativeOptions) error {
 				return &exitError{code: exitFailure, err: fmt.Errorf("no source checkout and no %s on PATH: install the binary or run from the repository", paths.GatewayBin)}
 			}
 		} else {
-			fmt.Println("      building the gateway (go build ./cmd/astrarouter) ...")
-			build := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(root, "bin", "astrarouter"), "./cmd/astrarouter")
+			fmt.Println("      building the gateway (go build ./cmd/synapass) ...")
+			build := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(root, "bin", "synapass"), "./cmd/synapass")
 			build.Dir = root
 			build.Stdout = os.Stdout
 			build.Stderr = os.Stderr
 			if err := build.Run(); err != nil {
 				return &exitError{code: exitFailure, err: fmt.Errorf("go build: %w (install Go 1.27+ or pass --skip-build)", err)}
 			}
-			fmt.Println("      gateway built: bin/astrarouter")
+			fmt.Println("      gateway built: bin/synapass")
 		}
 	} else {
 		fmt.Println("      gateway build skipped")
@@ -495,7 +495,7 @@ func runNativeUp(_ *config.Config, _ *slog.Logger, configPath, logLevel, logForm
 	}
 	cfg, logger, paths := nctx.cfg, nctx.logger, nctx.paths
 	if nctx.validationErr != nil {
-		return &exitError{code: exitConfig, err: fmt.Errorf("invalid configuration, refusing to start half a stack: %w (run `astrarouter native doctor` for the full report)", nctx.validationErr)}
+		return &exitError{code: exitConfig, err: fmt.Errorf("invalid configuration, refusing to start half a stack: %w (run `synapass native doctor` for the full report)", nctx.validationErr)}
 	}
 	if err := paths.EnsureStateDirs(); err != nil {
 		return &exitError{code: exitFailure, err: err}
@@ -538,7 +538,7 @@ func runNativeUp(_ *config.Config, _ *slog.Logger, configPath, logLevel, logForm
 	}
 
 	fmt.Printf(`
-AstraRouter is up (native, foreground — Ctrl-C stops everything).
+Synapass is up (native, foreground — Ctrl-C stops everything).
 
   gateway:   %s  (/health liveness, /ready readiness, /metrics Prometheus)
   dashboard: %s%s
@@ -576,7 +576,7 @@ func nativeChildren(cfg *config.Config, paths nativecfg.Paths, opts *nativeOptio
 	if !opts.skipDashboard {
 		server := filepath.Join(paths.DashboardDir, ".next", "standalone", "server.js")
 		if _, err := os.Stat(server); err != nil {
-			return nil, &exitError{code: exitFailure, err: fmt.Errorf("dashboard not built at %s: run `npm ci && npm run build` there or `astrarouter native install`", server)}
+			return nil, &exitError{code: exitFailure, err: fmt.Errorf("dashboard not built at %s: run `npm ci && npm run build` there or `synapass native install`", server)}
 		}
 		node, err := exec.LookPath("node")
 		if err != nil {
@@ -587,8 +587,8 @@ func nativeChildren(cfg *config.Config, paths nativecfg.Paths, opts *nativeOptio
 			"PORT=" + strconv.Itoa(dashPort),
 			"HOSTNAME=" + dashHost,
 		}
-		if os.Getenv("ASTRAROUTER_API_URL") == "" {
-			env = append(env, "ASTRAROUTER_API_URL=http://127.0.0.1:"+gwPort)
+		if os.Getenv("SYNAPASS_API_URL") == "" {
+			env = append(env, "SYNAPASS_API_URL=http://127.0.0.1:"+gwPort)
 		}
 		children = append(children, runtime.Process{
 			Name: "dashboard", Argv: []string{node, server}, Dir: paths.DashboardDir,
@@ -608,7 +608,7 @@ func nativeChildren(cfg *config.Config, paths nativecfg.Paths, opts *nativeOptio
 		}
 		workerOut, workerErr := logTo("worker")
 		children = append(children, runtime.Process{
-			Name: "worker", Argv: []string{python, "-m", "astrarouter_workers.cli", "serve"}, Dir: paths.StateDir,
+			Name: "worker", Argv: []string{python, "-m", "synapass_workers.cli", "serve"}, Dir: paths.StateDir,
 			StdoutPath:   workerOut,
 			StderrPath:   workerErr,
 			Policy:       runtime.RestartOnFailure,
@@ -623,13 +623,13 @@ func nativeChildren(cfg *config.Config, paths nativecfg.Paths, opts *nativeOptio
 // running executable: `native up` invoked from an installed binary supervises
 // itself, so an installation never depends on PATH containing a second copy.
 func resolveGatewayBin(paths nativecfg.Paths) (string, error) {
-	if paths.GatewayBin != "" && paths.GatewayBin != "astrarouter" {
+	if paths.GatewayBin != "" && paths.GatewayBin != "synapass" {
 		if _, err := os.Stat(paths.GatewayBin); err != nil {
 			return "", &exitError{code: exitFailure, err: fmt.Errorf("gateway binary %s: %w", paths.GatewayBin, err)}
 		}
 		return paths.GatewayBin, nil
 	}
-	if path, err := exec.LookPath("astrarouter"); err == nil {
+	if path, err := exec.LookPath("synapass"); err == nil {
 		return path, nil
 	}
 	if self, err := os.Executable(); err == nil {
@@ -643,7 +643,7 @@ func resolveGatewayBin(paths nativecfg.Paths) (string, error) {
 // the supervisor about which file won.
 func gatewayChildEnv(cfg *config.Config) []string {
 	if cfg.ConfigFile != "" {
-		return []string{"AR_CONFIG_FILE=" + cfg.ConfigFile}
+		return []string{"SYNAPASS_CONFIG_FILE=" + cfg.ConfigFile}
 	}
 	return nil
 }
@@ -835,7 +835,7 @@ func writeConfigFile(path string, data []byte) error {
 // user with a second form to fill in on first launch.
 func runNativeAdmin(cfg *config.Config, logger *slog.Logger, configPath, logLevel, logFormat string, args []string) error {
 	if len(args) == 0 {
-		return &exitError{code: exitUsage, err: fmt.Errorf("usage: astrarouter native admin set --username U --password-file F")}
+		return &exitError{code: exitUsage, err: fmt.Errorf("usage: synapass native admin set --username U --password-file F")}
 	}
 	switch args[0] {
 	case "set":
@@ -894,7 +894,7 @@ func runNativeAdminSet(cfg *config.Config, logger *slog.Logger, configPath, logL
 		return &exitError{code: exitConfig, err: fmt.Errorf("dashboard authentication is disabled; enable admin.dashboard_auth or create the account in the dashboard")}
 	}
 
-	client := dashboardauth.ClientInfo{IP: "127.0.0.1", UserAgent: "astrarouter-native-admin"}
+	client := dashboardauth.ClientInfo{IP: "127.0.0.1", UserAgent: "synapass-native-admin"}
 	result, err := service.Setup(ctx, user, secret, secret, client)
 	if err != nil {
 		if errors.Is(err, dashboardauth.ErrSetupClosed) {

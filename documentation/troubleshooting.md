@@ -27,7 +27,7 @@ dangerous:
 
 | Message | Cause | Fix |
 | --- | --- | --- |
-| `admin key required` | `admin.require_scope: true` and no `AR_ADMIN_KEY` | Set it, even in a dev environment you intend to operate |
+| `admin key required` | `admin.require_scope: true` and no `SYNAPASS_ADMIN_KEY` | Set it, even in a dev environment you intend to operate |
 | `tracing enabled but no otlp endpoint` | `telemetry.tracing_enabled: true` with no endpoint | Set an endpoint or disable tracing |
 | `CORS wildcard not allowed in production` | `*` origin with `environment: production` | Name your origins |
 | `failed to reach postgres` | System of record unavailable | Fix connectivity; the gateway will not serve without it |
@@ -63,7 +63,7 @@ returns.
 
 ## Native installs
 
-Run `astrarouter native doctor` first: it checks configuration, binaries,
+Run `synapass native doctor` first: it checks configuration, binaries,
 datastores and ports without changing anything, and every failure names its
 fix.
 
@@ -78,15 +78,15 @@ re-run `native install` — it resumes).
 ### `port is already in use` from doctor or `up`
 
 Another process owns the gateway or dashboard port. Free it, or move ours:
-`AR_HTTP_ADDR` for the gateway, `PORT` (or `--dashboard-port`) for the
+`SYNAPASS_HTTP_ADDR` for the gateway, `PORT` (or `--dashboard-port`) for the
 dashboard. `native doctor` reports exactly which bind failed.
 
 ### Dashboard shows a blank page or API errors in native mode
 
 The dashboard proxies the gateway server-side, so this is almost always
-`ASTRAROUTER_API_URL` pointing somewhere the dashboard server cannot reach
+`SYNAPASS_API_URL` pointing somewhere the dashboard server cannot reach
 (Docker service names do not resolve on a host), or a mismatched
-`ASTRAROUTER_ADMIN_KEY`. Both live in `native.env`; `native up` defaults the
+`SYNAPASS_ADMIN_KEY`. Both live in `native.env`; `native up` defaults the
 URL to the local gateway listener when unset.
 
 ### `dashboard not built` in native mode
@@ -99,7 +99,7 @@ this; a manual checkout needs it by hand. Pointing at the wrong directory
 ### Workers never start under `native up`
 
 Workers are opt-in: pass `--with-workers` and provide the venv
-(`NATIVE_WORKER_VENV`, default `/opt/astrarouter/venv`, `bin/python` on Linux,
+(`NATIVE_WORKER_VENV`, default `/opt/synapass/venv`, `bin/python` on Linux,
 `Scripts\python.exe` on Windows). Without the flag the supervisor runs
 gateway + dashboard only, which is a complete install.
 
@@ -117,12 +117,12 @@ Wrong or expired credential. Re-store it and confirm with a connectivity test:
 
 ```bash
 curl -s -X POST $GATEWAY/admin/v1/providers/$ID/test \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" -d '{"checks":["connectivity"]}' | jq
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" -d '{"checks":["connectivity"]}' | jq
 ```
 
 ### A provider gets no traffic
 
-1. `astrarouter_provider_health` — is the breaker open?
+1. `synapass_provider_health` — is the breaker open?
 2. Is it in the policy's `targets`?
 3. Does it have the capabilities the request needs?
 4. Does prompt + expected output fit its context window?
@@ -136,20 +136,20 @@ The provider kind has no remote model listing. Add models by hand.
 
 ### `503` from the gateway itself
 
-Read the error envelope — it carries a `astrarouter` block naming the policy,
+Read the error envelope — it carries a `synapass` block naming the policy,
 strategy, provider and attempts:
 
 ```json
 {
   "error": { "message": "the request exceeded its total time budget", "type": "timeout", "code": "timeout" },
-  "astrarouter": { "provider": "openai-prod", "attempts": 2, "fallback_used": true }
+  "synapass": { "provider": "openai-prod", "attempts": 2, "fallback_used": true }
 }
 ```
 
 ### `429 rate_limited`
 
 Either the gateway's own limit or the provider's. Check `Retry-After`, then
-`astrarouter_policy_rate_limited_total` versus the provider's status. If the
+`synapass_policy_rate_limited_total` versus the provider's status. If the
 provider is throttling and fallback did not engage, check the policy's
 `on_error_codes` — that list is exhaustive when present.
 
@@ -161,7 +161,7 @@ rule that fired for policy denials.
 ### `402 quota_exceeded`
 
 Either a hard upstream quota or your own spend ceiling. Check **Budgets** and
-`astrarouter_policy_budget_blocked_total`.
+`synapass_policy_budget_blocked_total`.
 
 ### `502 upstream_error` with `fallback_used: true`
 
@@ -176,7 +176,7 @@ Older gateways had this bug: the soft latency target was reused as the hard
 per-attempt deadline, so a stream was cancelled at the default 10s mark with
 nothing reporting it. Fixed — the deadline now comes only from the timeout policy.
 
-If you still see it, check the response's `astrarouter.completion` block:
+If you still see it, check the response's `synapass.completion` block:
 
 ```json
 "completion": { "truncated": true, "reason": "timeout", "budget_ms": 300000 }
@@ -188,7 +188,7 @@ explicitly; raise `timeout.per_attempt`.
 ### `event: error` part way through a stream
 
 The failure happened after bytes reached the client, so the status code can no
-longer be changed. AstraRouter does not fail over in this situation: retrying
+longer be changed. Synapass does not fail over in this situation: retrying
 would append a second attempt's tokens to the first, producing an answer that is
 duplicated and incoherent. A terminated stream plus a clear error beats a
 plausible-looking corrupted answer.
@@ -201,7 +201,7 @@ them client-side instead. See [Tools](tools.md).
 
 ### Frames arrive but no `[DONE]`
 
-A proxy or ingress is buffering. AstraRouter sets `Cache-Control: no-cache,
+A proxy or ingress is buffering. Synapass sets `Cache-Control: no-cache,
 no-transform` and `X-Accel-Buffering: no`; make sure nothing in front of it
 rewrites those.
 
@@ -213,8 +213,8 @@ This was the original bug, and it is worth being precise about.
 
 Check in order:
 
-1. `astrarouter_provider_truncations_total{reason}` — `max_tokens` or `timeout`?
-2. `astrarouter.completion` in the response — `requested_tokens`, `applied_tokens`,
+1. `synapass_provider_truncations_total{reason}` — `max_tokens` or `timeout`?
+2. `synapass.completion` in the response — `requested_tokens`, `applied_tokens`,
    `budget_ms`, `finish_reason`.
 3. The routing decision's `timeout.per_attempt`. A per-attempt deadline shorter
    than a long generation truncates by definition.
@@ -233,13 +233,13 @@ Then the gateway did not cap it — the provider's own default stopped generatio
 
 ### The answer ignores most of the prompt
 
-Prompt shaping trimmed it. Check `astrarouter.shaping` in the response, or the
+Prompt shaping trimmed it. Check `synapass.shaping` in the response, or the
 explain view. Trimming preserves system messages and reports each step with its
 token delta, so this should be visible rather than mysterious.
 
 ### The wrong provider answered
 
-Read `routed_model` and `provider` in the `astrarouter` block, then the explain
+Read `routed_model` and `provider` in the `synapass` block, then the explain
 view. `provider` is who **answered**, not who was chosen first.
 
 ## Caching
@@ -271,7 +271,7 @@ the only built-ins.
 A bound was reached — steps, calls or wall clock. The tool results live in the
 gateway's run and you cannot resume it, so the gateway explains itself rather
 than returning a dangling `tool_calls` you cannot satisfy. Check
-`astrarouter.tool_run.stop_reason`.
+`synapass.tool_run.stop_reason`.
 
 ### An external tool was rejected with "not executable"
 
@@ -282,7 +282,7 @@ write; the field is not writable.
 
 ### The dashboard loads but panels are empty
 
-`ASTRAROUTER_API_URL` must be the gateway as seen from the dashboard **server**,
+`SYNAPASS_API_URL` must be the gateway as seen from the dashboard **server**,
 not from the browser. From inside Compose the dashboard reaches the gateway at
 `http://gateway:8080`, not `localhost`.
 
@@ -296,7 +296,7 @@ it through the API so it becomes `api`-managed. See [Database](database.md).
 A migration file changed after it was applied. Restore the original file, or
 reconcile the database deliberately.
 
-### `astrarouter_async_dropped_total` is climbing
+### `synapass_async_dropped_total` is climbing
 
 ClickHouse or NATS is unreachable, or the queue is saturated. Restore the
 dependency. Inference is unaffected by design — that is the trade-off the
@@ -327,10 +327,10 @@ key, admin needs the admin credential. The tunnel is a network path, not a bypas
 ## Still stuck
 
 1. `curl -s $GATEWAY/version | jq` — confirm the build.
-2. `curl -s $GATEWAY/admin/v1/system -H "Authorization: Bearer $AR_ADMIN_KEY" | jq`
+2. `curl -s $GATEWAY/admin/v1/system -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq`
    — dependency state and the redacted effective configuration.
 3. The request's explain payload — the most informative single artifact.
-4. `docker compose logs --tail=200 gateway`, or `journalctl -u astrarouter -n 200`.
+4. `docker compose logs --tail=200 gateway`, or `journalctl -u synapass -n 200`.
 
 ---
 

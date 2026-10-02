@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/policy"
-	"github.com/shadowsafin/astrarouter/internal/routing"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/policy"
+	"github.com/shadowsafin/synapass/internal/routing"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // startCatalogueRefresh periodically reloads the registry from the database.

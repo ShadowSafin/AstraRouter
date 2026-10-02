@@ -7,11 +7,11 @@ to start.
 
 Retention is chosen per stream rather than globally:
 
-* ``ASTRAROUTER_USAGE`` keeps a week. Long enough to survive a consumer outage,
+* ``SYNAPASS_USAGE`` keeps a week. Long enough to survive a consumer outage,
   short enough that it never becomes an unmanaged second copy of ClickHouse.
-* ``ASTRAROUTER_JOBS`` uses a work-queue policy, so a job is removed once it is
+* ``SYNAPASS_JOBS`` uses a work-queue policy, so a job is removed once it is
   acknowledged and a restarted worker does not replay jobs that already ran.
-* ``ASTRAROUTER_EVENTS`` keeps a month: audit and health events are small and are
+* ``SYNAPASS_EVENTS`` keeps a month: audit and health events are small and are
   consulted historically.
 """
 
@@ -33,9 +33,9 @@ from .bus import (
     SUBJECT_USAGE_RECORDED,
 )
 
-STREAM_USAGE = "ASTRAROUTER_USAGE"
-STREAM_JOBS = "ASTRAROUTER_JOBS"
-STREAM_EVENTS = "ASTRAROUTER_EVENTS"
+STREAM_USAGE = "SYNAPASS_USAGE"
+STREAM_JOBS = "SYNAPASS_JOBS"
+STREAM_EVENTS = "SYNAPASS_EVENTS"
 
 # Retention windows, in seconds. Named so a change is a single visible edit.
 USAGE_RETENTION_SECONDS = 7 * 24 * 60 * 60

@@ -55,7 +55,7 @@ export function failureHint(error: PlaygroundError): string | null {
     case 'playground_cancelled':
       return 'Cancelled before the gateway finished. Run again to get a full answer.';
     case 'dashboard_upstream_unreachable':
-      return 'The dashboard could not reach the gateway. Check that it is running and that ASTRAROUTER_API_URL points at it.';
+      return 'The dashboard could not reach the gateway. Check that it is running and that SYNAPASS_API_URL points at it.';
     case 'invalid_api_key':
       return 'The gateway rejected the key. Check it is complete, active and not expired or revoked.';
     case 'unknown_model':
@@ -296,8 +296,8 @@ export function ResponsePanel({
         <CopyButton text={copyText} label={view === 'answer' ? 'Copy answer' : 'Copy JSON'} />
         <CopyButton text={curl} label="Copy as curl" />
         <p className="ml-auto truncate px-2 text-[11px] text-muted-foreground">
-          {intent['X-AstraRouter-Endpoint']
-            ? `scope ${intent['X-AstraRouter-Endpoint']}`
+          {intent['X-Synapass-Endpoint']
+            ? `scope ${intent['X-Synapass-Endpoint']}`
             : 'no endpoint scope'}
         </p>
       </div>

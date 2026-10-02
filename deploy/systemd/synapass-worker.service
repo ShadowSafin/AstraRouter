@@ -1,4 +1,4 @@
-# AstraRouter intelligence workers -- native systemd unit.
+# Synapass intelligence workers -- native systemd unit.
 #
 # The workers are a separate process from the gateway on purpose: telemetry
 # aggregation and evaluation are CPU-bound and bursty, and a scoring loop that
@@ -6,20 +6,20 @@
 #
 # Install (from the repository root, after `pip install ./workers` into a venv):
 #
-#   sudo install -d -m 0750 -o astrarouter -g astrarouter /opt/astrarouter
-#   sudo -u astrarouter python3 -m venv /opt/astrarouter/venv
-#   sudo -u astrarouter /opt/astrarouter/venv/bin/pip install ./workers
-#   sudo install -m 0644 deploy/systemd/astrarouter-worker.service /etc/systemd/system/
-#   sudo install -m 0600 -o astrarouter -g astrarouter /dev/null /etc/astrarouter/worker-env
-#   sudo systemctl daemon-reload && sudo systemctl enable --now astrarouter-worker
+#   sudo install -d -m 0750 -o synapass -g synapass /opt/synapass
+#   sudo -u synapass python3 -m venv /opt/synapass/venv
+#   sudo -u synapass /opt/synapass/venv/bin/pip install ./workers
+#   sudo install -m 0644 deploy/systemd/synapass-worker.service /etc/systemd/system/
+#   sudo install -m 0600 -o synapass -g synapass /dev/null /etc/synapass/worker-env
+#   sudo systemctl daemon-reload && sudo systemctl enable --now synapass-worker
 #
-# The unit is templatable (`astrarouter-worker@.service`) so a deployment can run
-# one process per pool; each instance is identified by AR_WORKER_LABELS and by
+# The unit is templatable (`synapass-worker@.service`) so a deployment can run
+# one process per pool; each instance is identified by SYNAPASS_WORKER_LABELS and by
 # its own durable consumer name.
 
 [Unit]
-Description=AstraRouter intelligence worker
-Documentation=https://github.com/shadowsafin/astrarouter
+Description=Synapass intelligence worker
+Documentation=https://github.com/shadowsafin/synapass
 After=network-online.target nats.service
 Wants=network-online.target
 # The workers hold no local state: everything they produce is published to NATS
@@ -28,14 +28,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=astrarouter
-Group=astrarouter
+User=synapass
+Group=synapass
 
-EnvironmentFile=-/etc/astrarouter/worker-env
+EnvironmentFile=-/etc/synapass/worker-env
 
 # `serve` runs the consumer loop: usage events, job dispatch and the periodic
 # rollup publisher.
-ExecStart=/opt/astrarouter/venv/bin/astrarouter-worker serve
+ExecStart=/opt/synapass/venv/bin/synapass-worker serve
 
 # SIGTERM drains the current message and stops the consumer before exiting; a
 # hard kill mid-job is safe but costs a redelivery.
@@ -64,13 +64,13 @@ RestrictNamespaces=true
 LockPersonality=true
 RestrictRealtime=true
 SystemCallArchitectures=native
-ReadWritePaths=/var/lib/astrarouter
+ReadWritePaths=/var/lib/synapass
 
 LimitNOFILE=65536
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=astrarouter-worker
+SyslogIdentifier=synapass-worker
 
 [Install]
 WantedBy=multi-user.target

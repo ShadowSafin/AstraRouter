@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/bootstrap"
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/providers"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+	"github.com/shadowsafin/synapass/internal/bootstrap"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // runMigrate applies database migrations and exits.

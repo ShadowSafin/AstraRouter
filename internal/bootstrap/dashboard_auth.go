@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"time"
 
-"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/dashboardauth"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/storage"
+"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/dashboardauth"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/storage"
 )
 
 // Construction of the console authentication service.
@@ -117,7 +117,7 @@ func BuildDashboardAuth(
 
 	dashboardCfg := cfg.Admin.DashboardAuth
 	if dashboardCfg.CookieName == "" {
-		dashboardCfg.CookieName = "astrarouter_session"
+		dashboardCfg.CookieName = "synapass_session"
 	}
 
 	// The password floor is a floor, not a preference: accepting a lower value

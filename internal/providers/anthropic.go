@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // anthropicVersion is the API version header Anthropic requires. It is pinned
@@ -23,7 +23,7 @@ const anthropicVersion = "2023-06-01"
 // who want a tighter bound set it as a routing-policy limit.
 const defaultAnthropicMaxTokens = 32768
 
-// anthropicAdapter translates AstraRouter's normalized chat request into
+// anthropicAdapter translates Synapass's normalized chat request into
 // Anthropic's Messages API and back.
 //
 // The translation is real work, not a payload rename: Anthropic takes the system

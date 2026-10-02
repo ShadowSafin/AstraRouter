@@ -6,12 +6,12 @@ import (
 )
 
 func TestDSNEncodesCredentials(t *testing.T) {
-	dsn := DSN("astrarouter", "p@ss:word", 5433, "astrarouter")
+	dsn := DSN("synapass", "p@ss:word", 5433, "synapass")
 	for _, want := range []string{
 		"postgres://",
-		"astrarouter:p%40ss%3Aword@",
+		"synapass:p%40ss%3Aword@",
 		"127.0.0.1:5433",
-		"/astrarouter",
+		"/synapass",
 		"sslmode=disable",
 	} {
 		if !strings.Contains(dsn, want) {

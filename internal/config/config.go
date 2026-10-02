@@ -1,11 +1,11 @@
-// Package config defines AstraRouter's configuration model.
+// Package config defines Synapass's configuration model.
 //
 // Configuration is resolved in a fixed order so behaviour is predictable in
 // every deployment mode:
 //
 //  1. built-in defaults   (Default)
-//  2. the config file     (--config / AR_CONFIG_FILE, YAML or JSON)
-//  3. environment vars    (AR_* prefixed, always win)
+//  2. the config file     (--config / SYNAPASS_CONFIG_FILE, YAML or JSON)
+//  3. environment vars    (SYNAPASS_* prefixed, always win)
 //
 // The same struct drives the container image, the native systemd unit and a
 // local `go run`, which is what lets both deployment paths share one set of
@@ -201,7 +201,7 @@ type RedisConfig struct {
 	ReadTimeout   Duration `yaml:"read_timeout" json:"read_timeout"`
 	WriteTimeout  Duration `yaml:"write_timeout" json:"write_timeout"`
 	// KeyPrefix namespaces every key so one Redis instance can serve several
-	// AstraRouter deployments.
+	// Synapass deployments.
 	KeyPrefix string `yaml:"key_prefix" json:"key_prefix"`
 	// TLS enables TLS for managed Redis providers.
 	TLS bool `yaml:"tls" json:"tls"`
@@ -262,7 +262,7 @@ type AuthConfig struct {
 	// RequireKeyOfLength rejects short keys early. Real minted keys are longer;
 	// this catches hand-crafted placeholders in development.
 	MinKeyLength int `yaml:"min_key_length" json:"min_key_length"`
-	// KeyPrefix is prepended to generated tokens, e.g. "ar_live_".
+	// KeyPrefix is prepended to generated tokens, e.g. "syn_live_".
 	KeyPrefix string `yaml:"key_prefix" json:"key_prefix"`
 	// CacheTTL is how long a validated key is cached in Redis. Short values
 	// bound the window in which a revoked key still works.
@@ -562,8 +562,8 @@ type ToolsConfig struct {
 //
 // The feature is opt-in: nothing is exposed until an operator creates a
 // tunnel through the dashboard or admin API. A tunnel mints a disposable
-// *.trycloudflare.com URL that proxies to one local AstraRouter service; all
-// AstraRouter authentication, policy and rate limiting still apply through it.
+// *.trycloudflare.com URL that proxies to one local Synapass service; all
+// Synapass authentication, policy and rate limiting still apply through it.
 type TunnelConfig struct {
 	// Enabled allows tunnel creation. When false every tunnel endpoint
 	// reports the feature as disabled rather than failing obscurely later.
@@ -733,7 +733,7 @@ type DashboardAuthConfig struct {
 func Default() *Config {
 	return &Config{
 		App: AppConfig{
-			Name:                "astrarouter",
+			Name:                "synapass",
 			Environment:         "development",
 			DefaultTenantSlug:   "default",
 			DefaultTenantName:   "Default Tenant",
@@ -752,9 +752,9 @@ func Default() *Config {
 		Database: DatabaseConfig{
 			Host:             "localhost",
 			Port:             5432,
-			User:             "astrarouter",
-			Password:         "astrarouter",
-			Name:             "astrarouter",
+			User:             "synapass",
+			Password:         "synapass",
+			Name:             "synapass",
 			SSLMode:          "disable",
 			MaxConns:         20,
 			MinConns:         2,
@@ -771,18 +771,18 @@ func Default() *Config {
 			DialTimeout:  Duration(5 * time.Second),
 			ReadTimeout:  Duration(3 * time.Second),
 			WriteTimeout: Duration(3 * time.Second),
-			KeyPrefix:    "astrarouter",
+			KeyPrefix:    "synapass",
 		},
 		ClickHouse: ClickHouseConfig{
 			Addr:          "localhost:9000",
-			Database:      "astrarouter",
+			Database:      "synapass",
 			BatchSize:     500,
 			FlushInterval: Duration(2 * time.Second),
 			MaxRetries:    3,
 		},
 		NATS: NATSConfig{
 			URL:            "nats://localhost:4222",
-			Name:           "astrarouter-gateway",
+			Name:           "synapass-gateway",
 			JetStream:      true,
 			StreamReplicas: 1,
 			MaxReconnects:  -1,
@@ -790,9 +790,9 @@ func Default() *Config {
 		},
 		Auth: AuthConfig{
 			MinKeyLength: 20,
-			KeyPrefix:    "ar_live_",
+			KeyPrefix:    "syn_live_",
 			CacheTTL:     Duration(30 * time.Second),
-			AdminKeyEnv:  "AR_ADMIN_KEY",
+			AdminKeyEnv:  "SYNAPASS_ADMIN_KEY",
 		},
 		Routing: RoutingConfig{
 			DefaultStrategy:    "priority",
@@ -842,7 +842,7 @@ DefaultTimeout: TimeoutConfig{
 		},
 		Tools: ToolsConfig{
 			// Off by default: agentic clients run their own tools. Set
-			// tools.gateway_execution: true (or AR_TOOLS_GATEWAY_EXECUTION=true)
+			// tools.gateway_execution: true (or SYNAPASS_TOOLS_GATEWAY_EXECUTION=true)
 			// to let the gateway execute registered tools itself.
 			GatewayExecution: false,
 		},
@@ -907,7 +907,7 @@ DefaultTimeout: TimeoutConfig{
 			LogRetentionDays:   30,
 			DashboardAuth: DashboardAuthConfig{
 				Enabled:            true,
-				CookieName:         "astrarouter_session",
+				CookieName:         "synapass_session",
 				CookieSecure:       false,
 				SessionTTL:         Duration(12 * time.Hour),
 				IdleTTL:            Duration(2 * time.Hour),
@@ -943,7 +943,7 @@ func Load(path string, explicit bool) (*Config, error) {
 // environment without finalizing it: no materialization, no validation.
 //
 // It exists for tooling that must run against a broken configuration —
-// `astrarouter native doctor` reports validation problems instead of refusing
+// `synapass native doctor` reports validation problems instead of refusing
 // to start, and `native install` writes the files that fix them. Callers take
 // over the Finalize step and decide what a validation failure means for them.
 func LoadUnchecked(path string, explicit bool) (*Config, error) {
@@ -967,17 +967,17 @@ func LoadUnchecked(path string, explicit bool) (*Config, error) {
 }
 
 // DefaultSearchPaths returns the config file locations tried in order when no
-// path is given. The systemd unit uses /etc/astrarouter; the container image
-// ships /etc/astrarouter/config.yaml; a developer typically relies on
-// astrarouter.yaml in the working directory.
+// path is given. The systemd unit uses /etc/synapass; the container image
+// ships /etc/synapass/config.yaml; a developer typically relies on
+// synapass.yaml in the working directory.
 func DefaultSearchPaths() []string {
 	return []string{
-		"astrarouter.yaml",
-		"astrarouter.yml",
-		"astrarouter.json",
-		filepath.Join("config", "astrarouter.yaml"),
-		"/etc/astrarouter/config.yaml",
-		"/etc/astrarouter/config.yml",
+		"synapass.yaml",
+		"synapass.yml",
+		"synapass.json",
+		filepath.Join("config", "synapass.yaml"),
+		"/etc/synapass/config.yaml",
+		"/etc/synapass/config.yml",
 	}
 }
 
@@ -992,9 +992,9 @@ func ResolveConfigPath(path string, explicit bool) (string, error) {
 		}
 		return path, nil
 	}
-	if envPath := firstEnv("AR_CONFIG_FILE", "ASTRAROUTER_CONFIG_FILE"); envPath != "" {
+	if envPath := firstEnv("SYNAPASS_CONFIG_FILE"); envPath != "" {
 		if _, err := os.Stat(envPath); err != nil {
-			return "", fmt.Errorf("config file from AR_CONFIG_FILE %q: %w", envPath, err)
+			return "", fmt.Errorf("config file from SYNAPASS_CONFIG_FILE %q: %w", envPath, err)
 		}
 		return envPath, nil
 	}

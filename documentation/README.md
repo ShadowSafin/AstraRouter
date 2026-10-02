@@ -1,6 +1,6 @@
-# AstraRouter documentation
+# Synapass documentation
 
-Everything about AstraRouter beyond the root [README](../README.md): how it is
+Everything about Synapass beyond the root [README](../README.md): how it is
 built, how to run it, and how each part behaves.
 
 New here? Start with [Getting started](getting-started.md) — it takes you from
@@ -12,9 +12,9 @@ empty directory to a working inference call in about five minutes.
 
 | Document | Read it when you want to know |
 | --- | --- |
-| [Overview](overview.md) | What AstraRouter is for, and the problem it solves |
+| [Overview](overview.md) | What Synapass is for, and the problem it solves |
 | [Architecture](architecture.md) | How the pieces fit, and why each datastore exists |
-| [Glossary](glossary.md) | What a term means in AstraRouter specifically |
+| [Glossary](glossary.md) | What a term means in Synapass specifically |
 
 ### Run it
 
@@ -65,8 +65,8 @@ These stay at the repository root, where tooling expects to find them.
 `http://127.0.0.1:3000` for the dashboard. The Compose stack moves the gateway to
 `18080` when `8080` is taken; set `GATEWAY` accordingly.
 
-**Credentials.** `$AR_ADMIN_KEY` is the control-plane key from `.env`.
-`$AR_KEY` is a tenant inference key minted through the admin API.
+**Credentials.** `$SYNAPASS_ADMIN_KEY` is the control-plane key from `.env`.
+`$SYNAPASS_KEY` is a tenant inference key minted through the admin API.
 
 **Callouts.**
 

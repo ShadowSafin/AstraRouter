@@ -1,4 +1,4 @@
-// Package routing implements AstraRouter's deterministic routing engine and the
+// Package routing implements Synapass's deterministic routing engine and the
 // executor that carries a request through its fallback chain.
 //
 // # Division of responsibility
@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Catalogue supplies the provider and model registry to the engine.

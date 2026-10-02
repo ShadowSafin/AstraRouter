@@ -7,10 +7,10 @@
  * the Playground exercises the same routing, caching, retries and provider
  * adapters as production traffic. Nothing in this file is a simulation.
  *
- * The routing controls are the documented `X-AstraRouter-*` intent headers and
+ * The routing controls are the documented `X-Synapass-*` intent headers and
  * nothing else. Two fields were deliberately left out of the config:
  *
- *   - there is no provider header. `X-AstraRouter-Provider` is a *response*
+ *   - there is no provider header. `X-Synapass-Provider` is a *response*
  *     header naming the provider that served; there is no request-side
  *     equivalent. Provider preference is expressed through an endpoint scope
  *     (whose override carries preferred providers and a forced model) or a
@@ -35,9 +35,9 @@ export interface PlaygroundMessage {
 /** Everything that shapes one test run. */
 export interface PlaygroundConfig {
   model: string;
-  /** Endpoint scope slug -> `X-AstraRouter-Endpoint`. Carries provider/model preference. */
+  /** Endpoint scope slug -> `X-Synapass-Endpoint`. Carries provider/model preference. */
   endpoint: string;
-  /** Routing policy id or name -> `X-AstraRouter-Policy`. */
+  /** Routing policy id or name -> `X-Synapass-Policy`. */
   policy: string;
   streaming: boolean;
   /** Asks the gateway to include routing internals in the response. */
@@ -46,9 +46,9 @@ export interface PlaygroundConfig {
   noFallback: boolean;
   /** Force a cache miss, so a cached answer does not hide live behavior. */
   noCache: boolean;
-  /** Pin provider geography -> `X-AstraRouter-Region`. */
+  /** Pin provider geography -> `X-Synapass-Region`. */
   region: string;
-  /** Comma-separated sensitivity labels -> `X-AstraRouter-Sensitivity`. */
+  /** Comma-separated sensitivity labels -> `X-Synapass-Sensitivity`. */
   sensitivity: string;
   /** -1 means "do not send a cost ceiling". */
   maxCostUsd: number;
@@ -222,15 +222,15 @@ function parseJson(raw: string): ParsedJson {
 
 /** Canonical header names, so the UI can show and the wire can send the same set. */
 export const INTENT_HEADER_NAMES = [
-  'X-AstraRouter-Debug',
-  'X-AstraRouter-Endpoint',
-  'X-AstraRouter-Policy',
-  'X-AstraRouter-No-Fallback',
-  'X-AstraRouter-No-Cache',
-  'X-AstraRouter-Region',
-  'X-AstraRouter-Sensitivity',
-  'X-AstraRouter-Max-Cost-USD',
-  'X-AstraRouter-Latency-Target-Ms',
+  'X-Synapass-Debug',
+  'X-Synapass-Endpoint',
+  'X-Synapass-Policy',
+  'X-Synapass-No-Fallback',
+  'X-Synapass-No-Cache',
+  'X-Synapass-Region',
+  'X-Synapass-Sensitivity',
+  'X-Synapass-Max-Cost-USD',
+  'X-Synapass-Latency-Target-Ms',
 ] as const;
 
 /**
@@ -241,16 +241,16 @@ export const INTENT_HEADER_NAMES = [
  */
 export function intentHeaders(config: PlaygroundConfig): Record<string, string> {
   const headers: Record<string, string> = {};
-  if (config.debug) headers['X-AstraRouter-Debug'] = 'true';
-  if (config.endpoint.trim()) headers['X-AstraRouter-Endpoint'] = config.endpoint.trim();
-  if (config.policy.trim()) headers['X-AstraRouter-Policy'] = config.policy.trim();
-  if (config.noFallback) headers['X-AstraRouter-No-Fallback'] = 'true';
-  if (config.noCache) headers['X-AstraRouter-No-Cache'] = 'true';
-  if (config.region.trim()) headers['X-AstraRouter-Region'] = config.region.trim();
-  if (config.sensitivity.trim()) headers['X-AstraRouter-Sensitivity'] = config.sensitivity.trim();
-  if (config.maxCostUsd >= 0) headers['X-AstraRouter-Max-Cost-USD'] = String(config.maxCostUsd);
+  if (config.debug) headers['X-Synapass-Debug'] = 'true';
+  if (config.endpoint.trim()) headers['X-Synapass-Endpoint'] = config.endpoint.trim();
+  if (config.policy.trim()) headers['X-Synapass-Policy'] = config.policy.trim();
+  if (config.noFallback) headers['X-Synapass-No-Fallback'] = 'true';
+  if (config.noCache) headers['X-Synapass-No-Cache'] = 'true';
+  if (config.region.trim()) headers['X-Synapass-Region'] = config.region.trim();
+  if (config.sensitivity.trim()) headers['X-Synapass-Sensitivity'] = config.sensitivity.trim();
+  if (config.maxCostUsd >= 0) headers['X-Synapass-Max-Cost-USD'] = String(config.maxCostUsd);
   if (config.latencyTargetMs > 0) {
-    headers['X-AstraRouter-Latency-Target-Ms'] = String(config.latencyTargetMs);
+    headers['X-Synapass-Latency-Target-Ms'] = String(config.latencyTargetMs);
   }
   return headers;
 }
@@ -282,12 +282,12 @@ export function buildCurl(
   for (const [name, value] of Object.entries(headers)) {
     lines.push(`  -H ${JSON.stringify(`${name}: ${value}`)}`);
   }
-  lines.push(`  -H 'authorization: Bearer $ASTRAROUTER_API_KEY'`);
+  lines.push(`  -H 'authorization: Bearer $SYNAPASS_API_KEY'`);
   lines.push(`  -d ${JSON.stringify(JSON.stringify(body ?? {}, null, 2))}`);
   return lines.join(' \\\n');
 }
 
-/** Token usage as AstraRouter reports it. */
+/** Token usage as Synapass reports it. */
 export interface PlaygroundUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -417,7 +417,7 @@ export function extractToolCalls(payload: unknown): PlaygroundToolCall[] {
 }
 
 /**
- * Read the `astrarouter` metadata block.
+ * Read the `synapass` metadata block.
  *
  * The block is present on every response, but only carries the routing detail
  * when the debug header asked for it — without debug it is just
@@ -432,7 +432,7 @@ export function extractToolCalls(payload: unknown): PlaygroundToolCall[] {
  */
 export function extractRoute(payload: unknown): PlaygroundRoute {
   const record = asRecord(payload);
-  const meta = record ? asRecord(record.astrarouter) : null;
+  const meta = record ? asRecord(record.synapass) : null;
   if (!meta) return { ...EMPTY_ROUTE };
 
   const decision = asRecord(meta.decision);

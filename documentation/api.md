@@ -1,6 +1,6 @@
 # API reference
 
-Every endpoint AstraRouter exposes, on three surfaces:
+Every endpoint Synapass exposes, on three surfaces:
 
 | Surface | Prefix | Credential |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ The inference surface is OpenAI-compatible: an existing OpenAI SDK works by
 changing the base URL. Responses carry additional namespaced fields, which
 OpenAI clients ignore.
 
-**Related:** [Routing](routing.md) explains the `X-AstraRouter-*` headers ·
+**Related:** [Routing](routing.md) explains the `X-Synapass-*` headers ·
 [Providers](providers.md) covers the management endpoints in detail ·
 [Tools](tools.md) covers the tool plane.
 
@@ -29,7 +29,7 @@ OpenAI clients ignore.
 ## Authentication
 
 ```http
-Authorization: Bearer ar_live_xxxxxxxxxxxxxxxxxxxxxxxx
+Authorization: Bearer syn_live_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 - The header name is configurable (`auth.header_name`) for deployments behind a
@@ -58,7 +58,7 @@ Every failure — inference, admin, even a 404 on an unknown path — returns:
     "param": "messages",
     "code": "context_length_exceeded"
   },
-  "astrarouter": {
+  "synapass": {
     "request_id": "req_01HX…",
     "trace_id": "4f1c…",
     "policy_id": "pol_…",
@@ -76,7 +76,7 @@ Every failure — inference, admin, even a 404 on an unknown path — returns:
 
 Two things worth noting:
 
-- The `astrarouter` block is attached to **errors** as well as successes, so a
+- The `synapass` block is attached to **errors** as well as successes, so a
   client that logs a failure also captures which provider the request actually
   reached.
 - `provider` is **who answered**, not who was tried first. After a failover the
@@ -113,9 +113,9 @@ health decision.
 | --- | --- |
 | `X-Request-ID` | The request id (echoed if you supplied one, otherwise generated). Sanitized before use. |
 | `X-Trace-ID` | The trace id, for correlating with the log and trace stores. |
-| `X-AstraRouter-Provider` | The provider that served (or failed) the request. |
-| `X-AstraRouter-Retryable` | `true` when a retry is worth attempting, on failures. |
-| `X-AstraRouter-Upstream-Status` | The original upstream status when AstraRouter translated it. |
+| `X-Synapass-Provider` | The provider that served (or failed) the request. |
+| `X-Synapass-Retryable` | `true` when a retry is worth attempting, on failures. |
+| `X-Synapass-Upstream-Status` | The original upstream status when Synapass translated it. |
 | `Retry-After` | Present on `429` when the provider supplied one. |
 
 ## Routing intent
@@ -125,25 +125,25 @@ router without an operator editing a policy:
 
 | Header | Effect |
 | --- | --- |
-| `X-AstraRouter-Policy` | Force a specific policy by id or name. |
-| `X-AstraRouter-Max-Cost-USD` | Refuse candidates whose projected cost exceeds this. |
-| `X-AstraRouter-Latency-Target-Ms` | Tighten the latency target for this request. |
-| `X-AstraRouter-No-Fallback` | Fail instead of failing over. Useful for latency-critical calls. |
-| `X-AstraRouter-Endpoint` | Select an admin-managed endpoint scope with overrides. The scope's forced model, preferred lists, strategy, cost/latency caps and fallback block fold into this request's policy copy; unknown slugs are `404`, disabled scopes `403`. Scoped requests are cached per-scope (endpoint is part of the cache key). |
-| `X-AstraRouter-Region` | Pin provider geography; rejected when policy forbids it. |
-| `X-AstraRouter-Sensitivity` | Comma-separated sensitivity labels (`pii,phi,public`); sensitive payloads bypass cache. |
-| `X-AstraRouter-Batch` | `true` marks batch/offline traffic for cost-aware routing. |
-| `X-AstraRouter-No-Cache` | `true` forces a cache miss for this request. |
-| `X-AstraRouter-Debug` | `true` restores full routing internals (`policy_*`, `strategy`, `attempts`, `task`, `shaping`, `route_reason`, `trace_id`) in the `astrarouter` response block. |
+| `X-Synapass-Policy` | Force a specific policy by id or name. |
+| `X-Synapass-Max-Cost-USD` | Refuse candidates whose projected cost exceeds this. |
+| `X-Synapass-Latency-Target-Ms` | Tighten the latency target for this request. |
+| `X-Synapass-No-Fallback` | Fail instead of failing over. Useful for latency-critical calls. |
+| `X-Synapass-Endpoint` | Select an admin-managed endpoint scope with overrides. The scope's forced model, preferred lists, strategy, cost/latency caps and fallback block fold into this request's policy copy; unknown slugs are `404`, disabled scopes `403`. Scoped requests are cached per-scope (endpoint is part of the cache key). |
+| `X-Synapass-Region` | Pin provider geography; rejected when policy forbids it. |
+| `X-Synapass-Sensitivity` | Comma-separated sensitivity labels (`pii,phi,public`); sensitive payloads bypass cache. |
+| `X-Synapass-Batch` | `true` marks batch/offline traffic for cost-aware routing. |
+| `X-Synapass-No-Cache` | `true` forces a cache miss for this request. |
+| `X-Synapass-Debug` | `true` restores full routing internals (`policy_*`, `strategy`, `attempts`, `task`, `shaping`, `route_reason`, `trace_id`) in the `synapass` response block. |
 
-A caller that sets `X-AstraRouter-No-Fallback` gets a `502` when the primary
+A caller that sets `X-Synapass-No-Fallback` gets a `502` when the primary
 target fails rather than a slow success from another provider.
 
 ## Inference
 
 ### `POST /v1/chat/completions`
 
-The body is the OpenAI chat completions body. AstraRouter forwards only what the
+The body is the OpenAI chat completions body. Synapass forwards only what the
 client sent — an absent field is not filled in, because inventing a value the
 provider treats differently is a subtle correctness bug.
 
@@ -158,7 +158,7 @@ provider treats differently is a subtle correctness bug.
 | `stream_options.include_usage` | `true` emits a terminal chunk carrying token usage and the final provider attribution. |
 | `tools`, `tool_choice`, `parallel_tool_calls` | Requires the `tools` capability; `parallel_tool_calls` requires `parallel_tool`. Tools are validated before routing: a malformed declaration is a `400` naming the tool, and an unknown `tool_choice` name is a `400`. |
 | `tool_execution` | `{"mode": "manual"}` (default: the model's tool calls reach the client untouched -- this is how OpenCode, Claude Code and other agentic apps run their own tools) or `{"mode": "automatic"}` (safe tools run inside the gateway in a bounded loop, **only when `tools.gateway_execution: true`**; otherwise automatic is clamped to manual rather than rejected). The request may only narrow the policy, never widen it. With gateway execution enabled, automatic execution with `stream: true` is a `400` -- streamed frames cannot be un-sent. |
-| `response_format` | `json_object` requires `json_mode`; `json_schema` requires `json_schema`. `json_object` demands a JSON object, not merely valid JSON. An answer that violates the contract is a `400`; conformance is reported in `astrarouter.structured`. |
+| `response_format` | `json_object` requires `json_mode`; `json_schema` requires `json_schema`. `json_object` demands a JSON object, not merely valid JSON. An answer that violates the contract is a `400`; conformance is reported in `synapass.structured`. |
 | `seed` | Requires the `seed` capability. Not sent to servers that do not support it. |
 | `max_completion_tokens` / `max_tokens` | `max_completion_tokens` wins when both are present. |
 | `metadata` | Passed through; also used for the end-user identifier in logs. |
@@ -179,14 +179,14 @@ selected model cannot read.
     { "index": 0, "message": { "role": "assistant", "content": "hello" }, "finish_reason": "stop" }
   ],
   "usage": { "prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11 },
-  "astrarouter": { "request_id": "req_01HX…", "provider": "openai", "requested_model": "gpt-4o-mini", "routed_model": "gpt-4o-mini", "fallback_used": false, "latency_ms": 912, "estimated_cost_usd": 0.0000026 }
+  "synapass": { "request_id": "req_01HX…", "provider": "openai", "requested_model": "gpt-4o-mini", "routed_model": "gpt-4o-mini", "fallback_used": false, "latency_ms": 912, "estimated_cost_usd": 0.0000026 }
 }
 ```
 
-The default `astrarouter` block is stable attribution only
+The default `synapass` block is stable attribution only
 (`request_id`, `provider`, `requested_model`, `routed_model`,
 `fallback_used`, `cache_hit`, `latency_ms`, `estimated_cost_usd`).
-`X-AstraRouter-Debug: true` restores policy names, strategy, attempts, task,
+`X-Synapass-Debug: true` restores policy names, strategy, attempts, task,
 shaping and route reasons. For worked curl and SDK examples, see
 [Getting started](getting-started.md#5-make-a-call).
 
@@ -218,11 +218,11 @@ still sees a terminated stream rather than a hang.
 #### Truncated answers
 
 An answer that stopped because a limit was reached carries
-`astrarouter.completion`, so a caller never has to infer truncation from a missing
+`synapass.completion`, so a caller never has to infer truncation from a missing
 sentence ending:
 
 ```json
-"astrarouter": {
+"synapass": {
   "completion": {
     "finish_reason": "length",
     "truncated": true,
@@ -262,11 +262,11 @@ failing to route it would leave the client unable to tell whose problem it is.
       "object": "model",
       "created": 1767225600,
       "owned_by": "openai",
-      "astrarouter_provider": "openai",
-      "astrarouter_context_window": 128000,
-      "astrarouter_input_cost_per_million": 0.15,
-      "astrarouter_output_cost_per_million": 0.6,
-      "astrarouter_capabilities": ["chat", "streaming", "tools", "json_mode"]
+      "synapass_provider": "openai",
+      "synapass_context_window": 128000,
+      "synapass_input_cost_per_million": 0.15,
+      "synapass_output_cost_per_million": 0.6,
+      "synapass_capabilities": ["chat", "streaming", "tools", "json_mode"]
     }
   ]
 }
@@ -363,7 +363,7 @@ curl -s -b jar $GATEWAY/admin/v1/auth/me | jq
 curl -s -b jar -X POST $GATEWAY/admin/v1/auth/logout -o /dev/null -w '%{http_code}\n'
 ```
 
-Metrics: `astrarouter_dashboard_auth_events_total{outcome}`. Labelled by outcome
+Metrics: `synapass_dashboard_auth_events_total{outcome}`. Labelled by outcome
 only — a username label would let an attacker inflate cardinality by guessing
 names.
 
@@ -439,7 +439,7 @@ Common query parameters:
 
 ```bash
 curl -s localhost:8080/admin/v1/keys \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"tenant_id":"…","name":"payments-service","scopes":["inference"],"expires_in_hours":720}' | jq
 ```
@@ -718,7 +718,7 @@ takes effect, not a silently inert one.
 
 **Response metadata**
 
-A request that involved tools carries `astrarouter.tool_run`:
+A request that involved tools carries `synapass.tool_run`:
 
 ```json
 "tool_run": {
@@ -739,7 +739,7 @@ with the model still asking for tools answers with a plain-text explanation
 and `finish_reason: stop`, because a dangling `tool_calls` the client cannot
 satisfy is worse than an honest summary.
 
-A request with `response_format` carries `astrarouter.structured`
+A request with `response_format` carries `synapass.structured`
 (`requested`, `valid`, `schema`, `error`, `repaired`): the gateway extracts a
 fenced JSON object when it is unambiguous and says so, rather than failing a
 response the caller could have used.

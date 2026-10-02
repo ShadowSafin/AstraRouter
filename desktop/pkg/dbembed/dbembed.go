@@ -4,7 +4,7 @@
 // The server lifecycle follows the process that starts it: Start blocks
 // until postgres accepts connections (downloading the binaries on first
 // use), and Stop shuts it down. Callers hand the returned DSN to the
-// gateway through AR_POSTGRES_DSN, which wins over the config file, so the
+// gateway through SYNAPASS_POSTGRES_DSN, which wins over the config file, so the
 // shared gateway binary needs no desktop-specific changes.
 package dbembed
 
@@ -166,7 +166,7 @@ func hint(err error) error {
 		// The library's own preflight reports this exact wording, so matching
 		// only the OS messages left the most common failure unhinted.
 		strings.Contains(msg, "process already listening on port"):
-		return fmt.Errorf("%v (something already listens on this port: another copy of AstraRouter is running, "+
+		return fmt.Errorf("%v (something already listens on this port: another copy of Synapass is running, "+
 			"or a previous one was killed and left its database behind; quit it from the tray icon, "+
 			"or stop the leftover database, then try again)", err)
 	case strings.Contains(msg, "MSVCR") || strings.Contains(msg, "VCRUNTIME") || strings.Contains(msg, "0xc0000135"):

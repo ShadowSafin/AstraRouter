@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="desktop/assets/icon.png" alt="AstraRouter logo" width="96" />
+<img src="desktop/assets/icon.png" alt="Synapass logo" width="96" />
 
-# AstraRouter
+# Synapass
 
 **An OpenAI-compatible gateway that decides, per request, which AI provider serves it — and proves it.**
 
@@ -17,19 +17,19 @@ Routing · failover · caching · policy · budgets · full request lineage
 **Linux**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.sh | bash
 ```
 
 **macOS**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.ps1 | iex
 ```
 
 One command per OS: clones, configures, and starts the full stack. Details in [Quick start](#quick-start).
@@ -38,9 +38,9 @@ One command per OS: clones, configures, and starts the full stack. Details in [Q
 
 ---
 
-## What AstraRouter does
+## What Synapass does
 
-AstraRouter is an **inference gateway** and **control plane**. It sits between your
+Synapass is an **inference gateway** and **control plane**. It sits between your
 applications and your model providers, presents a single OpenAI-compatible
 endpoint, and decides — per request, under policy — which provider serves it,
 what happens when that provider fails, and what it cost.
@@ -50,7 +50,7 @@ managed. Changing which model answers production traffic is a dashboard edit
 rather than a deployment.
 
 Any client that speaks OpenAI works by changing its base URL. The extra response
-fields are namespaced under `astrarouter`, so OpenAI SDKs ignore them.
+fields are namespaced under `synapass`, so OpenAI SDKs ignore them.
 
 ## Why it exists
 
@@ -69,7 +69,7 @@ are live you have:
   answers?"
 
 Each is small. Together they are an operating burden that competes with the
-product. AstraRouter moves all of it into one layer you can operate.
+product. Synapass moves all of it into one layer you can operate.
 
 ## Key features
 
@@ -126,7 +126,7 @@ The request path, end to end:
 └──────────────────────────────────────────────┘
      │                          │
      ▼                          ▼
-  provider                response + astrarouter
+  provider                response + synapass
   adapter call            metadata block
         │
         └──────────────────────────────────────┐
@@ -154,18 +154,18 @@ Every request records why it was routed the way it was. Read it back with
 Zero to running stack with a single paste — no clone needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.sh | bash
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/shadowsafin/synapass/main/scripts/install.ps1 | iex
 ```
 
 Top command for Linux / macOS / Windows Git Bash, bottom for native Windows
 PowerShell. (In cmd.exe or PowerShell, a bare `bash` is the WSL stub, which is
 why the pipe form needs Git Bash or the PowerShell installer instead.) Either
-fetches AstraRouter into `~/astrarouter` (override with `ASTRAROUTER_DIR` /
-`$env:ASTRAROUTER_DIR`), then runs the deploy script: prerequisite and port
+fetches Synapass into `~/synapass` (override with `SYNAPASS_DIR` /
+`$env:SYNAPASS_DIR`), then runs the deploy script: prerequisite and port
 checks, `.env` bootstrap with a generated admin key, full Compose startup,
 readiness waits, and the URL summary. Re-running it updates the checkout and
 re-verifies the stack without touching `.env` or data.
@@ -180,7 +180,7 @@ Already cloned? The same flow from the repo root:
 
 That single command deploys the whole platform: it checks for Docker,
 Docker Compose and curl, verifies the host ports are free, creates `.env`
-from `.env.example` on first run (with a generated `AR_ADMIN_KEY`), starts
+from `.env.example` on first run (with a generated `SYNAPASS_ADMIN_KEY`), starts
 every Compose service together (gateway, dashboard, Postgres, Redis,
 ClickHouse, NATS, workers, Grafana/Prometheus/Loki), waits until the gateway
 reports ready — which only happens after migrations and catalogue seeding
@@ -203,7 +203,7 @@ configuration does not change:
 
 ```dotenv
 GATEWAY_PORT=18080
-NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
+NEXT_PUBLIC_SYNAPASS_API_URL=http://localhost:18080
 ```
 
 <details>
@@ -211,7 +211,7 @@ NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
 
 ```bash
 cp .env.example .env
-openssl rand -hex 24        # paste into AR_ADMIN_KEY, then add your provider key
+openssl rand -hex 24        # paste into SYNAPASS_ADMIN_KEY, then add your provider key
 $EDITOR .env
 
 docker compose up -d --build
@@ -225,19 +225,19 @@ curl -sf http://127.0.0.1:3000/        # dashboard
 
 ```bash
 make build
-astrarouter native install   # templates, builds, migrations (idempotent)
-astrarouter native up        # foreground supervisor: gateway + dashboard
+synapass native install   # templates, builds, migrations (idempotent)
+synapass native up        # foreground supervisor: gateway + dashboard
 ```
 
 Production Linux hosts use the systemd units instead (`deploy/systemd/`,
-including `astrarouter-dashboard.service`); Windows hosts run `native up` from
+including `synapass-dashboard.service`); Windows hosts run `native up` from
 Task Scheduler.
 
 ### Desktop app (Windows)
 
 ```powershell
-.\AstraRouterSetup.exe   # setup only: installs the app, then exits
-.\AstraRouter.exe        # the app: dashboard + backend in its own window
+.\SynapassSetup.exe   # setup only: installs the app, then exits
+.\Synapass.exe        # the app: dashboard + backend in its own window
 ```
 
 Two separate programs. The setup executable carries the app and its runtime
@@ -269,13 +269,13 @@ Mint a tenant key, then call the public endpoint:
 
 ```bash
 export GATEWAY=http://127.0.0.1:8080
-export AR_ADMIN_KEY=<from .env>
+export SYNAPASS_ADMIN_KEY=<from .env>
 
 TENANT=$(curl -s $GATEWAY/admin/v1/tenants \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" | jq -r '.tenants[0].id')
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq -r '.tenants[0].id')
 
-export AR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+export SYNAPASS_KEY=$(curl -s $GATEWAY/admin/v1/keys \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"tenant_id\":\"$TENANT\",\"name\":\"first-key\",\"scopes\":[\"inference\"]}" \
   | jq -r .plaintext)
@@ -283,7 +283,7 @@ export AR_KEY=$(curl -s $GATEWAY/admin/v1/keys \
 
 ```bash
 curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $AR_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "gpt-4o-mini",
@@ -297,7 +297,7 @@ curl -s $GATEWAY/v1/chat/completions \
 {
   "choices": [{ "index": 0, "message": { "role": "assistant", "content": "…" }, "finish_reason": "stop" }],
   "usage": { "prompt_tokens": 26, "completion_tokens": 81, "total_tokens": 107 },
-  "astrarouter": {
+  "synapass": {
     "request_id": "5e0804c7-…",
     "provider": "openai-prod",
     "requested_model": "gpt-4o-mini",
@@ -409,7 +409,7 @@ sets expectations for technical disagreement as well as conduct.
 
 | | |
 | --- | --- |
-| Questions | [FAQ](documentation/faq.md), then [GitHub Issues](https://github.com/shadowsafin/astrarouter/issues) |
+| Questions | [FAQ](documentation/faq.md), then [GitHub Issues](https://github.com/shadowsafin/synapass/issues) |
 | Something broken | [Troubleshooting](documentation/troubleshooting.md) — start with the `request_id` from the failing response |
 | Security | **Do not open an issue.** See [SECURITY.md](SECURITY.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |

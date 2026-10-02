@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // These tests cover the provider side of the truncation bug: the field that

@@ -1,4 +1,4 @@
--- AstraRouter Phase 4: tool registry, tool execution and bounded agent runs.
+-- Synapass Phase 4: tool registry, tool execution and bounded agent runs.
 --
 -- Phase 1-3 stored catalogue configuration (providers, models, policies) and
 -- telemetry, but nothing durable recorded what a tool call did. Phase 4 adds:

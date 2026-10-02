@@ -17,8 +17,8 @@ PostgreSQL, Redis, ClickHouse and NATS are started for you by Compose.
 ## 1. Configure
 
 ```bash
-git clone https://github.com/shadowsafin/astrarouter.git
-cd astrarouter
+git clone https://github.com/shadowsafin/synapass.git
+cd synapass
 
 cp .env.example .env
 ```
@@ -30,7 +30,7 @@ openssl rand -hex 24
 ```
 
 ```dotenv
-AR_ADMIN_KEY=<the value you just generated>
+SYNAPASS_ADMIN_KEY=<the value you just generated>
 OPENAI_API_KEY=<your provider key>
 ```
 
@@ -49,7 +49,7 @@ port — gateway configuration does not change:
 
 ```dotenv
 GATEWAY_PORT=18080
-NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080
+NEXT_PUBLIC_SYNAPASS_API_URL=http://localhost:18080
 ```
 
 Then `GATEWAY=http://127.0.0.1:${GATEWAY_PORT:-8080}` for the rest of this page.
@@ -89,12 +89,12 @@ On first boot the gateway seeds one tenant, a small provider catalogue, and some
 routing policies. API keys are never seeded — mint one:
 
 ```bash
-export AR_ADMIN_KEY=<from .env>
+export SYNAPASS_ADMIN_KEY=<from .env>
 TENANT=$(curl -s $GATEWAY/admin/v1/tenants \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" | jq -r '.tenants[0].id')
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq -r '.tenants[0].id')
 
 curl -s $GATEWAY/admin/v1/keys \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"tenant_id\":\"$TENANT\",\"name\":\"first-key\",\"scopes\":[\"inference\"]}" | jq
 ```
@@ -103,14 +103,14 @@ The plaintext key is returned **exactly once** and stored only as a SHA-256
 digest. Save it now:
 
 ```bash
-export AR_KEY=ar_live_...
+export SYNAPASS_KEY=syn_live_...
 ```
 
 ## 5. Make a call
 
 ```bash
 curl -s $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $AR_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hello"}]}' | jq
 ```
@@ -121,7 +121,7 @@ curl -s $GATEWAY/v1/chat/completions \
   "object": "chat.completion",
   "choices": [{ "index": 0, "message": { "role": "assistant", "content": "hello" }, "finish_reason": "stop" }],
   "usage": { "prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11 },
-  "astrarouter": {
+  "synapass": {
     "request_id": "5e0804c7-...",
     "provider": "openai",
     "requested_model": "gpt-4o-mini",
@@ -133,14 +133,14 @@ curl -s $GATEWAY/v1/chat/completions \
 }
 ```
 
-The `astrarouter` block is namespaced and additive. OpenAI clients ignore it.
+The `synapass` block is namespaced and additive. OpenAI clients ignore it.
 
 ### From an SDK
 
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="ar_live_...")
+client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="syn_live_...")
 
 answer = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -153,7 +153,7 @@ print(answer.choices[0].message.content)
 ```js
 import OpenAI from "openai";
 
-const client = new OpenAI({ baseURL: "http://127.0.0.1:8080/v1", apiKey: "ar_live_..." });
+const client = new OpenAI({ baseURL: "http://127.0.0.1:8080/v1", apiKey: "syn_live_..." });
 const answer = await client.chat.completions.create({
   model: "gpt-4o-mini",
   messages: [{ role: "user", content: "Summarize refunds in one line." }],
@@ -165,7 +165,7 @@ console.log(answer.choices[0].message.content);
 
 ```bash
 curl -N $GATEWAY/v1/chat/completions \
-  -H "Authorization: Bearer $AR_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hello"}],
        "stream":true,"stream_options":{"include_usage":true}}'
@@ -181,7 +181,7 @@ The seeded catalogue is a starting point. To add a real one, open the dashboard 
 
 ```bash
 curl -s $GATEWAY/admin/v1/providers \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-provider","kind":"openai","base_url":"https://api.openai.com/v1","api_key_env":"OPENAI_API_KEY"}' | jq
 ```
@@ -193,8 +193,8 @@ credentials, kinds and precedence.
 ## 7. Confirm it was recorded
 
 ```bash
-curl -s "$GATEWAY/admin/v1/requests?limit=3" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
-curl -s $GATEWAY/metrics | grep astrarouter_gateway_requests_total
+curl -s "$GATEWAY/admin/v1/requests?limit=3" -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
+curl -s $GATEWAY/metrics | grep synapass_gateway_requests_total
 ```
 
 Or open the dashboard and look at the Overview page — usage, cost and provider

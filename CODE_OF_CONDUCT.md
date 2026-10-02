@@ -64,7 +64,7 @@ representing the project in public spaces.
 ## Reporting
 
 Instances of unacceptable behaviour may be reported to the maintainers at
-**conduct@astrarouter.dev**. All complaints will be reviewed and investigated
+**conduct@synapass.dev**. All complaints will be reviewed and investigated
 promptly and fairly.
 
 Maintainers are obligated to respect the privacy and security of the reporter of

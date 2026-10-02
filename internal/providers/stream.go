@@ -38,7 +38,7 @@ func (e sseEvent) empty() bool {
 // sseReader parses an SSE stream incrementally.
 //
 // It is a hand-written parser rather than a library because the only features
-// AstraRouter needs are the "event", "data" and comment fields, and because the
+// Synapass needs are the "event", "data" and comment fields, and because the
 // streaming path is hot enough that avoiding reflection-based decoding is worth
 // the few dozen lines.
 type sseReader struct {

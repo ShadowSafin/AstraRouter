@@ -9,18 +9,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/api"
-	"github.com/shadowsafin/astrarouter/internal/auth"
-	"github.com/shadowsafin/astrarouter/internal/bootstrap"
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/policy"
-	"github.com/shadowsafin/astrarouter/internal/providers"
-	"github.com/shadowsafin/astrarouter/internal/routing"
-	"github.com/shadowsafin/astrarouter/internal/storage"
-	"github.com/shadowsafin/astrarouter/internal/telemetry"
-	"github.com/shadowsafin/astrarouter/internal/tunnel"
-	"github.com/shadowsafin/astrarouter/internal/version"
+	"github.com/shadowsafin/synapass/internal/api"
+	"github.com/shadowsafin/synapass/internal/auth"
+	"github.com/shadowsafin/synapass/internal/bootstrap"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/policy"
+	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/routing"
+	"github.com/shadowsafin/synapass/internal/storage"
+	"github.com/shadowsafin/synapass/internal/telemetry"
+	"github.com/shadowsafin/synapass/internal/tunnel"
+	"github.com/shadowsafin/synapass/internal/version"
 )
 
 // App holds every constructed service so shutdown can release them deterministically.
@@ -91,7 +91,7 @@ var errConfiguration = errors.New("configuration error")
 func buildApp(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, error) {
 	app := &App{cfg: cfg, logger: logger}
 
-	logger.Info("starting AstraRouter",
+	logger.Info("starting Synapass",
 		"version", version.Short(),
 		"environment", cfg.App.Environment,
 		"instance", cfg.App.InstanceID,
@@ -135,7 +135,7 @@ func buildApp(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*Ap
 	// ---- Telemetry ----
 	app.metrics = telemetry.NewMetrics(telemetry.MetricsConfig{
 		Enabled:     true,
-		Namespace:   "astrarouter",
+		Namespace:   "synapass",
 		Instance:    cfg.App.InstanceID,
 		Version:     version.Version,
 		Environment: cfg.App.Environment,
@@ -173,7 +173,7 @@ func buildApp(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*Ap
 		}
 	} else {
 		logger.Info("gateway-side tool execution is disabled; clients run their own tools",
-			"hint", "set tools.gateway_execution: true or AR_TOOLS_GATEWAY_EXECUTION=true to opt in")
+			"hint", "set tools.gateway_execution: true or SYNAPASS_TOOLS_GATEWAY_EXECUTION=true to opt in")
 	}
 
 	// ---- Provider adapters ----

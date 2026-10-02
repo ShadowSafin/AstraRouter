@@ -1,4 +1,4 @@
 # Placeholder. `build.ps1` stages the runtime (bin/, dashboard/, assets/,
 # templates/) and the standalone app exe here before compiling the installer, so
-# AstraRouterSetup.exe is self-contained. In a bare checkout this file is all
+# SynapassSetup.exe is self-contained. In a bare checkout this file is all
 # that exists and the installer cannot be built — build.ps1 stages it first.

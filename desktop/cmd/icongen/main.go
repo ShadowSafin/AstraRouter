@@ -1,7 +1,7 @@
 // Command icongen turns the shipped artwork into the desktop icon files.
 //
 // The master is branding/icon-source.png: a black canvas with the dark rounded
-// square and the white AstraRouter mark. This crops to that square, re-applies
+// square and the white Synapass mark. This crops to that square, re-applies
 // the rounded corners as a real alpha mask (so the icon reads as a tile on
 // light and dark taskbars instead of a black square), and writes:
 //

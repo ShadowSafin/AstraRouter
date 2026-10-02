@@ -1,10 +1,10 @@
-// Command installer is the AstraRouter setup program.
+// Command installer is the Synapass setup program.
 //
 // It is a setup-only executable: it shows the wizard, installs the standalone
-// application (AstraRouter.exe), prepares the local database and the first
+// application (Synapass.exe), prepares the local database and the first
 // administrator, creates shortcuts and registers an uninstall entry, then
 // exits. It never runs the application itself — that is the job of the
-// AstraRouter.exe it installs.
+// Synapass.exe it installs.
 package main
 
 import (
@@ -30,10 +30,10 @@ import (
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 
-	"github.com/shadowsafin/astrarouter/desktop/internal/payload"
-	"github.com/shadowsafin/astrarouter/desktop/pkg/dbembed"
-	"github.com/shadowsafin/astrarouter/desktop/pkg/supervisor"
-	"github.com/shadowsafin/astrarouter/desktop/pkg/winproc"
+	"github.com/shadowsafin/synapass/desktop/internal/payload"
+	"github.com/shadowsafin/synapass/desktop/pkg/dbembed"
+	"github.com/shadowsafin/synapass/desktop/pkg/supervisor"
+	"github.com/shadowsafin/synapass/desktop/pkg/winproc"
 )
 
 //go:embed installer.html
@@ -55,13 +55,13 @@ var installerBrand []byte
 //go:embed uninstall.ps1
 var uninstallScript []byte
 
-const appName = "AstraRouter"
+const appName = "Synapass"
 const appExeName = appName + ".exe"
 
 // fatal reports a startup failure the user can actually see.
 func fatal(err error) {
 	msg := err.Error()
-	fmt.Fprintln(os.Stderr, "astrarouter-setup:", msg)
+	fmt.Fprintln(os.Stderr, "synapass-setup:", msg)
 	if !hasConsole() {
 		user32 := windows.NewLazySystemDLL("user32.dll")
 		proc := user32.NewProc("MessageBoxW")
@@ -96,7 +96,7 @@ func main() {
 	if *silent {
 		opts, err := readSilentOptions(*configPath)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "astrarouter-setup:", err)
+			fmt.Fprintln(os.Stderr, "synapass-setup:", err)
 			os.Exit(2)
 		}
 		app := &installerApp{self: exe, silent: true}
@@ -114,12 +114,12 @@ func main() {
 	app.w.SetSize(920, 620, webview.HintMin)
 	app.w.Navigate("data:text/html," + url.PathEscape(installerPage()))
 
-	app.w.Bind("ar_info", app.info)
-	app.w.Bind("ar_browse", app.browse)
-	app.w.Bind("ar_install", app.install)
-	app.w.Bind("ar_launch", app.launch)
-	app.w.Bind("ar_open_folder", app.openFolder)
-	app.w.Bind("ar_close", app.close)
+	app.w.Bind("syn_info", app.info)
+	app.w.Bind("syn_browse", app.browse)
+	app.w.Bind("syn_install", app.install)
+	app.w.Bind("syn_launch", app.launch)
+	app.w.Bind("syn_open_folder", app.openFolder)
+	app.w.Bind("syn_close", app.close)
 
 	go func() {
 		<-app.quit
@@ -350,8 +350,8 @@ func (a *installerApp) runInstall(opts installOptions) {
 	// in use", after copying files and with nothing to act on.
 	stage(46, "Checking the local services")
 	if busy := busyPort(cfg.pgPort, cfg.gwPort, cfg.dashPort); busy != "" {
-		a.fail("AstraRouter is already running.",
-			fmt.Errorf("%s is still in use; quit AstraRouter from its tray icon, then run setup again", busy))
+		a.fail("Synapass is already running.",
+			fmt.Errorf("%s is still in use; quit Synapass from its tray icon, then run setup again", busy))
 		return
 	}
 	stage(50, "Setting up the local database")
@@ -468,22 +468,22 @@ func loadExistingConfig(installDir, rootDir string) (installConfig, error) {
 	if err != nil {
 		return cfg, err
 	}
-	cfg.adminKey = strings.TrimSpace(vars["AR_ADMIN_KEY"])
-	cfg.pgPassword = strings.TrimSpace(vars["AR_POSTGRES_PASSWORD"])
-	if v := strings.TrimSpace(vars["AR_DATA_DIR"]); v != "" {
+	cfg.adminKey = strings.TrimSpace(vars["SYNAPASS_ADMIN_KEY"])
+	cfg.pgPassword = strings.TrimSpace(vars["SYNAPASS_POSTGRES_PASSWORD"])
+	if v := strings.TrimSpace(vars["SYNAPASS_DATA_DIR"]); v != "" {
 		cfg.dataDir = v
 	}
-	if p, perr := portFromAddr(vars["AR_HTTP_ADDR"]); perr == nil {
+	if p, perr := portFromAddr(vars["SYNAPASS_HTTP_ADDR"]); perr == nil {
 		cfg.gwPort = p
 	}
 	if p, aerr := strconv.Atoi(strings.TrimSpace(vars["PORT"])); aerr == nil {
 		cfg.dashPort = p
 	}
-	if p, aerr := strconv.Atoi(strings.TrimSpace(vars["AR_POSTGRES_PORT"])); aerr == nil {
+	if p, aerr := strconv.Atoi(strings.TrimSpace(vars["SYNAPASS_POSTGRES_PORT"])); aerr == nil {
 		cfg.pgPort = p
 	}
 	if cfg.pgPort == 0 || cfg.pgPassword == "" {
-		return cfg, fmt.Errorf("the existing native.env is missing AR_POSTGRES_PORT or AR_POSTGRES_PASSWORD")
+		return cfg, fmt.Errorf("the existing native.env is missing SYNAPASS_POSTGRES_PORT or SYNAPASS_POSTGRES_PASSWORD")
 	}
 	return cfg, nil
 }
@@ -514,9 +514,9 @@ func (a *installerApp) provision(cfg installConfig, adminUser, passwordFile stri
 	pg, err := dbembed.Start(ctx, dbembed.Options{
 		Dir:      pgDir,
 		Port:     uint32(cfg.pgPort),
-		User:     "astrarouter",
+		User:     "synapass",
 		Password: cfg.pgPassword,
-		Database: "astrarouter",
+		Database: "synapass",
 		Log:      logger,
 	}, slogLogger)
 	if err != nil {
@@ -533,10 +533,10 @@ func (a *installerApp) provision(cfg installConfig, adminUser, passwordFile stri
 		}
 	}
 	env = append(env,
-		"AR_POSTGRES_DSN="+pg.DSN,
-		"AR_CONFIG_FILE="+filepath.Join(cfg.rootDir, "config.yaml"),
+		"SYNAPASS_POSTGRES_DSN="+pg.DSN,
+		"SYNAPASS_CONFIG_FILE="+filepath.Join(cfg.rootDir, "config.yaml"),
 	)
-	gateway := filepath.Join(cfg.rootDir, "bin", "astrarouter.exe")
+	gateway := filepath.Join(cfg.rootDir, "bin", "synapass.exe")
 
 	if err := runChild(ctx, gateway, []string{"migrate"}, env, logger); err != nil {
 		return fmt.Errorf("migrations failed: %w", err)
@@ -621,6 +621,7 @@ func (a *installerApp) registerUninstall(appPath, installDir, rootDir string) er
 		}
 	}
 	set("DisplayName", appName)
+	set("Publisher", appName)
 	set("DisplayVersion", payload.Version())
 	set("InstallLocation", installDir)
 	set("DisplayIcon", appPath+",0")

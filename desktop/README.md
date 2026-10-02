@@ -1,20 +1,20 @@
-# AstraRouter desktop (Windows) — two separate programs
+# Synapass desktop (Windows) — two separate programs
 
-AstraRouter ships as **two executables with different jobs**:
+Synapass ships as **two executables with different jobs**:
 
 | Program | Purpose |
 | --- | --- |
-| `AstraRouterSetup.exe` | **Setup only.** Shows the wizard, installs everything, then exits. |
-| `AstraRouter.exe` | **The app.** Runs the dashboard + backend in a WebView window. What you use every day. |
+| `SynapassSetup.exe` | **Setup only.** Shows the wizard, installs everything, then exits. |
+| `Synapass.exe` | **The app.** Runs the dashboard + backend in a WebView window. What you use every day. |
 
 They are different products: the installer never becomes the app, and the app
-never acts as an installer. Shortcuts point at `AstraRouter.exe`. The Docker
+never acts as an installer. Shortcuts point at `Synapass.exe`. The Docker
 deployment is a separate path and is never touched.
 
 ```text
 desktop/dist/
-  AstraRouterSetup.exe   setup-only installer (~236 MB; embeds the app + runtime)
-  AstraRouter.exe        standalone app (~19 MB; no installer code)
+  SynapassSetup.exe   setup-only installer (~236 MB; embeds the app + runtime)
+  Synapass.exe        standalone app (~19 MB; no installer code)
   install.ps1            convenience launcher for the installer
   README.md
 ```
@@ -42,8 +42,8 @@ Run it without an install and it says so plainly instead of half-installing.
 
 ```text
 desktop/
-  cmd/app/                 the runtime app (AstraRouter.exe)
-  cmd/installer/           the setup program (AstraRouterSetup.exe) + wizard UI
+  cmd/app/                 the runtime app (Synapass.exe)
+  cmd/installer/           the setup program (SynapassSetup.exe) + wizard UI
   internal/payload/        go:embed tree staged by build.ps1 (runtime + app exe)
   pkg/dbembed/             embedded PostgreSQL lifecycle, DSN handoff
   pkg/supervisor/          child processes, readiness, dotenv parsing
@@ -65,20 +65,20 @@ is installed), `dashboard/public/icon.png` (the auth screens) and
 ## Build & test
 
 ```powershell
-# builds dist/AstraRouter.exe and dist/AstraRouterSetup.exe (Go + Node + network)
+# builds dist/Synapass.exe and dist/SynapassSetup.exe (Go + Node + network)
 .\build.ps1
 
 # desktop module tests
 go test ./...            # from desktop/
 
 # open the wizard
-.\dist\AstraRouterSetup.exe
+.\dist\SynapassSetup.exe
 
 # unattended install (also how the pipeline is tested)
-.\dist\AstraRouterSetup.exe --silent --config install.json
+.\dist\SynapassSetup.exe --silent --config install.json
 
 # headless end-to-end check of an installed app
-.\AstraRouter.exe --smoke --root "$env:LOCALAPPDATA\AstraRouter"
+.\Synapass.exe --smoke --root "$env:LOCALAPPDATA\Synapass"
 ```
 
 `--smoke` starts everything, asserts the dashboard serves its page, shuts down
@@ -89,7 +89,7 @@ whole installation without a window, which is what CI uses.
 
 ```text
 <install folder>\
-  AstraRouter.exe     the standalone app
+  Synapass.exe     the standalone app
   uninstall.ps1       written by the installer
   root.txt            only when the data folder is elsewhere
 

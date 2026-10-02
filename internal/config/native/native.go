@@ -1,4 +1,4 @@
-// Package native describes a host installation of AstraRouter: where its files
+// Package native describes a host installation of Synapass: where its files
 // live, which variables configure it, and how to verify the deployment.
 //
 // It deliberately models the deployment only. The gateway configuration model
@@ -17,12 +17,12 @@ import (
 	"runtime"
 	"time"
 
-	internalruntime "github.com/shadowsafin/astrarouter/internal/runtime"
+	internalruntime "github.com/shadowsafin/synapass/internal/runtime"
 )
 
 // Paths locates every file a native installation reads or writes.
 type Paths struct {
-	// ConfigFile is the gateway YAML loaded through AR_CONFIG_FILE.
+	// ConfigFile is the gateway YAML loaded through SYNAPASS_CONFIG_FILE.
 	ConfigFile string
 	// EnvFile holds process environment (secrets included); mode 0600.
 	EnvFile string
@@ -30,7 +30,7 @@ type Paths struct {
 	StateDir string
 	// LogDir receives child stdout/stderr when log files are configured.
 	LogDir string
-	// GatewayBin resolves the gateway executable. "astrarouter" means PATH.
+	// GatewayBin resolves the gateway executable. "synapass" means PATH.
 	GatewayBin string
 	// DashboardDir is the dashboard checkout (package.json lives here).
 	DashboardDir string
@@ -50,7 +50,7 @@ func DefaultPaths() Paths {
 		if base == "" {
 			base = `C:\ProgramData`
 		}
-		base = filepath.Join(base, "AstraRouter")
+		base = filepath.Join(base, "Synapass")
 		p = Paths{
 			ConfigFile:   filepath.Join(base, "config.yaml"),
 			EnvFile:      filepath.Join(base, "native.env"),
@@ -61,21 +61,21 @@ func DefaultPaths() Paths {
 		}
 	case "darwin":
 		p = Paths{
-			ConfigFile:   "/usr/local/etc/astrarouter/config.yaml",
-			EnvFile:      "/usr/local/etc/astrarouter/native.env",
-			StateDir:     "/usr/local/var/astrarouter",
-			LogDir:       "/usr/local/var/log/astrarouter",
-			WorkerVenv:   "/opt/astrarouter/venv",
-			DashboardDir: "/opt/astrarouter/dashboard",
+			ConfigFile:   "/usr/local/etc/synapass/config.yaml",
+			EnvFile:      "/usr/local/etc/synapass/native.env",
+			StateDir:     "/usr/local/var/synapass",
+			LogDir:       "/usr/local/var/log/synapass",
+			WorkerVenv:   "/opt/synapass/venv",
+			DashboardDir: "/opt/synapass/dashboard",
 		}
 	default:
 		p = Paths{
-			ConfigFile:   "/etc/astrarouter/config.yaml",
-			EnvFile:      "/etc/astrarouter/native.env",
-			StateDir:     "/var/lib/astrarouter",
-			LogDir:       "/var/log/astrarouter",
-			WorkerVenv:   "/opt/astrarouter/venv",
-			DashboardDir: "/opt/astrarouter/dashboard",
+			ConfigFile:   "/etc/synapass/config.yaml",
+			EnvFile:      "/etc/synapass/native.env",
+			StateDir:     "/var/lib/synapass",
+			LogDir:       "/var/log/synapass",
+			WorkerVenv:   "/opt/synapass/venv",
+			DashboardDir: "/opt/synapass/dashboard",
 		}
 	}
 
@@ -98,7 +98,7 @@ func DefaultPaths() Paths {
 	if v := os.Getenv("NATIVE_GATEWAY_BIN"); v != "" {
 		p.GatewayBin = v
 	} else {
-		p.GatewayBin = "astrarouter"
+		p.GatewayBin = "synapass"
 	}
 	if v := os.Getenv("NATIVE_DASHBOARD_DIR"); v != "" {
 		p.DashboardDir = v
@@ -191,7 +191,7 @@ func DashboardBuildCheck(dashboardDir string) Check {
 		return Check{
 			Name:   "dashboard-build",
 			Target: server,
-			Hint:   "run `npm ci && npm run build` in " + dashboardDir + " (or `astrarouter native install`) first",
+			Hint:   "run `npm ci && npm run build` in " + dashboardDir + " (or `synapass native install`) first",
 			Detail: err.Error(),
 		}
 	}

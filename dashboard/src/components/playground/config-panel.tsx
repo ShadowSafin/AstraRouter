@@ -94,7 +94,7 @@ export function ConfigPanel({
             type="password"
             autoComplete="off"
             spellCheck={false}
-            placeholder="ar_live_…"
+            placeholder="syn_live_…"
             value={apiKey}
             onChange={(event) => onApiKeyChange(event.target.value)}
           />
@@ -108,7 +108,7 @@ export function ConfigPanel({
         />
         <Toggle
           label="Debug metadata"
-          hint="Adds X-AstraRouter-Debug, which restores the routing decision and trace id on the response."
+          hint="Adds X-Synapass-Debug, which restores the routing decision and trace id on the response."
           checked={config.debug}
           onChange={(next) => onChange({ debug: next })}
           disabled={disabled}
@@ -120,7 +120,7 @@ export function ConfigPanel({
           label="Endpoint scope"
           hint={
             <>
-              Sent as <code className="font-mono">X-AstraRouter-Endpoint</code>. This is how a
+              Sent as <code className="font-mono">X-Synapass-Endpoint</code>. This is how a
               provider preference is applied: the scope&apos;s override folds into the policy for one
               request.
             </>
@@ -184,7 +184,7 @@ export function ConfigPanel({
           label="Routing policy"
           hint={
             <>
-              Sent as <code className="font-mono">X-AstraRouter-Policy</code>. Pins the rule set
+              Sent as <code className="font-mono">X-Synapass-Policy</code>. Pins the rule set
               instead of letting the key or tenant default decide.
             </>
           }

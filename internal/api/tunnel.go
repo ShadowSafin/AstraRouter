@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // TunnelService manages temporary public tunnels. It is an interface defined
@@ -24,7 +24,7 @@ type TunnelService interface {
 // operator hitting it from the dashboard learns what to change.
 func (s *Server) tunnelDisabled() error {
 	return domain.NewError(domain.ErrCodeNotImplemented,
-		"temporary tunnels are disabled; set tunnel.enabled: true (or AR_TUNNEL_ENABLED=true) "+
+		"temporary tunnels are disabled; set tunnel.enabled: true (or SYNAPASS_TUNNEL_ENABLED=true) "+
 			"and restart the gateway to use them (native installs also need cloudflared on PATH)")
 }
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Subject conventions.
@@ -56,18 +56,18 @@ const (
 	SubjectTunnelStatus = "ar.tunnel.status"
 )
 
-// SubjectWildcard is the prefix every AstraRouter subject shares. It is used to
+// SubjectWildcard is the prefix every Synapass subject shares. It is used to
 // scope a NATS account or a stream to this application's traffic.
 const SubjectWildcard = "ar.>"
 
 // JetStream stream and consumer names.
 const (
 	// StreamUsage is the durable stream retaining usage and trace events.
-	StreamUsage = "ASTRAROUTER_USAGE"
+	StreamUsage = "SYNAPASS_USAGE"
 	// StreamJobs is the durable stream retaining evaluation and replay jobs.
-	StreamJobs = "ASTRAROUTER_JOBS"
+	StreamJobs = "SYNAPASS_JOBS"
 	// StreamEvents is the durable stream retaining audit and health events.
-	StreamEvents = "ASTRAROUTER_EVENTS"
+	StreamEvents = "SYNAPASS_EVENTS"
 )
 
 // NATS is the asynchronous messaging layer.
@@ -153,7 +153,7 @@ func NewNATS(ctx context.Context, cfg config.NATSConfig, logger *slog.Logger) (*
 	return out, nil
 }
 
-// ensureStreams creates the streams AstraRouter owns, idempotently.
+// ensureStreams creates the streams Synapass owns, idempotently.
 func (n *NATS) ensureStreams(replicas int) error {
 	if replicas < 1 {
 		replicas = 1
@@ -294,7 +294,7 @@ func (n *NATS) Subscribe(subject, queue string, handler func(msg *nats.Msg)) (*n
 		return nil, fmt.Errorf("nats is not initialized")
 	}
 	if queue == "" {
-		queue = "astrarouter"
+		queue = "synapass"
 	}
 	return n.conn.QueueSubscribe(subject, queue, handler)
 }

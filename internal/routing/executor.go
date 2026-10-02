@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/providers"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/providers"
 )
 
 // StreamStartedError reports a failure that occurred after response bytes had

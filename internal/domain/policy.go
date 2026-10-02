@@ -267,7 +267,7 @@ func (r RetryPolicy) BackoffFor(attempt int) time.Duration {
 	return time.Duration(d)
 }
 
-// TimeoutPolicy governs how long AstraRouter will wait.
+// TimeoutPolicy governs how long Synapass will wait.
 //
 // Three distinct budgets are needed because they fail differently: a connect
 // timeout means the host is unreachable, a per-attempt timeout means the model
@@ -334,7 +334,7 @@ func (t TimeoutPolicy) Normalize() TimeoutPolicy {
 	return t
 }
 
-// FallbackPolicy controls whether and how AstraRouter moves to another provider.
+// FallbackPolicy controls whether and how Synapass moves to another provider.
 type FallbackPolicy struct {
 	// Enabled gates all fallback behaviour for the policy.
 	Enabled bool `json:"enabled"`

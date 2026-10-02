@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
-	"github.com/shadowsafin/astrarouter/internal/providers"
-	"github.com/shadowsafin/astrarouter/internal/schema"
-	"github.com/shadowsafin/astrarouter/internal/tools"
+	"github.com/shadowsafin/synapass/internal/domain"
+	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/schema"
+	"github.com/shadowsafin/synapass/internal/tools"
 )
 
 // This file is the Phase 4 glue between the HTTP layer and the tool pipeline.

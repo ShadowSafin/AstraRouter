@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // cacheFlushBestEffort invalidates a scope after a catalogue change without

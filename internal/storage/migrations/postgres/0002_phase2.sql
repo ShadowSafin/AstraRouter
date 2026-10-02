@@ -1,4 +1,4 @@
--- AstraRouter Phase 2 schema: policy-driven control plane.
+-- Synapass Phase 2 schema: policy-driven control plane.
 --
 -- Adds durable entities for policy decisions, classification, shaping, cache
 -- metadata, provider/model scores, replay/eval, overrides, circuit state and

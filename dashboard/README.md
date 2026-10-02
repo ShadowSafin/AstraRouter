@@ -1,4 +1,4 @@
-# AstraRouter Dashboard
+# Synapass Dashboard
 
 The control plane's operator console: what the gateway served, how it routed it,
 what it cost and whether the providers are healthy.
@@ -25,14 +25,14 @@ into a general-purpose forwarder for the gateway.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ASTRAROUTER_API_URL` | `http://localhost:8080` | The gateway as seen from the dashboard server. |
-| `ASTRAROUTER_ADMIN_KEY` | *(empty)* | Admin credential. Must match the gateway's `AR_ADMIN_KEY`. |
+| `SYNAPASS_API_URL` | `http://localhost:8080` | The gateway as seen from the dashboard server. |
+| `SYNAPASS_ADMIN_KEY` | *(empty)* | Admin credential. The gateway reads the same variable, so one value covers both. |
 
-With `ASTRAROUTER_ADMIN_KEY` unset the dashboard still renders, and every page
+With `SYNAPASS_ADMIN_KEY` unset the dashboard still renders, and every page
 shows a configuration error that says exactly which variable to set. A silent
 401 is the failure mode this avoids.
 
-`NEXT_PUBLIC_ASTRAROUTER_API_URL` is only needed if a panel links directly to the
+`NEXT_PUBLIC_SYNAPASS_API_URL` is only needed if a panel links directly to the
 gateway (for example the `/metrics` endpoint); it is inlined at build time.
 
 ## Development
@@ -40,8 +40,8 @@ gateway (for example the `/metrics` endpoint); it is inlined at build time.
 ```bash
 cd dashboard
 npm install
-ASTRAROUTER_API_URL=http://localhost:8080 \
-ASTRAROUTER_ADMIN_KEY=<the same value as AR_ADMIN_KEY> \
+SYNAPASS_API_URL=http://localhost:8080 \
+SYNAPASS_ADMIN_KEY=<the gateway's admin key> \
 npm run dev
 ```
 

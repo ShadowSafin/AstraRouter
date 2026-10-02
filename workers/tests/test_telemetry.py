@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from astrarouter_workers.models import TokenUsage, UsageEvent
-from astrarouter_workers.telemetry import Aggregator, Rollup, rollup_payload
+from synapass_workers.models import TokenUsage, UsageEvent
+from synapass_workers.telemetry import Aggregator, Rollup, rollup_payload
 
 
 class FakeClock:

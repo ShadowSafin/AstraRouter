@@ -177,7 +177,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {playground ? (
               <div aria-hidden className={cn('absolute inset-x-0 top-0 h-px', EDGE_HORIZONTAL)} />
             ) : null}
-            AstraRouter control plane · administrative views are read-only unless a button offers an action
+            Synapass control plane · administrative views are read-only unless a button offers an action
           </footer>
         </div>
       </div>

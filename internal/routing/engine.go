@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Defaults holds engine-wide fallbacks applied when a policy is silent. They are

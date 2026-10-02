@@ -1,10 +1,10 @@
-# AstraRouter one-command deploy (Windows PowerShell).
+# Synapass one-command deploy (Windows PowerShell).
 #
 #   .\scripts\deploy.ps1            # bootstrap .env, start the stack, wait, print URLs
 #   .\scripts\deploy.ps1 <command>  # stop | restart | logs | status | reset | help
 #
 # Same behaviour as scripts/deploy.sh: idempotent, .env is created from
-# .env.example on first run (with a generated AR_ADMIN_KEY) and reused after
+# .env.example on first run (with a generated SYNAPASS_ADMIN_KEY) and reused after
 # that. Migrations + catalogue seeding run inside the gateway, so this script
 # only waits until /ready reports them done.
 param(
@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 Set-Location -LiteralPath $RepoRoot
-$AdminPlaceholder = "ar_admin_change_me_in_production_000000"
+$AdminPlaceholder = "syn_admin_change_me_in_production_000000"
 
 function Fail([string]$Step, [string]$Message) {
   Write-Host ""
@@ -76,7 +76,7 @@ function Wait-For([string]$Label, [string]$Url, [int]$TimeoutSec) {
 }
 
 function Invoke-Up {
-  Write-Host "AstraRouter deploy: starting the full stack"
+  Write-Host "Synapass deploy: starting the full stack"
 
   # 1. Prerequisites.
   if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -92,7 +92,7 @@ function Invoke-Up {
   # 2. Host ports (dashboard 3000 / grafana 3001 are fixed host ports in compose).
   $GwPort = Get-EnvValue "GATEWAY_PORT" "8080"
   if (Test-PortInUse $GwPort) {
-    Fail "host port checks" "host port $GwPort is already in use (gateway). Set GATEWAY_PORT=18080 with NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080 in .env, then re-run."
+    Fail "host port checks" "host port $GwPort is already in use (gateway). Set GATEWAY_PORT=18080 with NEXT_PUBLIC_SYNAPASS_API_URL=http://localhost:18080 in .env, then re-run."
   }
   if (Test-PortInUse 3000) { Fail "host port checks" "host port 3000 is already in use (dashboard). Stop whatever serves it, then re-run." }
   if (Test-PortInUse 3001) { Write-Host "  WARN host port 3001 is in use (Grafana will fail to bind; rest of stack unaffected)." }
@@ -106,16 +106,16 @@ function Invoke-Up {
     Copy-Item -LiteralPath $Example -Destination $EnvFile
     $Key = New-AdminKey
     $Content = Get-Content -LiteralPath $EnvFile
-    $Content = $Content -replace "^AR_ADMIN_KEY=.*$", "AR_ADMIN_KEY=$Key"
+    $Content = $Content -replace "^SYNAPASS_ADMIN_KEY=.*$", "SYNAPASS_ADMIN_KEY=$Key"
     Set-Content -LiteralPath $EnvFile -Value $Content
-    Write-Host "  OK  created .env from .env.example with a generated AR_ADMIN_KEY"
+    Write-Host "  OK  created .env from .env.example with a generated SYNAPASS_ADMIN_KEY"
     Write-Host "  Add a provider key to .env when ready (OPENAI_API_KEY / ANTHROPIC_API_KEY)."
   } else {
     Write-Host "  OK  reusing existing .env"
   }
-  $Admin = Get-EnvValue "AR_ADMIN_KEY"
-  if ([string]::IsNullOrEmpty($Admin)) { Fail "environment bootstrap" "AR_ADMIN_KEY is empty in .env. Set it to a long random value." }
-  if ($Admin -eq $AdminPlaceholder) { Fail "environment bootstrap" "AR_ADMIN_KEY still holds the .env.example placeholder, which production validation refuses. Set a real value in .env." }
+  $Admin = Get-EnvValue "SYNAPASS_ADMIN_KEY"
+  if ([string]::IsNullOrEmpty($Admin)) { Fail "environment bootstrap" "SYNAPASS_ADMIN_KEY is empty in .env. Set it to a long random value." }
+  if ($Admin -eq $AdminPlaceholder) { Fail "environment bootstrap" "SYNAPASS_ADMIN_KEY still holds the .env.example placeholder, which production validation refuses. Set a real value in .env." }
 
   # 4. Start.
   Write-Host "  Building images if needed (first run takes several minutes -- normal)..."
@@ -135,7 +135,7 @@ function Invoke-Up {
 
   Write-Host ""
   Write-Host "========================================"
-  Write-Host "  AstraRouter is up"
+  Write-Host "  Synapass is up"
   Write-Host "========================================"
   Write-Host "  Dashboard   http://127.0.0.1:3000"
   Write-Host "  Gateway     http://127.0.0.1:$GwPort  (/health /ready /metrics)"

@@ -1,4 +1,4 @@
-# AstraRouter dashboard -- native systemd unit.
+# Synapass dashboard -- native systemd unit.
 #
 # The dashboard is a Next.js standalone server: `npm ci && npm run build` in the
 # dashboard checkout produces .next/standalone/server.js, which is all this unit
@@ -7,38 +7,38 @@
 #
 # Install (paths match install/native defaults):
 #
-#   sudo install -d -m 0750 -o astrarouter -g astrarouter /opt/astrarouter
-#   sudo cp -r dashboard /opt/astrarouter/dashboard
-#   sudo chown -R astrarouter:astrarouter /opt/astrarouter/dashboard
-#   sudo -u astrarouter bash -c 'cd /opt/astrarouter/dashboard && npm ci --no-audit --no-fund && npm run build'
-#   sudo install -m 0644 deploy/systemd/astrarouter-dashboard.service /etc/systemd/system/
-#   sudo systemctl daemon-reload && sudo systemctl enable --now astrarouter-dashboard
+#   sudo install -d -m 0750 -o synapass -g synapass /opt/synapass
+#   sudo cp -r dashboard /opt/synapass/dashboard
+#   sudo chown -R synapass:synapass /opt/synapass/dashboard
+#   sudo -u synapass bash -c 'cd /opt/synapass/dashboard && npm ci --no-audit --no-fund && npm run build'
+#   sudo install -m 0644 deploy/systemd/synapass-dashboard.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now synapass-dashboard
 #
-# Configuration lives in /etc/astrarouter/native.env (mode 0600), written by
-# `astrarouter native install`. Only three variables matter here:
+# Configuration lives in /etc/synapass/native.env (mode 0600), written by
+# `synapass native install`. Only three variables matter here:
 #
-#   ASTRAROUTER_API_URL    gateway as seen from this server, e.g. http://127.0.0.1:8080
-#   ASTRAROUTER_ADMIN_KEY  same value as the gateway's AR_ADMIN_KEY
-#   PORT                  listen port (3000)
+#   SYNAPASS_API_URL    gateway as seen from this server, e.g. http://127.0.0.1:8080
+#   SYNAPASS_ADMIN_KEY  admin credential, read from the same file as the gateway
+#   PORT                listen port (3000)
 #
 # Put a reverse proxy in front and terminate TLS there; this unit binds
 # loopback by default (HOSTNAME below).
 
 [Unit]
-Description=AstraRouter control-plane dashboard
-Documentation=https://github.com/shadowsafin/astrarouter
-After=network-online.target astrarouter.service
+Description=Synapass control-plane dashboard
+Documentation=https://github.com/shadowsafin/synapass
+After=network-online.target synapass.service
 Wants=network-online.target
 # The dashboard is useless without the gateway, but a gateway restart must not
 # take the dashboard down with it: it reconnects on the next request.
 
 [Service]
 Type=simple
-User=astrarouter
-Group=astrarouter
-WorkingDirectory=/opt/astrarouter/dashboard
+User=synapass
+Group=synapass
+WorkingDirectory=/opt/synapass/dashboard
 
-EnvironmentFile=-/etc/astrarouter/native.env
+EnvironmentFile=-/etc/synapass/native.env
 Environment=PORT=3000
 Environment=HOSTNAME=127.0.0.1
 Environment=NODE_ENV=production
@@ -74,7 +74,7 @@ LimitNOFILE=16384
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=astrarouter-dashboard
+SyslogIdentifier=synapass-dashboard
 
 [Install]
 WantedBy=multi-user.target

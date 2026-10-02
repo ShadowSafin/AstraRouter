@@ -126,7 +126,7 @@ class Worker:
             # broker problem is fixed.
             logger.error("nats unavailable; workers running degraded: %s", exc)
             try:
-                self.metrics.increment("astrarouter_worker_bus_reconnects_total")
+                self.metrics.increment("synapass_worker_bus_reconnects_total")
             except Exception:  # noqa: BLE001
                 pass
 
@@ -263,7 +263,7 @@ class Worker:
         for provider in payload.get("providers", []):
             error_rate = provider.get("error_rate", 0.0)
             self.metrics.set(
-                "astrarouter_worker_provider_error_rate",
+                "synapass_worker_provider_error_rate",
                 float(error_rate),
                 provider=str(provider.get("provider", "unknown")),
             )

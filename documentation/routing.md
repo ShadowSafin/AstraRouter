@@ -83,7 +83,7 @@ Write one:
 
 ```bash
 curl -s -X PUT $GATEWAY/admin/v1/policies \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d @policy.json | jq
 ```
@@ -179,7 +179,7 @@ used as a hard deadline.
   client still gets the provider's own default.
 - A request above the ceiling is clamped to it.
 - Whenever a ceiling does bound generation, the response says so in
-  `astrarouter.completion`.
+  `synapass.completion`.
 
 Anthropic is the exception: `max_tokens` is mandatory in its API, so the adapter
 supplies a generous default when nothing was requested. Setting
@@ -211,22 +211,22 @@ Callers can guide a single request without an operator editing a policy.
 
 | Header | Effect |
 | --- | --- |
-| `X-AstraRouter-Policy` | Pin a policy by id or name. |
-| `X-AstraRouter-Endpoint` | Apply a named endpoint scope: forced model, preferred lists, strategy, caps, fallback block. Unknown slug `404`, disabled `403`. |
-| `X-AstraRouter-Max-Cost-USD` | Refuse candidates above this projected cost. |
-| `X-AstraRouter-Latency-Target-Ms` | Prefer lower-latency targets. |
-| `X-AstraRouter-No-Fallback` | Exactly one attempt. A primary failure is a `502`, not a slow success elsewhere. |
-| `X-AstraRouter-Region` | Pin provider geography; rejected when policy forbids it. |
-| `X-AstraRouter-Sensitivity` | Comma-separated labels (`pii,phi,public`). Sensitive payloads bypass cache. |
-| `X-AstraRouter-Batch` | Mark batch/offline traffic for cost-aware routing. |
-| `X-AstraRouter-No-Cache` | Force a cache miss. |
-| `X-AstraRouter-Debug` | Restore full routing internals in the `astrarouter` block. |
+| `X-Synapass-Policy` | Pin a policy by id or name. |
+| `X-Synapass-Endpoint` | Apply a named endpoint scope: forced model, preferred lists, strategy, caps, fallback block. Unknown slug `404`, disabled `403`. |
+| `X-Synapass-Max-Cost-USD` | Refuse candidates above this projected cost. |
+| `X-Synapass-Latency-Target-Ms` | Prefer lower-latency targets. |
+| `X-Synapass-No-Fallback` | Exactly one attempt. A primary failure is a `502`, not a slow success elsewhere. |
+| `X-Synapass-Region` | Pin provider geography; rejected when policy forbids it. |
+| `X-Synapass-Sensitivity` | Comma-separated labels (`pii,phi,public`). Sensitive payloads bypass cache. |
+| `X-Synapass-Batch` | Mark batch/offline traffic for cost-aware routing. |
+| `X-Synapass-No-Cache` | Force a cache miss. |
+| `X-Synapass-Debug` | Restore full routing internals in the `synapass` block. |
 
 ## Inspecting a decision
 
 ```bash
 curl -s "$GATEWAY/admin/v1/requests/$REQUEST_ID/explain" \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 ```
 
 That returns the task classification, the policy verdict, the prompt-shaping plan,
@@ -242,7 +242,7 @@ a row.
 | `no route` despite configured providers | All candidates filtered | Read the `explain` payload for per-candidate rejections |
 | Traffic avoids a healthy provider | Circuit breaker still open | Probe it: `POST /admin/v1/providers/{id}/probe` |
 | A failover did not happen | The code was not in `on_error_codes` | Add it, or clear the list to allow the defaults |
-| Answers stop mid-sentence | A configured `per_attempt` or `max_output_tokens` | Raise the budget; the response reports it in `astrarouter.completion` |
+| Answers stop mid-sentence | A configured `per_attempt` or `max_output_tokens` | Raise the budget; the response reports it in `synapass.completion` |
 | `403` with a deny reason | Fine-grained policy denied | The message names the rule that fired |
 
 ---

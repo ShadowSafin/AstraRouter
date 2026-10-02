@@ -1,4 +1,4 @@
-module github.com/shadowsafin/astrarouter/desktop
+module github.com/shadowsafin/synapass/desktop
 
 go 1.27.1
 

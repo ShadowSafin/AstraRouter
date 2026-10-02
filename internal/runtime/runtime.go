@@ -1,9 +1,9 @@
-// Package runtime supervises the AstraRouter processes on a host that has no
+// Package runtime supervises the Synapass processes on a host that has no
 // container orchestrator.
 //
 // It is the native counterpart to the Docker Compose service definitions: the
 // same three processes (gateway, dashboard, workers) with the same restart and
-// shutdown semantics, expressed as a library so `astrarouter native up` behaves
+// shutdown semantics, expressed as a library so `synapass native up` behaves
 // identically on Linux, macOS and Windows. Anything systemd-specific (unit
 // files, sandboxing, journal logging) lives in deploy/systemd, not here.
 package runtime

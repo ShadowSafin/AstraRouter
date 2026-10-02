@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	adminsvc "github.com/shadowsafin/astrarouter/internal/admin"
-	"github.com/shadowsafin/astrarouter/internal/auth"
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	adminsvc "github.com/shadowsafin/synapass/internal/admin"
+	"github.com/shadowsafin/synapass/internal/auth"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // This file implements the Phase 3 management surface: full CRUD for
@@ -54,7 +54,7 @@ func (s *Server) reloadRuntime(ctx context.Context) {
 
 // credentialStore builds the sealing store from the environment.
 //
-// Key resolution is explicit AR_CREDENTIALS_KEY first, admin-key derivation
+// Key resolution is explicit SYNAPASS_CREDENTIALS_KEY first, admin-key derivation
 // second, so stock deployments work with zero new configuration while serious
 // deployments can pin an independent data key.
 func (s *Server) credentialStore() (*adminsvc.Store, error) {

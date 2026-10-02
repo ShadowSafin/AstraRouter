@@ -1,4 +1,4 @@
-// Package logging provides AstraRouter's structured logger and the context
+// Package logging provides Synapass's structured logger and the context
 // plumbing that correlates log lines with requests and traces.
 //
 // The logger is log/slog from the standard library. A dedicated wrapper adds
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/config"
+	"github.com/shadowsafin/synapass/internal/config"
 )
 
 // Level parses a configuration level into a slog level.

@@ -47,7 +47,7 @@ const WIDGETS: BoardWidget[] = [
   { id: 'models', kind: 'models', size: 'wide', label: 'Token usage by model' },
 ];
 
-const STORAGE_KEY = 'astrarouter-widget-order';
+const STORAGE_KEY = 'synapass-widget-order';
 
 function loadOrder(): BoardWidget[] {
   try {

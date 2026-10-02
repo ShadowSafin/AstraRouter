@@ -100,7 +100,7 @@ export function TunnelsView() {
     <>
       <PageHeader
         title="Public tunnels"
-        description="Disposable Cloudflare URLs that expose one local service to the internet. No port forwarding; every request through the tunnel still passes AstraRouter auth, policy and rate limits."
+        description="Disposable Cloudflare URLs that expose one local service to the internet. No port forwarding; every request through the tunnel still passes Synapass auth, policy and rate limits."
         actions={
           <Button variant="outline" size="sm" onClick={() => { void refetch(); void history.refetch(); }} disabled={isFetching}>
             <RefreshCw className={isFetching ? 'animate-spin' : undefined} />
@@ -119,7 +119,7 @@ export function TunnelsView() {
             </CardTitle>
             <CardDescription>
               Set <code className="font-mono">tunnel.enabled: true</code> (or{' '}
-              <code className="font-mono">AR_TUNNEL_ENABLED=true</code>), then restart
+              <code className="font-mono">SYNAPASS_TUNNEL_ENABLED=true</code>), then restart
               the gateway. Nothing is exposed until you create a tunnel below. The
               Docker gateway image already includes{' '}
               <code className="font-mono">cloudflared</code>; native installs need it
@@ -165,7 +165,7 @@ export function TunnelsView() {
                 <CardDescription>
                   Exposing <code className="font-mono">{active.target_addr}</code> as{' '}
                   <code className="font-mono">{active.target}</code>. Anyone with the URL can
-                  reach AstraRouter; auth and policy still apply.
+                  reach Synapass; auth and policy still apply.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

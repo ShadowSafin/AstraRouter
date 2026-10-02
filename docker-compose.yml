@@ -1,4 +1,4 @@
-# AstraRouter - complete local and self-hosted stack.
+# Synapass - complete local and self-hosted stack.
 #
 # Everything the platform needs in one file: the data stores, the message bus, the
 # gateway, the intelligence workers, the dashboard and the full observability
@@ -18,7 +18,7 @@
 #     spike takes down the database on the same host, which is the single most
 #     common self-hosting failure.
 
-name: astrarouter
+name: synapass
 
 x-restart: &restart
   restart: unless-stopped
@@ -38,9 +38,9 @@ services:
     image: postgres:16-alpine
     <<: [*restart, *logging]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-astrarouter}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-astrarouter}
-      POSTGRES_DB: ${POSTGRES_DB:-astrarouter}
+      POSTGRES_USER: ${POSTGRES_USER:-synapass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapass}
+      POSTGRES_DB: ${POSTGRES_DB:-synapass}
       # The gateway is the only client, and it connects over the compose network,
       # so password auth over an unencrypted local socket is sufficient here.
       POSTGRES_INITDB_ARGS: "--data-checksums"
@@ -51,7 +51,7 @@ services:
     # pg_isready returns 0 only once the server accepts connections, which is what
     # the depends_on condition actually needs.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astrarouter} -d ${POSTGRES_DB:-astrarouter}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-synapass} -d ${POSTGRES_DB:-synapass}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -85,9 +85,9 @@ services:
     image: clickhouse/clickhouse-server:24.8-alpine
     <<: [*restart, *logging]
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-astrarouter}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-astrarouter}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-astrarouter}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-synapass}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-synapass}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-synapass}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
@@ -139,9 +139,9 @@ services:
       context: .
       dockerfile: deploy/docker/Dockerfile.gateway
       args:
-        VERSION: ${ASTRAROUTER_VERSION:-dev}
-        COMMIT: ${ASTRAROUTER_COMMIT:-unknown}
-        BUILD_DATE: ${ASTRAROUTER_BUILD_DATE:-unknown}
+        VERSION: ${SYNAPASS_VERSION:-dev}
+        COMMIT: ${SYNAPASS_COMMIT:-unknown}
+        BUILD_DATE: ${SYNAPASS_BUILD_DATE:-unknown}
     <<: [*restart, *logging]
     depends_on:
       postgres:
@@ -153,30 +153,30 @@ services:
       nats:
         condition: service_healthy
     environment:
-      AR_ENVIRONMENT: ${AR_ENVIRONMENT:-production}
-      AR_HTTP_ADDR: ":8080"
+      SYNAPASS_ENVIRONMENT: ${SYNAPASS_ENVIRONMENT:-production}
+      SYNAPASS_HTTP_ADDR: ":8080"
       # Environment-only configuration: the image ships a config file, and these
       # override it. Anything set here wins, which is the same precedence a native
       # install sees.
-      AR_DATABASE_DSN: postgres://${POSTGRES_USER:-astrarouter}:${POSTGRES_PASSWORD:-astrarouter}@postgres:5432/${POSTGRES_DB:-astrarouter}?sslmode=disable
-      AR_REDIS_ADDR: redis:6379
-      AR_CLICKHOUSE_ADDR: clickhouse:9000
-      AR_CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-astrarouter}
-      AR_CLICKHOUSE_USERNAME: ${CLICKHOUSE_USER:-astrarouter}
-      AR_CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-astrarouter}
-      AR_NATS_URL: nats://nats:4222
-      AR_OTEL_ENDPOINT: otel-collector:4318
-      AR_OTEL_INSECURE: "true"
-      AR_PROMETHEUS_ENABLED: "true"
-      AR_LOG_FORMAT: json
+      SYNAPASS_DATABASE_DSN: postgres://${POSTGRES_USER:-synapass}:${POSTGRES_PASSWORD:-synapass}@postgres:5432/${POSTGRES_DB:-synapass}?sslmode=disable
+      SYNAPASS_REDIS_ADDR: redis:6379
+      SYNAPASS_CLICKHOUSE_ADDR: clickhouse:9000
+      SYNAPASS_CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-synapass}
+      SYNAPASS_CLICKHOUSE_USERNAME: ${CLICKHOUSE_USER:-synapass}
+      SYNAPASS_CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-synapass}
+      SYNAPASS_NATS_URL: nats://nats:4222
+      SYNAPASS_OTEL_ENDPOINT: otel-collector:4318
+      SYNAPASS_OTEL_INSECURE: "true"
+      SYNAPASS_PROMETHEUS_ENABLED: "true"
+      SYNAPASS_LOG_FORMAT: json
       # The dashboard origin must be allowed explicitly; a wildcard is refused in
       # production by configuration validation.
-      AR_HTTP_CORS_ALLOWED_ORIGINS: ${AR_HTTP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      SYNAPASS_HTTP_CORS_ALLOWED_ORIGINS: ${SYNAPASS_HTTP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       # The bootstrap administrator credential. Without it a fresh production
       # install cannot be administered, and configuration validation refuses to
       # start. Override this outside a local evaluation.
-      AR_ADMIN_KEY: ${AR_ADMIN_KEY:-ar_admin_change_me_in_production_000000}
-      AR_POSTGRES_AUTO_MIGRATE: "true"
+      SYNAPASS_ADMIN_KEY: ${SYNAPASS_ADMIN_KEY:-syn_admin_change_me_in_production_000000}
+      SYNAPASS_POSTGRES_AUTO_MIGRATE: "true"
       # Provider credentials are passed through empty by default. A provider with
       # no reachable credential fails to construct, is reported on the admin
       # provider endpoint, and is excluded from routing rather than breaking startup.
@@ -187,9 +187,9 @@ services:
       # nothing until an operator creates a tunnel from the dashboard
       # (/tunnels) or POST /admin/v1/tunnels/create. Set false to remove the
       # capability entirely.
-      AR_TUNNEL_ENABLED: ${AR_TUNNEL_ENABLED:-true}
+      SYNAPASS_TUNNEL_ENABLED: ${SYNAPASS_TUNNEL_ENABLED:-true}
       # Inside Docker the dashboard target resolves over the compose network.
-      AR_TUNNEL_DASHBOARD_TARGET: ${AR_TUNNEL_DASHBOARD_TARGET:-http://dashboard:3000}
+      SYNAPASS_TUNNEL_DASHBOARD_TARGET: ${SYNAPASS_TUNNEL_DASHBOARD_TARGET:-http://dashboard:3000}
     ports:
       # GATEWAY_PORT lets a host with something already on 8080 verify without
       # editing the file: GATEWAY_PORT=18080 docker compose up. The container
@@ -218,14 +218,14 @@ services:
       nats:
         condition: service_healthy
     environment:
-      AR_WORKER_NATS_URL: nats://nats:4222
-      AR_WORKER_METRICS_ADDR: "0.0.0.0:9101"
-      AR_WORKER_LOG_FORMAT: json
+      SYNAPASS_WORKER_NATS_URL: nats://nats:4222
+      SYNAPASS_WORKER_METRICS_ADDR: "0.0.0.0:9101"
+      SYNAPASS_WORKER_LOG_FORMAT: json
       # Point at a local judge to enable rubric-based evaluation. Left empty,
       # judging is disabled and the deterministic scorers are the only signal.
-      AR_WORKER_PROVIDER_URL: ${AR_WORKER_PROVIDER_URL:-}
-      AR_WORKER_PROVIDER_MODEL: ${AR_WORKER_PROVIDER_MODEL:-}
-      AR_WORKER_LABELS: pool=default
+      SYNAPASS_WORKER_PROVIDER_URL: ${SYNAPASS_WORKER_PROVIDER_URL:-}
+      SYNAPASS_WORKER_PROVIDER_MODEL: ${SYNAPASS_WORKER_PROVIDER_MODEL:-}
+      SYNAPASS_WORKER_LABELS: pool=default
     ports:
       - "127.0.0.1:9101:9101"
 
@@ -236,7 +236,7 @@ services:
       args:
         # Inlined into the browser bundle at build time, so it must be the address
         # a browser can reach, not the compose service name.
-        NEXT_PUBLIC_ASTRAROUTER_API_URL: ${NEXT_PUBLIC_ASTRAROUTER_API_URL:-http://localhost:8080}
+        NEXT_PUBLIC_SYNAPASS_API_URL: ${NEXT_PUBLIC_SYNAPASS_API_URL:-http://localhost:8080}
     <<: [*restart, *logging]
     depends_on:
       gateway:
@@ -244,8 +244,8 @@ services:
     environment:
       # Server-side calls go over the compose network, which is faster and does not
       # depend on the browser's view of the host.
-      ASTRAROUTER_API_URL: http://gateway:8080
-      ASTRAROUTER_ADMIN_KEY: ${AR_ADMIN_KEY:-ar_admin_change_me_in_production_000000}
+      SYNAPASS_API_URL: http://gateway:8080
+      SYNAPASS_ADMIN_KEY: ${SYNAPASS_ADMIN_KEY:-syn_admin_change_me_in_production_000000}
       # Public LAN address shown on the Endpoints page so other devices on the
       # network get a working URL (e.g. http://192.168.1.20:18080). Empty hides
       # the LAN block. Requires the gateway to bind your network (GATEWAY_BIND).
@@ -261,7 +261,7 @@ services:
     <<: [*restart, *logging]
     command: ["--config=/etc/otel/config.yaml"]
     environment:
-      AR_ENVIRONMENT: ${AR_ENVIRONMENT:-production}
+      SYNAPASS_ENVIRONMENT: ${SYNAPASS_ENVIRONMENT:-production}
     volumes:
       - ./deploy/otel/collector-config.yaml:/etc/otel/config.yaml:ro
     ports:
@@ -321,7 +321,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       # Provisioned dashboards are read-only: an operator who wants to edit one
       # saves a copy, which keeps the shipped definitions the source of truth.
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/astrarouter-overview.json
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/synapass-overview.json
     volumes:
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro

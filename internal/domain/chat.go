@@ -45,7 +45,7 @@ type ContentPart struct {
 	Text string `json:"text,omitempty"`
 	// ImageURL is set for "image_url" parts.
 	ImageURL *ImageURL `json:"image_url,omitempty"`
-	// Raw preserves parts AstraRouter does not model, so unknown multimodal
+	// Raw preserves parts Synapass does not model, so unknown multimodal
 	// payloads pass through to the provider untouched.
 	Raw json.RawMessage `json:"-"`
 }
@@ -90,7 +90,7 @@ func (c MessageContent) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON accepts either representation and never fails on an unexpected
-// shape: a part AstraRouter does not understand is retained as Raw rather than
+// shape: a part Synapass does not understand is retained as Raw rather than
 // rejected, because a gateway must not be the component that rejects a valid
 // upstream feature it has not learned about yet.
 func (c *MessageContent) UnmarshalJSON(data []byte) error {
@@ -227,7 +227,7 @@ type StreamOptions struct {
 // ChatCompletionRequest is the normalized body of POST /v1/chat/completions.
 //
 // Pointer fields distinguish "absent" from "explicitly zero", which matters
-// because AstraRouter forwards only what the client sent rather than inventing
+// because Synapass forwards only what the client sent rather than inventing
 // values the provider might treat differently.
 type ChatCompletionRequest struct {
 	Model    string        `json:"model"`
@@ -264,7 +264,7 @@ type ChatCompletionRequest struct {
 	Tools             []Tool          `json:"tools,omitempty"`
 	ToolChoice        json.RawMessage `json:"tool_choice,omitempty"`
 	ParallelToolCall  *bool           `json:"parallel_tool_calls,omitempty"`
-	// ToolExecution is AstraRouter's namespaced tool control (Phase 4). It is
+	// ToolExecution is Synapass's namespaced tool control (Phase 4). It is
 	// separate from tool_choice, which is OpenAI's: tool_choice says whether
 	// the model must call a tool, this says who runs it.
 	ToolExecution   *ToolRunConfig    `json:"tool_execution,omitempty"`
@@ -453,10 +453,10 @@ type ChatCompletionResponse struct {
 	Usage   *TokenUsage `json:"usage,omitempty"`
 	// SystemFingerprint is passed through from providers that emit it.
 	SystemFingerprint string `json:"system_fingerprint,omitempty"`
-	// AstraRouter is a namespaced extension block. Extra top-level keys are
+	// Synapass is a namespaced extension block. Extra top-level keys are
 	// tolerated by OpenAI clients, but a namespaced object is unambiguous and
 	// cannot collide with a future upstream field.
-	AstraRouter *ResponseMetadata `json:"astrarouter,omitempty"`
+	Synapass *ResponseMetadata `json:"synapass,omitempty"`
 }
 
 // ObjectChatCompletion is the response object discriminator.
@@ -471,14 +471,14 @@ type ChatCompletionChunk struct {
 	Choices           []Choice          `json:"choices"`
 	Usage             *TokenUsage       `json:"usage,omitempty"`
 	SystemFingerprint string            `json:"system_fingerprint,omitempty"`
-	AstraRouter        *ResponseMetadata `json:"astrarouter,omitempty"`
+	Synapass        *ResponseMetadata `json:"synapass,omitempty"`
 }
 
 // ObjectChatCompletionChunk is the chunk object discriminator.
 const ObjectChatCompletionChunk = "chat.completion.chunk"
 
 // ResponseMetadata explains how a response was produced. It is the client-facing
-// view of the routing decision and is present on every response AstraRouter
+// view of the routing decision and is present on every response Synapass
 // generates, including errors.
 type ResponseMetadata struct {
 	RequestID         string  `json:"request_id"`
@@ -578,16 +578,16 @@ type ModelObject struct {
 	Object  string `json:"object"`
 	Created int64  `json:"created"`
 	OwnedBy string `json:"owned_by"`
-	// AstraRouter extensions describing upstream placement and pricing. They are
+	// Synapass extensions describing upstream placement and pricing. They are
 	// additive fields, which OpenAI-compatible clients ignore.
-	Provider        string   `json:"astrarouter_provider,omitempty"`
-	UpstreamModel   string   `json:"astrarouter_upstream_model,omitempty"`
-	ContextWindow   int      `json:"astrarouter_context_window,omitempty"`
-	MaxOutputTokens int      `json:"astrarouter_max_output_tokens,omitempty"`
-	InputCost       float64  `json:"astrarouter_input_cost_per_million,omitempty"`
-	OutputCost      float64  `json:"astrarouter_output_cost_per_million,omitempty"`
-	Capabilities    []string `json:"astrarouter_capabilities,omitempty"`
-	Status          string   `json:"astrarouter_status,omitempty"`
+	Provider        string   `json:"synapass_provider,omitempty"`
+	UpstreamModel   string   `json:"synapass_upstream_model,omitempty"`
+	ContextWindow   int      `json:"synapass_context_window,omitempty"`
+	MaxOutputTokens int      `json:"synapass_max_output_tokens,omitempty"`
+	InputCost       float64  `json:"synapass_input_cost_per_million,omitempty"`
+	OutputCost      float64  `json:"synapass_output_cost_per_million,omitempty"`
+	Capabilities    []string `json:"synapass_capabilities,omitempty"`
+	Status          string   `json:"synapass_status,omitempty"`
 }
 
 // ModelListResponse is the GET /v1/models response body.

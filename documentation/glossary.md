@@ -1,12 +1,12 @@
 # Glossary
 
-AstraRouter-specific terms, defined. Where a term matches OpenAI's usage, the
+Synapass-specific terms, defined. Where a term matches OpenAI's usage, the
 difference is noted.
 
 ## The gateway
 
 **Adapter** — the code that speaks one provider's wire format. One per provider
-kind; it converts AstraRouter's normalized request to that provider's shape and
+kind; it converts Synapass's normalized request to that provider's shape and
 the response back.
 
 **Candidate** — one provider+model pair that survived resolution against the
@@ -45,7 +45,7 @@ surface. "Universal" because any OpenAI-speaking client can call it.
 capabilities are derived from the request body, never claimed by the client.
 
 **Endpoint scope** — a named set of routing overrides (`/endpoints`) a caller
-selects with `X-AstraRouter-Endpoint`. Forced model, preferred lists, strategy,
+selects with `X-Synapass-Endpoint`. Forced model, preferred lists, strategy,
 caps, fallback block.
 
 **Policy** — a rule set that requests match on: model, request type, tenant, API
@@ -110,7 +110,7 @@ never written under one key and read under another.
 stream-idle.
 
 **Truncation** — an answer that ended because a limit was reached rather than the
-model finishing. Reported in `astrarouter.completion`; never silent.
+model finishing. Reported in `synapass.completion`; never silent.
 
 ## Intelligence
 
@@ -162,7 +162,7 @@ tools are not executable inside the gateway, and the field is not writable.
 **Gateway execution** — opt-in: safe tools run inside the gateway in a bounded
 loop, and the client receives one final answer.
 
-**Registry** — the list of tools AstraRouter knows about, whether or not the
+**Registry** — the list of tools Synapass knows about, whether or not the
 gateway can execute them.
 
 **Safety level** — a tool's declared risk (`safe`, `caution`, `dangerous`), used
@@ -173,7 +173,7 @@ max calls, max seconds, allowed and denied tool globs.
 
 ## Control plane
 
-**Admin key** — the control-plane credential (`AR_ADMIN_KEY`). Separate from
+**Admin key** — the control-plane credential (`SYNAPASS_ADMIN_KEY`). Separate from
 tenant inference keys and held by the dashboard's server, never the browser.
 
 **Console operator** — a human account that can sign in to the dashboard. Stored
@@ -240,8 +240,8 @@ restart because of it.
 **Lossy** — a signal that may be dropped under pressure. Telemetry is lossy by
 design; authentication, policy and budgets never are.
 
-**Metric namespace** — the `astrarouter_` prefix. Workers share it with
-`astrarouter_worker_`.
+**Metric namespace** — the `synapass_` prefix. Workers share it with
+`synapass_worker_`.
 
 **OTLP** — the OpenTelemetry protocol traces are exported with.
 
@@ -253,8 +253,8 @@ request traces are analytical.
 
 ## Response fields
 
-**`astrarouter` block** — the namespaced metadata AstraRouter adds to a response.
-Stable attribution by default; full internals with `X-AstraRouter-Debug: true`.
+**`synapass` block** — the namespaced metadata Synapass adds to a response.
+Stable attribution by default; full internals with `X-Synapass-Debug: true`.
 
 **`completion` block** — how the answer was bounded and whether it finished.
 Present only when something was capped or interrupted.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AstraRouter one-command deploy (Linux / macOS / Windows Git Bash).
+# Synapass one-command deploy (Linux / macOS / Windows Git Bash).
 #
 #   ./scripts/deploy.sh            # bootstrap .env, start the stack, wait, print URLs
 #   ./scripts/deploy.sh <command>  # stop | restart | logs | status | reset | help
@@ -7,14 +7,14 @@
 # The script is idempotent: running it twice reuses .env, volumes and healthy
 # containers, and only rebuilds images whose sources changed. First-run work
 # (Postgres migrations, catalogue seeding) happens inside the gateway itself
-# (AR_POSTGRES_AUTO_MIGRATE=true + the idempotent config seeder), so there is
+# (SYNAPASS_POSTGRES_AUTO_MIGRATE=true + the idempotent config seeder), so there is
 # nothing to trigger by hand -- this script only waits until it is done.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-ADMIN_PLACEHOLDER="ar_admin_change_me_in_production_000000"
+ADMIN_PLACEHOLDER="syn_admin_change_me_in_production_000000"
 STEP="starting up"
 
 # ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ check_ports() {
   dash_port=3000   # fixed host port in docker-compose.yml (only the bind interface varies)
   graf_port=3001
   if port_in_use "$gw_port"; then
-    fail "host port $gw_port is already in use (gateway). Move the host port instead of the container port, e.g. GATEWAY_PORT=18080 with NEXT_PUBLIC_ASTRAROUTER_API_URL=http://localhost:18080 in .env, then re-run."
+    fail "host port $gw_port is already in use (gateway). Move the host port instead of the container port, e.g. GATEWAY_PORT=18080 with NEXT_PUBLIC_SYNAPASS_API_URL=http://localhost:18080 in .env, then re-run."
   fi
   if port_in_use "$dash_port"; then
     fail "host port $dash_port is already in use (dashboard). Stop whatever serves it, then re-run."
@@ -110,7 +110,7 @@ gen_admin_key() {
   elif command -v python3 >/dev/null 2>&1; then
     python3 -c "import secrets; print(secrets.token_hex(24))"
   else
-    fail "cannot generate AR_ADMIN_KEY: neither openssl nor python3 found. Install one, or create .env from .env.example and set AR_ADMIN_KEY by hand."
+    fail "cannot generate SYNAPASS_ADMIN_KEY: neither openssl nor python3 found. Install one, or create .env from .env.example and set SYNAPASS_ADMIN_KEY by hand."
   fi
 }
 
@@ -123,17 +123,17 @@ bootstrap_env() {
     key="$(gen_admin_key)"
     # -i.bak (then remove the backup) is the portable spelling: it works with
     # both GNU and BSD sed, unlike bare -i.
-    sed -i.bak "s/^AR_ADMIN_KEY=.*/AR_ADMIN_KEY=${key}/" "$REPO_ROOT/.env" && rm -f "$REPO_ROOT/.env.bak"
-    success "created .env from .env.example with a generated AR_ADMIN_KEY"
+    sed -i.bak "s/^SYNAPASS_ADMIN_KEY=.*/SYNAPASS_ADMIN_KEY=${key}/" "$REPO_ROOT/.env" && rm -f "$REPO_ROOT/.env.bak"
+    success "created .env from .env.example with a generated SYNAPASS_ADMIN_KEY"
     info "Add a provider key to .env when ready (OPENAI_API_KEY / ANTHROPIC_API_KEY)."
     info "Without one the stack still starts; providers report unconfigured until then."
   else
     success "reusing existing .env"
   fi
   local admin
-  admin="$(env_get AR_ADMIN_KEY)"
-  [ -n "$admin" ] || fail "AR_ADMIN_KEY is empty in .env. Set it to a long random value (e.g. the output of: openssl rand -hex 24)."
-  [ "$admin" != "$ADMIN_PLACEHOLDER" ] || fail "AR_ADMIN_KEY still holds the .env.example placeholder, which production validation refuses. Set a real value in .env (e.g. the output of: openssl rand -hex 24)."
+  admin="$(env_get SYNAPASS_ADMIN_KEY)"
+  [ -n "$admin" ] || fail "SYNAPASS_ADMIN_KEY is empty in .env. Set it to a long random value (e.g. the output of: openssl rand -hex 24)."
+  [ "$admin" != "$ADMIN_PLACEHOLDER" ] || fail "SYNAPASS_ADMIN_KEY still holds the .env.example placeholder, which production validation refuses. Set a real value in .env (e.g. the output of: openssl rand -hex 24)."
 }
 
 # ---------------------------------------------------------------------------
@@ -174,7 +174,7 @@ print_summary() {
   local gw_port
   gw_port="$(env_get GATEWAY_PORT 8080)"
   printf '\n========================================\n'
-  printf '  AstraRouter is up\n'
+  printf '  Synapass is up\n'
   printf '========================================\n'
   printf '  Dashboard   http://127.0.0.1:3000\n'
   printf '  Gateway     http://127.0.0.1:%s  (/health /ready /metrics)\n' "$gw_port"
@@ -188,7 +188,7 @@ print_summary() {
 }
 
 cmd_up() {
-  echo "AstraRouter deploy: starting the full stack"
+  echo "Synapass deploy: starting the full stack"
   check_prereqs
   check_ports
   bootstrap_env

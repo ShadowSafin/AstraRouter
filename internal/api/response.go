@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // writeJSON renders a response body.
@@ -58,7 +58,7 @@ func writeError(w http.ResponseWriter, err error, meta *domain.ResponseMetadata)
 	// that logs the failure also captures which provider and policy were involved.
 	body := struct {
 		Error      domain.ErrorBody         `json:"error"`
-		AstraRouter *domain.ResponseMetadata `json:"astrarouter,omitempty"`
+		Synapass *domain.ResponseMetadata `json:"synapass,omitempty"`
 	}{
 		Error: domain.ErrorBody{
 			Message: normalized.Message,
@@ -66,19 +66,19 @@ func writeError(w http.ResponseWriter, err error, meta *domain.ResponseMetadata)
 			Param:   normalized.ErrorParam(),
 			Code:    string(normalized.Code),
 		},
-		AstraRouter: meta,
+		Synapass: meta,
 	}
 
 	// Some downstream proxies rewrite status codes, so the upstream status is
 	// echoed in a header for callers that need the original.
 	if normalized.Status > 0 && normalized.Status != status {
-		w.Header().Set("X-AstraRouter-Upstream-Status", strconv.Itoa(normalized.Status))
+		w.Header().Set("X-Synapass-Upstream-Status", strconv.Itoa(normalized.Status))
 	}
 	if normalized.Provider != "" {
-		w.Header().Set("X-AstraRouter-Provider", normalized.Provider)
+		w.Header().Set("X-Synapass-Provider", normalized.Provider)
 	}
 	if normalized.Retryable || normalized.FallbackEligible {
-		w.Header().Set("X-AstraRouter-Retryable", strconv.FormatBool(normalized.Retryable))
+		w.Header().Set("X-Synapass-Retryable", strconv.FormatBool(normalized.Retryable))
 	}
 
 	writeJSON(w, status, body)
@@ -243,7 +243,7 @@ func decodeJSONBody(r *http.Request, limit int64, target any) error {
 // route reasons stay behind this header so normal app clients never depend on
 // operational details that change between deploys. The admin surface and the
 // dashboard always see the full block.
-const headerDebug = "X-AstraRouter-Debug"
+const headerDebug = "X-Synapass-Debug"
 
 // debugRequested reports whether the client asked for routing internals.
 func debugRequested(r *http.Request) bool {

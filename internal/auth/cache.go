@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // cachedPrincipal is the wire form of a cached authentication result.

@@ -3,7 +3,7 @@
 Every setting is reachable from the environment, so a container or a systemd unit
 can be fully configured without a config file, and a config file can be used
 without touching the environment. The precedence mirrors the Go control plane:
-defaults, then an optional YAML/JSON file, then ``AR_WORKER_*`` variables.
+defaults, then an optional YAML/JSON file, then ``SYNAPASS_WORKER_*`` variables.
 
 Nothing here reads a secret from a file that would be committed.
 """
@@ -16,15 +16,15 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping
 
-# Environment prefix. ``AR_WORKER_`` is used rather than ``AR_`` so a worker and
+# Environment prefix. ``SYNAPASS_WORKER_`` is used rather than ``SYNAPASS_`` so a worker and
 # the control plane can share an environment without one silently reconfiguring
 # the other.
-ENV_PREFIX = "AR_WORKER_"
+ENV_PREFIX = "SYNAPASS_WORKER_"
 
 # Defaults. They are constants rather than inline literals so the shipped
 # example configuration and the code cannot drift apart.
 DEFAULT_NATS_URL = "nats://localhost:4222"
-DEFAULT_QUEUE_GROUP = "astrarouter-workers"
+DEFAULT_QUEUE_GROUP = "synapass-workers"
 DEFAULT_METRICS_ADDR = "0.0.0.0:9101"
 DEFAULT_HTTP_TIMEOUT_SECONDS = 60.0
 DEFAULT_EVAL_CONCURRENCY = 4
@@ -92,7 +92,7 @@ class Config:
 
     # --- messaging ---
     nats_url: str = DEFAULT_NATS_URL
-    nats_name: str = "astrarouter-workers"
+    nats_name: str = "synapass-workers"
     nats_credentials_file: str = ""
     nats_token: str = ""
     jetstream: bool = True
@@ -178,7 +178,7 @@ class Config:
 
         config = cls(
             nats_url=_env(env, ENV_PREFIX + "NATS_URL", "NATS_URL") or DEFAULT_NATS_URL,
-            nats_name=_env(env, ENV_PREFIX + "NATS_NAME") or "astrarouter-workers",
+            nats_name=_env(env, ENV_PREFIX + "NATS_NAME") or "synapass-workers",
             nats_credentials_file=_env(env, ENV_PREFIX + "NATS_CREDENTIALS_FILE"),
             nats_token=_env(env, ENV_PREFIX + "NATS_TOKEN", "NATS_TOKEN"),
             jetstream=_env_bool(env, ENV_PREFIX + "NATS_JETSTREAM", default=True),

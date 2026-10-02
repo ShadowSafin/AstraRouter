@@ -1,6 +1,6 @@
 # Caching
 
-AstraRouter can reuse a prior response instead of calling a provider again. The
+Synapass can reuse a prior response instead of calling a provider again. The
 cache is a policy-aware part of the request flow, not a layer bolted on beside
 routing: most requests deliberately bypass it, and every reuse is scoped so one
 tenant can never see another's answer.
@@ -22,14 +22,14 @@ cache:
    determinism, policy and endpoint switches.
 4. Compute the full cache key.
 5. Check **exact → prefix → semantic**.
-6. On a hit, return the cached response with `astrarouter.cache_hit: true`.
+6. On a hit, return the cached response with `synapass.cache_hit: true`.
 7. On a miss, route to the provider as usual.
 8. Store the final response with serving metadata when eligible.
 9. Record metrics, traces and entry metadata.
 10. Surface everything on the dashboard's `/cache` page.
 
 The public inference API does not change. A hit returns the same JSON shape as a
-live response; only the `astrarouter` block gains `cache_hit`, `cache_kind`,
+live response; only the `synapass` block gains `cache_hit`, `cache_kind`,
 `cache_similarity` and `cache_reuse_count`.
 
 ## Tiers
@@ -78,7 +78,7 @@ Safety first. Any of these bypasses reuse:
 
 | Bypass reason | Meaning |
 | --- | --- |
-| `bypass_requested` | `X-AstraRouter-No-Cache: true` |
+| `bypass_requested` | `X-Synapass-No-Cache: true` |
 | `streaming` | Streams are never cached. |
 | `sensitive_request` | Any sensitivity label other than `public`. |
 | `policy_disabled` | The routing policy has caching off. |
@@ -114,10 +114,10 @@ A matching *disabled* row bypasses. No match means the global defaults apply.
 
 ```bash
 curl -s "$GATEWAY/admin/v1/cache/policies?tenant_id=$TENANT" \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 
 curl -s -X PUT $GATEWAY/admin/v1/cache/policies \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"name":"support-bot","tenant_id":"'"$TENANT"'","ttl_seconds":900,"enabled":true,"scopes":["model:gpt-4o-mini"]}' | jq
 ```
@@ -129,7 +129,7 @@ affected scope:
 
 ```bash
 curl -s -X POST $GATEWAY/admin/v1/cache/invalidate \
-  -H "Authorization: Bearer $AR_ADMIN_KEY" \
+  -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"scope":"model","model":"gpt-4o-mini","reason":"fine-tune deployed"}' | jq
 ```
@@ -147,7 +147,7 @@ surgical.
 
 Every flush writes a `cache_invalidations` row (scope, target, reason, actor,
 removed count), publishes `ar.cache.invalidated` on NATS, bumps
-`astrarouter_cache_invalidations_total{scope,reason}` and clears the `cache_entries`
+`synapass_cache_invalidations_total{scope,reason}` and clears the `cache_entries`
 metadata for that scope.
 
 **Flush when you change** the provider, a model, a policy, tenant settings or tool
@@ -161,9 +161,9 @@ and tier switches, per-scope policies, recent entries (metadata only) and the
 invalidation trail — plus scoped flush controls.
 
 ```bash
-curl -s "$GATEWAY/admin/v1/cache/stats?tenant_id=$TENANT" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
-curl -s "$GATEWAY/admin/v1/cache/inspect?tenant_id=$TENANT&limit=20" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
-curl -s "$GATEWAY/admin/v1/cache/invalidations?limit=10" -H "Authorization: Bearer $AR_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/cache/stats?tenant_id=$TENANT" -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/cache/inspect?tenant_id=$TENANT&limit=20" -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
+curl -s "$GATEWAY/admin/v1/cache/invalidations?limit=10" -H "Authorization: Bearer $SYNAPASS_ADMIN_KEY" | jq
 ```
 
 `inspect` returns entry metadata, never bodies — bodies stay in Redis.
@@ -172,13 +172,13 @@ Metrics:
 
 | Metric | Meaning |
 | --- | --- |
-| `astrarouter_cache_hits_total{tenant,kind}` | Hits by tier |
-| `astrarouter_cache_misses_total{tenant}` | Misses |
-| `astrarouter_cache_bypass_total{tenant,reason}` | Skips and why |
-| `astrarouter_cache_lookup_duration_seconds{tenant,outcome}` | Lookup latency |
-| `astrarouter_cache_invalidations_total{scope,reason}` | Flushes |
-| `astrarouter_cache_latency_saved_seconds{tenant,kind}` | Value delivered |
-| `astrarouter_cache_semantic_similarity{tenant}` | Score distribution |
+| `synapass_cache_hits_total{tenant,kind}` | Hits by tier |
+| `synapass_cache_misses_total{tenant}` | Misses |
+| `synapass_cache_bypass_total{tenant,reason}` | Skips and why |
+| `synapass_cache_lookup_duration_seconds{tenant,outcome}` | Lookup latency |
+| `synapass_cache_invalidations_total{scope,reason}` | Flushes |
+| `synapass_cache_latency_saved_seconds{tenant,kind}` | Value delivered |
+| `synapass_cache_semantic_similarity{tenant}` | Score distribution |
 
 ## Configuration
 
@@ -198,12 +198,12 @@ cache:
   max_semantic_entries: 2000
 ```
 
-Environment overrides: `AR_CACHE_RESPONSE_ENABLED`, `AR_CACHE_RESPONSE_TTL`,
-`AR_CACHE_EXACT_ENABLED`, `AR_CACHE_SEMANTIC_ENABLED`,
-`AR_CACHE_SEMANTIC_THRESHOLD`, `AR_CACHE_PREFIX_ENABLED`,
-`AR_CACHE_PREFIX_LENGTH`, `AR_CACHE_BYPASS_TOOLS`,
-`AR_CACHE_ALLOW_NONDETERMINISTIC`, `AR_CACHE_BYPASS_LIVE_DATA`,
-`AR_CACHE_MAX_SEMANTIC_ENTRIES`.
+Environment overrides: `SYNAPASS_CACHE_RESPONSE_ENABLED`, `SYNAPASS_CACHE_RESPONSE_TTL`,
+`SYNAPASS_CACHE_EXACT_ENABLED`, `SYNAPASS_CACHE_SEMANTIC_ENABLED`,
+`SYNAPASS_CACHE_SEMANTIC_THRESHOLD`, `SYNAPASS_CACHE_PREFIX_ENABLED`,
+`SYNAPASS_CACHE_PREFIX_LENGTH`, `SYNAPASS_CACHE_BYPASS_TOOLS`,
+`SYNAPASS_CACHE_ALLOW_NONDETERMINISTIC`, `SYNAPASS_CACHE_BYPASS_LIVE_DATA`,
+`SYNAPASS_CACHE_MAX_SEMANTIC_ENTRIES`.
 
 ## Turning it on safely
 
@@ -221,7 +221,7 @@ cache:
 ```
 
 Exact-only reuse is the tier whose correctness is easiest to argue. Enable prefix
-and semantic separately, watch `astrarouter_cache_hits_total{kind}`, and raise
+and semantic separately, watch `synapass_cache_hits_total{kind}`, and raise
 `semantic_threshold` before lowering it.
 
 ## Common problems

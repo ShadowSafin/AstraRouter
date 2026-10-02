@@ -1,6 +1,6 @@
-"""AstraRouter intelligence workers.
+"""Synapass intelligence workers.
 
-These services hold the parts of AstraRouter that benefit from Python: offline
+These services hold the parts of Synapass that benefit from Python: offline
 scoring, prompt analysis, evaluation and replay processing. The synchronous
 request path stays in Go; nothing here is ever on the critical path of a
 completion.

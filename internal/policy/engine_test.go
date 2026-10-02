@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 func testPolicy() *domain.RoutingPolicy {

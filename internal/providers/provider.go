@@ -1,4 +1,4 @@
-// Package providers contains AstraRouter's provider adapters.
+// Package providers contains Synapass's provider adapters.
 //
 // # Design contract
 //
@@ -29,7 +29,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Request is a single completion request bound to a concrete model.

@@ -6,7 +6,7 @@ import "time"
 // Temporary public tunnels (Cloudflare quick tunnels via cloudflared).
 //
 // A tunnel session is disposable by design: cloudflared mints a random
-// *.trycloudflare.com URL, proxies it to one local AstraRouter service, and
+// *.trycloudflare.com URL, proxies it to one local Synapass service, and
 // the URL dies with the process. The database row is the audit trail, not a
 // permanent binding — nothing here manages custom domains.
 // ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ const (
 
 // TunnelSession is one temporary exposure: what is public, what it points
 // at, and how it ended. The public URL is the only Cloudflare-assigned value;
-// everything else is AstraRouter's own bookkeeping.
+// everything else is Synapass's own bookkeeping.
 type TunnelSession struct {
 	ID string `json:"id"`
 	// TenantID attributes the session when an operator key is tenant-scoped.

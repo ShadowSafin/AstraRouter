@@ -1,6 +1,6 @@
-# AstraRouter intelligence workers
+# Synapass intelligence workers
 
-Python services for the parts of AstraRouter that benefit from Python: offline
+Python services for the parts of Synapass that benefit from Python: offline
 scoring, prompt analysis, evaluation and telemetry rollups. **Nothing here is on
 the critical path of a completion** — the gateway is Go, and a worker being down
 costs you evaluation results and dashboards, never inference.
@@ -20,7 +20,7 @@ stays in Go, where it runs once per request and must not allocate.
 ## Layout
 
 ```
-astrarouter_workers/
+synapass_workers/
   config.py            environment-driven settings, no secrets from files
   models.py            typed payloads mirroring the Go JSON
   scoring.py           deterministic text metrics (stdlib only)
@@ -52,15 +52,15 @@ python -m unittest discover -s tests -t .
 
 ```bash
 pip install -r requirements.txt
-python -m astrarouter_workers.cli serve
+python -m synapass_workers.cli serve
 ```
 
 ### Docker
 
 ```bash
-docker build -t astrarouter-workers .
-docker run --rm -e AR_WORKER_NATS_URL=nats://host.docker.internal:4222 \
-  -p 9101:9101 astrarouter-workers
+docker build -t synapass-workers .
+docker run --rm -e SYNAPASS_WORKER_NATS_URL=nats://host.docker.internal:4222 \
+  -p 9101:9101 synapass-workers
 ```
 
 ### Configuration
@@ -77,29 +77,29 @@ them usable for debugging on the host that runs the gateway.
 
 ```bash
 # What metrics can a job request?
-astrarouter-worker metrics
+synapass-worker metrics
 
 # Score candidates against a reference, offline.
-astrarouter-worker score \
+synapass-worker score \
   --reference "Paris is the capital of France" \
   --candidate a="Paris is the capital of France" \
   --candidate b="Lyon is the capital of France"
 
 # What would routing decide for this prompt?
-astrarouter-worker analyze --prompt "Explain how DNS resolution works"
-astrarouter-worker analyze --request captured-request.json --json
+synapass-worker analyze --prompt "Explain how DNS resolution works"
+synapass-worker analyze --request captured-request.json --json
 
 # Serve until SIGTERM.
-astrarouter-worker serve
+synapass-worker serve
 
 # Drain the current backlog and exit (Kubernetes Job shape).
-astrarouter-worker serve --once
+synapass-worker serve --once
 ```
 
 ## Message contract
 
 Subjects are defined in `bus.py` and must match `internal/storage/nats.go`
-exactly. The worker consumes from `ASTRAROUTER_USAGE` and `ASTRAROUTER_JOBS` and
+exactly. The worker consumes from `SYNAPASS_USAGE` and `SYNAPASS_JOBS` and
 publishes results back.
 
 | Subject | Direction | Payload |
@@ -167,12 +167,12 @@ attached.
 
 ## Observability
 
-Metrics are served on `AR_WORKER_METRICS_ADDR` (default `0.0.0.0:9101`) with the
-same `astrarouter_` prefix and `_total`/`_seconds` suffixes as the Go control
+Metrics are served on `SYNAPASS_WORKER_METRICS_ADDR` (default `0.0.0.0:9101`) with the
+same `synapass_` prefix and `_total`/`_seconds` suffixes as the Go control
 plane, so one scrape config and one dashboard cover both processes.
 
 The port doubles as the liveness endpoint. A worker whose consumer loop has died
-stops incrementing `astrarouter_worker_jobs_total`, which is the only externally
+stops incrementing `synapass_worker_jobs_total`, which is the only externally
 visible symptom a background process has — alert on that rather than on the port.
 
 Logs are JSON by default with `time`, `level`, `msg` and `service` keys matching
@@ -184,6 +184,6 @@ they reach a handler.
 ```bash
 python -m unittest discover -s tests -t .   # 162 cases, no install required
 pytest tests/                               # same suite via pytest
-ruff check astrarouter_workers tests
-mypy astrarouter_workers
+ruff check synapass_workers tests
+mypy synapass_workers
 ```

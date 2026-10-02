@@ -12,7 +12,7 @@ import { authState, currentUser } from '@/lib/session';
  * one screen that can do something useful rather than on a login form that cannot
  * succeed yet.
  */
-export const metadata: Metadata = { title: 'Sign in · AstraRouter' };
+export const metadata: Metadata = { title: 'Sign in' };
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {

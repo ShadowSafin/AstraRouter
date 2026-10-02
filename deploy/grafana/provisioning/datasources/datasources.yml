@@ -3,7 +3,7 @@
 # The UIDs are pinned deliberately. The overview dashboard references them by UID
 # rather than by an interpolated template variable, so the shipped dashboard draws
 # correctly on first boot with no "pick a datasource" step. Renaming one of these
-# means updating deploy/grafana/dashboards/astrarouter-overview.json in the same
+# means updating deploy/grafana/dashboards/synapass-overview.json in the same
 # change; a mismatched UID renders every panel empty.
 
 apiVersion: 1

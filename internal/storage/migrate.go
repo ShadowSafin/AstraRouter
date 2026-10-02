@@ -11,12 +11,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Migrations are embedded so a binary is self-contained. That matters for the
 // native install path: an operator should be able to copy one executable to a
-// host and run `astrarouter migrate` without also shipping a directory of SQL
+// host and run `synapass migrate` without also shipping a directory of SQL
 // files that could drift from the binary that reads them.
 //
 //go:embed migrations/postgres/*.sql

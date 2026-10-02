@@ -1,8 +1,8 @@
 {
-  "uid": "astrarouter-overview",
-  "title": "AstraRouter Overview",
-  "description": "The one screen an on-call engineer opens first: is the gateway healthy, what are clients experiencing, and is the fallback chain absorbing failures. Every query uses a metric that exists in internal/telemetry/metrics.go or workers/astrarouter_workers/metrics.py.",
-  "tags": ["astrarouter", "gateway"],
+  "uid": "synapass-overview",
+  "title": "Synapass Overview",
+  "description": "The one screen an on-call engineer opens first: is the gateway healthy, what are clients experiencing, and is the fallback chain absorbing failures. Every query uses a metric that exists in internal/telemetry/metrics.go or workers/synapass_workers/metrics.py.",
+  "tags": ["synapass", "gateway"],
   "timezone": "browser",
   "editable": false,
   "schemaVersion": 39,
@@ -16,7 +16,7 @@
         "label": "Provider",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(astrarouter_gateway_requests_total, provider)",
+        "query": "label_values(synapass_gateway_requests_total, provider)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -27,7 +27,7 @@
         "label": "Tenant",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(astrarouter_gateway_requests_total, tenant)",
+        "query": "label_values(synapass_gateway_requests_total, tenant)",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -62,7 +62,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum(rate(synapass_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "requests/s"
         }
       ]
@@ -101,7 +101,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_gateway_requests_total{outcome=~\"error|rejected\",provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])) / clamp_min(sum(rate(astrarouter_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])), 0.0001)",
+          "expr": "sum(rate(synapass_gateway_requests_total{outcome=~\"error|rejected\",provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])) / clamp_min(sum(rate(synapass_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])), 0.0001)",
           "legendFormat": "error ratio",
           "instant": true
         }
@@ -141,7 +141,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(astrarouter_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(synapass_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95",
           "instant": true
         }
@@ -181,7 +181,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_routing_fallbacks_total[$__rate_interval])) / clamp_min(sum(rate(astrarouter_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])), 0.0001)",
+          "expr": "sum(rate(synapass_routing_fallbacks_total[$__rate_interval])) / clamp_min(sum(rate(synapass_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval])), 0.0001)",
           "legendFormat": "fallback ratio",
           "instant": true
         }
@@ -233,7 +233,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (outcome) (rate(astrarouter_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum by (outcome) (rate(synapass_gateway_requests_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "{{outcome}}"
         }
       ]
@@ -266,19 +266,19 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(astrarouter_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(synapass_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
           "legendFormat": "p50"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(astrarouter_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(synapass_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
           "legendFormat": "p95"
         },
         {
           "refId": "C",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(astrarouter_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(synapass_gateway_request_duration_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])) by (le))",
           "legendFormat": "p99"
         }
       ]
@@ -311,7 +311,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (reason) (rate(astrarouter_routing_fallbacks_total[$__rate_interval]))",
+          "expr": "sum by (reason) (rate(synapass_routing_fallbacks_total[$__rate_interval]))",
           "legendFormat": "{{reason}}"
         }
       ]
@@ -320,7 +320,7 @@
       "id": 8,
       "type": "state-timeline",
       "title": "Provider health",
-      "description": "astrarouter_provider_health is a one-hot gauge with states healthy / degraded / unhealthy / unknown. Exactly one is 1 at a time.",
+      "description": "synapass_provider_health is a one-hot gauge with states healthy / degraded / unhealthy / unknown. Exactly one is 1 at a time.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
       "fieldConfig": {
@@ -350,7 +350,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (state) (astrarouter_provider_health{provider=~\"$provider\"} == 1)",
+          "expr": "sum by (state) (synapass_provider_health{provider=~\"$provider\"} == 1)",
           "legendFormat": "{{state}}"
         }
       ]
@@ -383,7 +383,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (strategy) (rate(astrarouter_routing_decisions_total[$__rate_interval]))",
+          "expr": "sum by (strategy) (rate(synapass_routing_decisions_total[$__rate_interval]))",
           "legendFormat": "{{strategy}}"
         }
       ]
@@ -416,7 +416,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (kind) (rate(astrarouter_usage_tokens_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum by (kind) (rate(synapass_usage_tokens_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "{{kind}}"
         }
       ]
@@ -425,7 +425,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "Estimated cost by tenant",
-      "description": "astrarouter_usage_cost_usd_total is an estimate from the model registry's price table, not billing truth. It is what budgets are enforced against.",
+      "description": "synapass_usage_cost_usd_total is an estimate from the model registry's price table, not billing truth. It is what budgets are enforced against.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
       "fieldConfig": {
@@ -450,7 +450,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (tenant) (rate(astrarouter_usage_cost_usd_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum by (tenant) (rate(synapass_usage_cost_usd_total{provider=~\"$provider\",tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "{{tenant}}"
         }
       ]
@@ -482,13 +482,13 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_policy_budget_blocked_total{tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum(rate(synapass_policy_budget_blocked_total{tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "budget blocked"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_policy_rate_limited_total{tenant=~\"$tenant\"}[$__rate_interval]))",
+          "expr": "sum(rate(synapass_policy_rate_limited_total{tenant=~\"$tenant\"}[$__rate_interval]))",
           "legendFormat": "rate limited"
         }
       ]
@@ -520,7 +520,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (reason) (rate(astrarouter_auth_failures_total[$__rate_interval]))",
+          "expr": "sum by (reason) (rate(synapass_auth_failures_total[$__rate_interval]))",
           "legendFormat": "{{reason}}"
         }
       ]
@@ -553,19 +553,19 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "astrarouter_async_queue_depth",
+          "expr": "synapass_async_queue_depth",
           "legendFormat": "queue depth"
         },
         {
           "refId": "B",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_async_dropped_total[$__rate_interval]))",
+          "expr": "sum(rate(synapass_async_dropped_total[$__rate_interval]))",
           "legendFormat": "dropped/s"
         },
         {
           "refId": "C",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(astrarouter_async_flushed_total[$__rate_interval]))",
+          "expr": "sum(rate(synapass_async_flushed_total[$__rate_interval]))",
           "legendFormat": "flushed/s"
         }
       ]
@@ -603,7 +603,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (kind, status) (rate(astrarouter_worker_jobs_total[$__rate_interval]))",
+          "expr": "sum by (kind, status) (rate(synapass_worker_jobs_total[$__rate_interval]))",
           "legendFormat": "{{kind}} · {{status}}"
         }
       ]

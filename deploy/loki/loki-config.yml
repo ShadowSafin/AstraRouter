@@ -1,4 +1,4 @@
-# Loki configuration for AstraRouter.
+# Loki configuration for Synapass.
 #
 # Single-binary, filesystem-backed: the smallest Loki that is still correct. A
 # real deployment swaps `filesystem` for object storage and moves to distributed

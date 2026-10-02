@@ -20,8 +20,8 @@ func TestParseEnvFile(t *testing.T) {
 		},
 		{
 			name:  "export prefix is stripped",
-			input: "export AR_ADMIN_KEY=secret\n",
-			want:  map[string]string{"AR_ADMIN_KEY": "secret"},
+			input: "export SYNAPASS_ADMIN_KEY=secret\n",
+			want:  map[string]string{"SYNAPASS_ADMIN_KEY": "secret"},
 		},
 		{
 			name:  "single quotes are literal",

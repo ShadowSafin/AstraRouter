@@ -1,8 +1,8 @@
 // Package payload holds what the setup program ships inside its own executable:
-// the AstraRouter gateway, a portable Node runtime, the built dashboard, the
+// the Synapass gateway, a portable Node runtime, the built dashboard, the
 // config templates, and the standalone app executable it installs. `build.ps1`
 // stages them under files/ before compiling cmd/installer, so
-// AstraRouterSetup.exe is self-contained.
+// SynapassSetup.exe is self-contained.
 //
 // Only the installer embeds this. The standalone app (cmd/app) never does: it
 // runs the runtime the installer unpacked. In a bare checkout the staged tree
@@ -32,7 +32,7 @@ func Version() string { return strings.TrimSpace(version) }
 // HasRuntime reports whether a real runtime tree is embedded, as opposed to
 // the placeholder that ships in a source checkout.
 func HasRuntime() bool {
-	_, err := fs.Stat(files, "files/bin/astrarouter.exe")
+	_, err := fs.Stat(files, "files/bin/synapass.exe")
 	return err == nil
 }
 
@@ -45,7 +45,7 @@ func Template(name string) ([]byte, error) {
 
 // appExeName is the standalone runtime executable staged at the root of the
 // payload. It is installed next to the runtime, never extracted as part of it.
-const appExeName = "AstraRouter.exe"
+const appExeName = "Synapass.exe"
 
 // AppExecutable returns the standalone application executable that this
 // installer installs. The installer owns the copy; the runtime app never

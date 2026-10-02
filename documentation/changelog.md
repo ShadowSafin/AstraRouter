@@ -75,7 +75,7 @@ gateway-side run leaves a durable step trace.
 
 ## Phase 5 — the local response cache
 
-Makes AstraRouter faster and cheaper by reusing prior responses wherever it is
+Makes Synapass faster and cheaper by reusing prior responses wherever it is
 safe, with safety as the first consideration rather than an afterthought.
 
 | Area | Delivered |
@@ -118,9 +118,9 @@ Long answers were stopping mid-sentence for three independent reasons, all fixed
    is now only sent when the client requested one — and Anthropic's mandatory
    field gets a generous default rather than a small constant.
 
-Truncation is now always reported in `astrarouter.completion` (`truncated`,
+Truncation is now always reported in `synapass.completion` (`truncated`,
 `reason`, `requested_tokens`, `applied_tokens`, `budget_ms`), counted in
-`astrarouter_provider_truncations_total`, and never conflated with a completed
+`synapass_provider_truncations_total`, and never conflated with a completed
 answer. A stream that has begun is committed: the executor reports a
 stream-started error rather than appending a second attempt's tokens to the first.
 

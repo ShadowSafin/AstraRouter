@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 func almostEqual(a, b float64) bool { return math.Abs(a-b) < 1e-9 }

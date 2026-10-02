@@ -1,29 +1,29 @@
-# AstraRouter gateway -- native systemd unit.
+# Synapass gateway -- native systemd unit.
 #
 # Install:
 #
-#   sudo install -m 0755 astrarouter /usr/local/bin/astrarouter
-#   sudo install -m 0644 deploy/systemd/astrarouter.service /etc/systemd/system/
-#   sudo install -d -m 0750 -o astrarouter -g astrarouter /etc/astrarouter
-#   sudo install -m 0640 -o astrarouter -g astrarouter config.example.yaml /etc/astrarouter/config.yaml
-#   sudo systemctl daemon-reload && sudo systemctl enable --now astrarouter
+#   sudo install -m 0755 synapass /usr/local/bin/synapass
+#   sudo install -m 0644 deploy/systemd/synapass.service /etc/systemd/system/
+#   sudo install -d -m 0750 -o synapass -g synapass /etc/synapass
+#   sudo install -m 0640 -o synapass -g synapass config.example.yaml /etc/synapass/config.yaml
+#   sudo systemctl daemon-reload && sudo systemctl enable --now synapass
 #
 # Secrets belong in the drop-in below, not in the unit file: a unit is world
 # readable, an EnvironmentFile can be mode 0600.
 #
-#   sudo install -d -m 0750 /etc/astrarouter
-#   printf 'AR_ADMIN_KEY=%s\n' "$(openssl rand -hex 24)" | \
-#     sudo tee /etc/astrarouter/env >/dev/null
-#   sudo chmod 0600 /etc/astrarouter/env
+#   sudo install -d -m 0750 /etc/synapass
+#   printf 'SYNAPASS_ADMIN_KEY=%s\n' "$(openssl rand -hex 24)" | \
+#     sudo tee /etc/synapass/env >/dev/null
+#   sudo chmod 0600 /etc/synapass/env
 #
-# Then `sudo systemctl edit astrarouter` and add:
+# Then `sudo systemctl edit synapass` and add:
 #
 #   [Service]
-#   EnvironmentFile=/etc/astrarouter/env
+#   EnvironmentFile=/etc/synapass/env
 
 [Unit]
-Description=AstraRouter inference gateway
-Documentation=https://github.com/shadowsafin/astrarouter
+Description=Synapass inference gateway
+Documentation=https://github.com/shadowsafin/synapass
 # Requires only what it cannot function without. The datastores are declared as
 # After= rather than Requires= because the gateway is designed to start before
 # them and report itself unready: a hard dependency here turns a database restart
@@ -33,17 +33,17 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=astrarouter
-Group=astrarouter
+User=synapass
+Group=synapass
 
 # The config file is optional; without it every setting comes from the
 # environment and the built-in defaults.
-Environment=AR_CONFIG_FILE=/etc/astrarouter/config.yaml
-EnvironmentFile=-/etc/astrarouter/env
+Environment=SYNAPASS_CONFIG_FILE=/etc/synapass/config.yaml
+EnvironmentFile=-/etc/synapass/env
 
 # `serve` is explicit rather than the default subcommand: the image and the unit
 # then invoke the same command line, so a change of default cannot diverge them.
-ExecStart=/usr/local/bin/astrarouter serve
+ExecStart=/usr/local/bin/synapass serve
 
 # SIGTERM is handled in-process: the gateway stops accepting, drains in-flight
 # streaming responses, flushes the telemetry buffer and exits 0. The timeout must
@@ -76,9 +76,9 @@ SystemCallArchitectures=native
 # ProtectSystem=strict makes the whole filesystem read-only, so the runtime needs
 # one writable path for its own state. The gateway keeps none, but a deployment
 # that enables the response cache on disk would point this somewhere specific.
-ReadWritePaths=/var/lib/astrarouter
+ReadWritePaths=/var/lib/synapass
 
-# AstraRouter is not fsGroup-aware and writes nowhere, so the systemd sandbox
+# Synapass is not fsGroup-aware and writes nowhere, so the systemd sandbox
 # above is the whole permission story. Set the limit from the deployment's own
 # capacity planning; the value here matches the container default.
 LimitNOFILE=65536
@@ -87,7 +87,7 @@ LimitNOFILE=65536
 # that: stdout and stderr are inherited from systemd.
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=astrarouter
+SyslogIdentifier=synapass
 
 [Install]
 WantedBy=multi-user.target

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Completer performs one model round-trip.

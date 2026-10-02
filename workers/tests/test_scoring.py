@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import unittest
 
-from astrarouter_workers.scoring import (
+from synapass_workers.scoring import (
     DEFAULT_WEIGHTS,
     SCORERS,
     char_ngram_similarity,
@@ -112,11 +112,11 @@ class TestJaccard(unittest.TestCase):
 
 class TestCharacterNgrams(unittest.TestCase):
     def test_similar_spellings_score_highly(self) -> None:
-        score = char_ngram_similarity("astrarouter", "astrarouters")
+        score = char_ngram_similarity("synapass", "synapasss")
         self.assertGreater(score, 0.7)
 
     def test_unrelated_text_scores_low(self) -> None:
-        score = char_ngram_similarity("astrarouter", "zzzzzzzz")
+        score = char_ngram_similarity("synapass", "zzzzzzzz")
         self.assertLess(score, 0.2)
 
     def test_whitespace_rewrapping_does_not_matter(self) -> None:

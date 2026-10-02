@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>AstraRouter Setup</title>
+<title>Synapass Setup</title>
 <style>
   /* Fonts are injected here by the Go program as @font-face data URIs, so the
      wizard matches the console type exactly and still works offline. */
@@ -252,7 +252,7 @@
     <div class="brand enter">
       <img class="mark" src="__BRAND_ICON__" alt="" aria-hidden="true" />
       <div>
-        <div class="name">AstraRouter</div>
+        <div class="name">Synapass</div>
         <div class="by">Desktop Installer</div>
       </div>
     </div>
@@ -261,7 +261,7 @@
 
     <figure class="quote enter" style="animation-delay:120ms">
       <blockquote>One control plane for every provider — routing, spend and health, <em>without the spreadsheets</em>.</blockquote>
-      <figcaption><span>AstraRouter</span><span class="sep">|</span><span>Control plane</span></figcaption>
+      <figcaption><span>Synapass</span><span class="sep">|</span><span>Control plane</span></figcaption>
     </figure>
   </aside>
 
@@ -322,7 +322,7 @@ const RAIL = [
 ];
 
 const state = {
-  info: { product: "AstraRouter", version: "dev", source: "", installDir: "", dataDir: "", installed: false, tagline: "" },
+  info: { product: "Synapass", version: "dev", source: "", installDir: "", dataDir: "", installed: false, tagline: "" },
   step: 0,
   opts: {
     installDir: "", dataDir: "", sameDataDir: true,
@@ -402,7 +402,7 @@ function paneOptions() {
     <h2${enter(60)}>How should it appear?</h2>
     <p class="lede"${enter(120)}>Pick the shortcuts you want. You can change all of this later.</p>
     <div class="cards"${enter(180)}>
-      ${optionCard("desktopShortcut", "Desktop shortcut", "Open AstraRouter from your desktop.")}
+      ${optionCard("desktopShortcut", "Desktop shortcut", "Open Synapass from your desktop.")}
       ${optionCard("startMenu", "Start Menu entry", "Find it in the Start Menu alongside your other apps.")}
       ${optionCard("startup", "Start when you sign in", "Keep the gateway running in the background.")}
       ${optionCard("launchAfter", "Launch when setup finishes", "Open the dashboard as soon as installation completes.")}
@@ -499,7 +499,7 @@ function updateActions() {
   cancel.style.visibility = (key === "finish") ? "hidden" : "visible";
   if (key === "install") { next.style.display = "none"; return; }
   next.style.display = "inline-block";
-  const labels = { welcome: "Get started", location: "Continue", options: "Continue", account: "Continue", review: "Install", finish: "Open AstraRouter" };
+  const labels = { welcome: "Get started", location: "Continue", options: "Continue", account: "Continue", review: "Install", finish: "Open Synapass" };
   next.textContent = labels[key] || "Continue";
 }
 
@@ -518,7 +518,7 @@ function wirePane(key) {
     el.addEventListener("click", async () => {
       const kind = el.dataset.browse;
       const initial = kind === "install" ? state.opts.installDir : state.opts.dataDir;
-      const chosen = await ar_browse(initial);
+      const chosen = await syn_browse(initial);
       if (chosen) {
         if (kind === "install") state.opts.installDir = chosen; else state.opts.dataDir = chosen;
         render();
@@ -542,7 +542,7 @@ function wirePane(key) {
 // before the install starts rather than failing after the database is up.
 const COMMON_PASSWORD_STEMS = [
   "password", "passwd", "qwerty", "letmein", "welcome", "administrator",
-  "admin", "astrarouter", "changeme", "default", "iloveyou", "trustno",
+  "admin", "synapass", "changeme", "default", "iloveyou", "trustno",
   "sunshine", "abc123", "123456", "654321",
 ];
 
@@ -607,12 +607,12 @@ async function next() {
       const workDir = r.installDir || state.opts.installDir;
       const rootDir = r.dataDir || state.opts.dataDir || workDir;
       const appPath = workDir + "\\" + state.info.product + ".exe";
-      const e = await ar_launch(appPath, workDir, rootDir);
+      const e = await syn_launch(appPath, workDir, rootDir);
       if (e) { toast(e); return; }
     }
     // The app owns the screen now. Leaving the wizard open on top of it looks
     // like a second app the user has to dismiss by hand.
-    await ar_close();
+    await syn_close();
     return;
   }
   state.step = Math.min(state.step + 1, RAIL.length - 1);
@@ -643,7 +643,7 @@ function startInstall() {
     adminUser: state.opts.adminUser.trim(),
     adminPassword: state.opts.adminPassword,
   };
-  ar_install(JSON.stringify(payload));
+  syn_install(JSON.stringify(payload));
 }
 
 // ---- callbacks from Go ----
@@ -684,14 +684,14 @@ window.__ar = {
 // ---- footer wiring ----
 $("next").addEventListener("click", next);
 $("back").addEventListener("click", back);
-$("cancel").addEventListener("click", async () => { await ar_close(); });
+$("cancel").addEventListener("click", async () => { await syn_close(); });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !state.installing && ["INPUT", "BUTTON"].indexOf(document.activeElement.tagName) === -1) { next(); }
 });
 
 (async function boot() {
   try {
-    const raw = await ar_info();
+    const raw = await syn_info();
     state.info = JSON.parse(raw);
     state.opts.installDir = state.info.installDir;
     state.opts.dataDir = state.info.dataDir;

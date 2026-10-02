@@ -1,4 +1,4 @@
--- AstraRouter initial schema.
+-- Synapass initial schema.
 --
 -- Design notes that matter for later evolution:
 --

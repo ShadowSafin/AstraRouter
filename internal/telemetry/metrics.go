@@ -1,4 +1,4 @@
-// Package telemetry instruments AstraRouter with Prometheus metrics, OpenTelemetry
+// Package telemetry instruments Synapass with Prometheus metrics, OpenTelemetry
 // traces and an asynchronous record pipeline.
 //
 // # Why both Prometheus and OpenTelemetry
@@ -25,10 +25,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
-// Metrics holds every collector AstraRouter exports.
+// Metrics holds every collector Synapass exports.
 type Metrics struct {
 	registry *prometheus.Registry
 	enabled  bool
@@ -156,7 +156,7 @@ type MetricsConfig struct {
 	// Enabled turns metric collection off entirely. When false, every method on
 	// Metrics is a safe no-op, so instrumentation calls need no guards.
 	Enabled bool
-	// Namespace prefixes every metric name, defaulting to "astrarouter".
+	// Namespace prefixes every metric name, defaulting to "synapass".
 	Namespace string
 	// Instance and Version identify the process in the Info metric.
 	Instance string
@@ -171,7 +171,7 @@ type MetricsConfig struct {
 func NewMetrics(cfg MetricsConfig) *Metrics {
 	namespace := cfg.Namespace
 	if namespace == "" {
-		namespace = "astrarouter"
+		namespace = "synapass"
 	}
 
 	registry := prometheus.NewRegistry()

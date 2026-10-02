@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shadowsafin/astrarouter/internal/config"
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // timeDuration aliases time.Duration so MigrationResult can be declared before
@@ -69,7 +69,7 @@ func NewPostgres(ctx context.Context, cfg config.DatabaseConfig, logger *slog.Lo
 			poolCfg.ConnConfig.RuntimeParams = map[string]string{}
 		}
 		poolCfg.ConnConfig.RuntimeParams["statement_timeout"] = fmt.Sprintf("%d", ms)
-		poolCfg.ConnConfig.RuntimeParams["application_name"] = "astrarouter"
+		poolCfg.ConnConfig.RuntimeParams["application_name"] = "synapass"
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/desktop/pkg/winproc"
+	"github.com/shadowsafin/synapass/desktop/pkg/winproc"
 )
 
 // Child is one supervised process.

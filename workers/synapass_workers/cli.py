@@ -34,10 +34,10 @@ from .telemetry import Aggregator
 def build_parser() -> argparse.ArgumentParser:
     """Construct the argument parser."""
     parser = argparse.ArgumentParser(
-        prog="astrarouter-worker",
-        description="AstraRouter intelligence workers: evaluation, prompt analysis, telemetry rollups.",
+        prog="synapass-worker",
+        description="Synapass intelligence workers: evaluation, prompt analysis, telemetry rollups.",
     )
-    parser.add_argument("--version", action="version", version=f"astrarouter-worker {__version__}")
+    parser.add_argument("--version", action="version", version=f"synapass-worker {__version__}")
     parser.add_argument("--config", help="path to a JSON or YAML configuration file")
 
     subparsers = parser.add_subparsers(dest="command", required=True)

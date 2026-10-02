@@ -950,7 +950,7 @@ export interface AgentStep {
   created_at: string;
 }
 
-// ToolRunMeta is the per-response tool summary carried in astrarouter.tool_run.
+// ToolRunMeta is the per-response tool summary carried in synapass.tool_run.
 export interface ToolRunMeta {
   mode: string;
   status: ToolRunStatus;

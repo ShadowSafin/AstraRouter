@@ -1,8 +1,8 @@
 {
-  "name": "astrarouter-dashboard",
+  "name": "synapass-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "AstraRouter control-plane dashboard: usage, providers, models, policies, budgets and keys.",
+  "description": "Synapass control-plane dashboard: usage, providers, models, policies, budgets and keys.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -9,7 +9,7 @@ import (
 func TestLoadEnvFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "native.env")
-	content := "# comment\nexport AR_ADMIN_KEY=secret\nPORT=3100\nQUOTED=\"a b\"\nSINGLE='c d'\nEMPTY=\nBROKENLINE\n"
+	content := "# comment\nexport SYNAPASS_ADMIN_KEY=secret\nPORT=3100\nQUOTED=\"a b\"\nSINGLE='c d'\nEMPTY=\nBROKENLINE\n"
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -18,7 +18,7 @@ func TestLoadEnvFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"AR_ADMIN_KEY": "secret",
+		"SYNAPASS_ADMIN_KEY": "secret",
 		"PORT":         "3100",
 		"QUOTED":       "a b",
 		"SINGLE":       "c d",

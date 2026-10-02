@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shadowsafin/astrarouter/internal/domain"
+	"github.com/shadowsafin/synapass/internal/domain"
 )
 
 // Store is the fast body backend (Redis in production, memory in tests).
