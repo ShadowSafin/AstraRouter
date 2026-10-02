@@ -14,18 +14,21 @@ Routing · failover · caching · policy · budgets · full request lineage
 
 [Quick start](#quick-start) · [Documentation](documentation/README.md) · [Troubleshooting](documentation/troubleshooting.md)
 
+**Linux**
+
 ```bash
-# Linux
 curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
 ```
 
+**macOS**
+
 ```bash
-# macOS
 curl -fsSL https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.sh | bash
 ```
+
+**Windows (PowerShell)**
 
 ```powershell
-# Windows (PowerShell)
 irm https://raw.githubusercontent.com/shadowsafin/astrarouter/main/scripts/install.ps1 | iex
 ```
 
