@@ -1,4 +1,4 @@
-﻿# CoreRouter example configuration.
+# CoreRouter example configuration.
 #
 # Copy to /etc/corerouter/config.yaml for a native install, or to
 # corerouter.yaml in the working directory for local development.
@@ -315,6 +315,36 @@ admin:
   usage_retention_days: 90
   trace_retention_days: 30
   log_retention_days: 30
+
+  # Console operator login.
+  #
+  # A separate credential type from API keys, on purpose. A key is 256 bits of
+  # CSPRNG output verified by digest lookup; an operator chooses a password, so
+  # it is stretched with Argon2id and the account is lockable. On first launch
+  # the dashboard shows a setup screen that creates the single administrator and
+  # then closes itself permanently.
+  dashboard_auth:
+    enabled: true
+    cookie_name: corerouter_session
+    # Forces the Secure attribute on the session cookie. Left false, the gateway
+    # decides from the request: true behind TLS, false over plain HTTP, so a
+    # `docker compose up` on http://localhost is not silently unusable. Set it
+    # explicitly when TLS is terminated somewhere the gateway cannot see.
+    cookie_secure: false
+    # Absolute session lifetime.
+    session_ttl: 12h
+    # A session unused for this long stops authenticating. Evaluated when the
+    # session is presented, so no background job is needed.
+    idle_ttl: 2h
+    # Enforced minimum. A configured value below 12 is raised rather than
+    # honoured: a shorter minimum stores digests that are cheap to crack offline.
+    min_password_length: 12
+    max_password_length: 256
+    # Consecutive failures before the account locks.
+    max_failed_attempts: 5
+    # Base lockout, doubled on each further round, up to the maximum.
+    lockout_duration: 30s
+    max_lockout_duration: 15m
 
 # ---------------------------------------------------------------------------
 # Declarative bootstrap catalogue

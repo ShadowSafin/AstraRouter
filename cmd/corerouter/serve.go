@@ -310,6 +310,10 @@ func buildApp(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*Ap
 			Runs:        &agentRunSink{runs: app.repos.AgentRuns},
 		},
 		Tunnels: tunnels,
+
+		// Console operator login. Built here because this is the only place that
+		// holds the user store, the session store and the settings latch together.
+		DashboardAuth: bootstrap.BuildDashboardAuth(cfg, app.repos, logger),
 		Classifier:    &bootstrap.ClassifierAdapter{Inner: phase2.Classifier},
 		PolicyEngine:  &bootstrap.PolicyEngineAdapter{Inner: phase2.PolicyEngine},
 		Shaper:        &bootstrap.ShapingAdapter{Inner: phase2.Shaper},

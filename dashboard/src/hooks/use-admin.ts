@@ -6,6 +6,7 @@ import { apiFetch, buildQuery } from '@/lib/api';
 import type {
   APIKey,
   AgentRun,
+  AnalyticsReport,
   AgentStep,
   AuditEvent,
   Budget,
@@ -60,6 +61,7 @@ import type {
  */
 export const queryKeys = {
   overview: (tenantId: string, window: string) => ['overview', tenantId, window] as const,
+  analytics: (filters: Record<string, unknown>) => ['analytics', filters] as const,
   usageSummary: (tenantId: string, window: string) => ['usage-summary', tenantId, window] as const,
   requests: (filters: Record<string, unknown>) => ['requests', filters] as const,
   errors: (window: string) => ['errors', window] as const,
@@ -101,6 +103,46 @@ export function useOverview(tenantId: string, from: string) {
     queryKey: queryKeys.overview(tenantId, from),
     queryFn: ({ signal }) =>
       apiFetch<Overview>(`overview${buildQuery({ tenant_id: tenantId, from })}`, { signal }),
+  });
+}
+
+export interface AnalyticsFilters {
+  tenantId: string;
+  /** A Go duration such as "24h"; see windowToFromParam. */
+  from: string;
+  provider?: string;
+  model?: string;
+  /** Rows per ranking table. */
+  top?: number;
+  /** requests | cost | errors | latency | tokens */
+  sort?: string;
+}
+
+/**
+ * The composed analytics report for one window and filter set.
+ *
+ * One query rather than a dozen: every section of the analytics page must
+ * describe the same window, and fetching them separately is how a dashboard ends
+ * up with a KPI card from one minute and a chart from the next.
+ */
+export function useAnalyticsReport(filters: AnalyticsFilters) {
+  return useQuery({
+    queryKey: queryKeys.analytics(filters as unknown as Record<string, unknown>),
+    queryFn: ({ signal }) =>
+      apiFetch<AnalyticsReport>(
+        `analytics/report${buildQuery({
+          tenant_id: filters.tenantId,
+          from: filters.from,
+          provider: filters.provider,
+          model: filters.model,
+          top: filters.top,
+          sort: filters.sort,
+        })}`,
+        { signal },
+      ),
+    // The server caches for ~20s; matching that here keeps the client from
+    // re-fetching a window the gateway would serve from cache anyway.
+    staleTime: 20_000,
   });
 }
 
@@ -1120,5 +1162,31 @@ export function useAgentRunDetail(id: string | null) {
       apiFetch<{ run: AgentRun; steps: AgentStep[] }>(`agent-runs/${encodeURIComponent(id ?? '')}`, {
         signal,
       }),
+  });
+}
+
+/**
+ * The signed-in operator.
+ *
+ * Used by the sidebar to state who is signed in. It reads the same `/auth/me`
+ * endpoint the server used to authorise the page, so the name in the rail is the
+ * name the gateway authenticated rather than something cached in the browser.
+ */
+export interface CurrentUser {
+  username: string;
+  created_at: string;
+  last_login_at?: string;
+}
+
+export function useCurrentUser() {
+  return useQuery({
+    // Stable key: the identity does not change within a session, and a refetch on
+    // every rail render would be a request per navigation.
+    queryKey: ['dashboard-auth', 'me'] as const,
+    queryFn: ({ signal }) =>
+      apiFetch<CurrentUser>('auth/me', { signal }).catch(() => null),
+    // A missing session is a normal state, not an error worth retrying.
+    staleTime: 60_000,
+    retry: false,
   });
 }

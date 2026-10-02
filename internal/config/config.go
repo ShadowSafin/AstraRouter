@@ -689,6 +689,39 @@ type AdminConfig struct {
 	TraceRetentionDays int `yaml:"trace_retention_days" json:"trace_retention_days"`
 	// LogRetentionDays controls pruning of the request log table.
 	LogRetentionDays int `yaml:"log_retention_days" json:"log_retention_days"`
+	// DashboardAuth configures the console's own username/password login.
+	//
+	// This is a separate credential type from API keys on purpose: an operator
+	// chooses a password, so it is stretched with Argon2id and the account is
+	// lockable, whereas a key is high-entropy material verified by digest lookup.
+	DashboardAuth DashboardAuthConfig `yaml:"dashboard_auth" json:"dashboard_auth"`
+}
+
+// DashboardAuthConfig governs human operator login for the dashboard.
+type DashboardAuthConfig struct {
+	// Enabled exposes the setup, login and session endpoints.
+	Enabled bool `yaml:"enabled" json:"enabled"`
+	// CookieName is the session cookie. Renaming it logs everyone out.
+	CookieName string `yaml:"cookie_name" json:"cookie_name"`
+	// CookieSecure forces the Secure attribute. It is set automatically when the
+	// gateway is in production, and can be forced on for a TLS-terminating proxy
+	// in development.
+	CookieSecure bool `yaml:"cookie_secure" json:"cookie_secure"`
+	// SessionTTL is the absolute session lifetime.
+	SessionTTL Duration `yaml:"session_ttl" json:"session_ttl"`
+	// IdleTTL expires a session not seen for this long. Zero disables it.
+	IdleTTL Duration `yaml:"idle_ttl" json:"idle_ttl"`
+	// MinPasswordLength is the enforced minimum. The floor is 12: a shorter
+	// minimum is not a configuration choice, it is a weakness.
+	MinPasswordLength int `yaml:"min_password_length" json:"min_password_length"`
+	// MaxPasswordLength bounds the Argon2 input.
+	MaxPasswordLength int `yaml:"max_password_length" json:"max_password_length"`
+	// MaxFailedAttempts is the consecutive-failure count that triggers a lockout.
+	MaxFailedAttempts int `yaml:"max_failed_attempts" json:"max_failed_attempts"`
+	// LockoutDuration is the base lockout window.
+	LockoutDuration Duration `yaml:"lockout_duration" json:"lockout_duration"`
+	// MaxLockoutDuration bounds the doubling that punishes sustained guessing.
+	MaxLockoutDuration Duration `yaml:"max_lockout_duration" json:"max_lockout_duration"`
 }
 
 // Default returns a configuration with every field set to a usable value.
@@ -872,6 +905,18 @@ DefaultTimeout: TimeoutConfig{
 			UsageRetentionDays: 90,
 			TraceRetentionDays: 30,
 			LogRetentionDays:   30,
+			DashboardAuth: DashboardAuthConfig{
+				Enabled:            true,
+				CookieName:         "corerouter_session",
+				CookieSecure:       false,
+				SessionTTL:         Duration(12 * time.Hour),
+				IdleTTL:            Duration(2 * time.Hour),
+				MinPasswordLength:  12,
+				MaxPasswordLength:  256,
+				MaxFailedAttempts:  5,
+				LockoutDuration:    Duration(30 * time.Second),
+				MaxLockoutDuration: Duration(15 * time.Minute),
+			},
 		},
 	}
 }

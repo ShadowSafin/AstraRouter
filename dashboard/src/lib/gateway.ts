@@ -25,10 +25,42 @@ export function hasAdminKey(): boolean {
   return ADMIN_KEY.trim().length > 0;
 }
 
+/**
+ * Ask the gateway whether the session behind a Cookie header is real.
+ *
+ * Any non-200 means "not authenticated". There is deliberately no partial
+ * trust: a proxy that guessed would be an open administrative backdoor. An
+ * unreachable gateway also fails closed, so a gateway restart cannot be used to
+ * slip past the check.
+ *
+ * Shared by every server-side proxy so there is exactly one definition of
+ * "signed in", and a change to it cannot silently apply to one route only.
+ */
+export async function verifySession(cookie: string): Promise<boolean> {
+  if (!cookie) return false;
+  try {
+    const response = await fetch(`${GATEWAY_URL}/admin/v1/auth/me`, {
+      headers: { cookie, accept: 'application/json' },
+      cache: 'no-store',
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface ProxyResult {
   status: number;
   contentType: string;
   body: string;
+  /**
+   * The upstream Set-Cookie header, verbatim, or empty.
+   *
+   * It is forwarded rather than reconstructed because the gateway owns the
+   * cookie policy: httpOnly, Secure, SameSite and Path all have to match the
+   * cookie it will later revoke.
+   */
+  setCookie: string;
 }
 
 /**
@@ -42,13 +74,24 @@ export interface ProxyResult {
 export async function proxyAdmin(
   method: string,
   path: string,
-  options: { body?: string; contentType?: string; signal?: AbortSignal } = {},
+  options: {
+    body?: string;
+    contentType?: string;
+    signal?: AbortSignal;
+    cookie?: string;
+  } = {},
 ): Promise<ProxyResult> {
   const url = `${GATEWAY_URL}/admin/v1/${path.replace(/^\/+/, '')}`;
 
   const headers = new Headers({ accept: 'application/json' });
   if (ADMIN_KEY.trim()) {
     headers.set('authorization', `Bearer ${ADMIN_KEY.trim()}`);
+  }
+  // The operator's own Cookie header, forwarded verbatim. The gateway reads the
+  // session cookie itself, so presenting it unchanged keeps exactly one accepted
+  // way to authenticate a console operator.
+  if (options.cookie?.trim()) {
+    headers.set('cookie', options.cookie);
   }
   if (options.contentType) {
     headers.set('content-type', options.contentType);
@@ -72,6 +115,7 @@ export async function proxyAdmin(
     return {
       status: 502,
       contentType: 'application/json',
+      setCookie: '',
       body: JSON.stringify({
         error: {
           message:
@@ -88,6 +132,7 @@ export async function proxyAdmin(
   return {
     status: response.status,
     contentType: response.headers.get('content-type') ?? 'application/json',
+    setCookie: response.headers.get('set-cookie') ?? '',
     body: await response.text(),
   };
 }

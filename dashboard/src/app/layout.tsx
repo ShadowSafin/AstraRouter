@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 
 import { Shell } from '@/components/layout/shell';
 
@@ -7,21 +7,35 @@ import './globals.css';
 import { Providers } from './providers';
 
 /**
- * Inter carries the whole product voice: UI text and tabular figures. It is
+ * Geist carries the whole product voice: UI text and tabular figures. It is
  * bundled at build time, so the dashboard renders identically offline and
- * behind air-gapped proxies. JetBrains Mono handles ids, hashes and code —
- * monospace is reserved for data, never used as decoration.
+ * behind air-gapped proxies — no external font request at runtime.
+ *
+ * Geist Mono handles ids, hashes and code — monospace is reserved for data,
+ * never used as decoration.
+ *
+ * Instrument Serif is the display face, reserved for the handful of large
+ * headlines (the auth screens' serif headings) where a little editorial
+ * contrast belongs. Body and data stay in the grotesque.
  */
-const inter = Inter({
+const geistSans = Geist({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
 });
 
-const jetBrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-mono',
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  display: 'swap',
+  variable: '--font-serif',
 });
 
 export const metadata: Metadata = {
@@ -44,7 +58,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetBrainsMono.variable}`}>
+    <html
+      lang="en"
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+    >
       <body className="font-sans">
         <Providers>
           <Shell>{children}</Shell>

@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   CoreRouter Phase 3 smoke test: verify a running stack end to end.
 
@@ -66,8 +66,9 @@ function Step([string]$Name, [scriptblock]$Body) {
   }
 }
 
-function Invoke-Json([string]$Uri, [string]$Method = "GET", $Body = $null, [hashtable]$Headers = @{}) {
+function Invoke-Json([string]$Uri, [string]$Method = "GET", $Body = $null, [hashtable]$Headers = @{}, $WebSession = $null) {
   $params = @{ Uri = $Uri; Method = $Method; TimeoutSec = 30; UseBasicParsing = $true }
+  if ($WebSession) { $params["WebSession"] = $WebSession }
   $h = @{}
   foreach ($k in $Headers.Keys) { $h[$k] = $Headers[$k] }
   if ($Body -ne $null) {
@@ -217,9 +218,38 @@ Step "workers metrics (GET :9101/metrics)" {
 Step "dashboard home + gateway proxy" {
   $homeResp = Invoke-WebRequest -Uri $DashboardUrl -UseBasicParsing -TimeoutSec 15
   if ($homeResp.StatusCode -ne 200) { throw "dashboard home HTTP $($homeResp.StatusCode)" }
-  $sys = Invoke-Json "$DashboardUrl/api/gateway/system"
-  if (-not $sys.ok) { throw "dashboard proxy failed: $($sys | ConvertTo-Json -Depth 3)" }
-  Write-Host ("      dashboard 200, proxied providers={0}" -f $sys.body.providers.Count)
+
+  # The proxy is gated on an operator session, so an anonymous call must be
+  # refused. Asserting that first means this step fails loudly if the gate is
+  # ever removed, which is the entire point of the check.
+  $anon = Invoke-Json "$DashboardUrl/api/gateway/system"
+  if ($anon.status -ne 401) {
+    throw "the admin proxy answered without a session (HTTP $($anon.status)); the authentication gate is missing"
+  }
+
+  # Authenticated path, when a console password is available. That password is
+  # chosen interactively on first run, so CI sets CR_DASHBOARD_PASSWORD and a
+  # developer machine skips this half.
+  $dashPassword = $env:CR_DASHBOARD_PASSWORD
+  $dashUser = if ($env:CR_DASHBOARD_USERNAME) { $env:CR_DASHBOARD_USERNAME } else { "admin" }
+  if ($dashPassword) {
+    $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $login = Invoke-Json "$DashboardUrl/api/gateway/auth/login" "POST" @{ username = $dashUser; password = $dashPassword } -WebSession $webSession
+    if (-not $login.ok) { throw "dashboard login failed: HTTP $($login.status)" }
+
+    $sys = Invoke-Json "$DashboardUrl/api/gateway/system" -WebSession $webSession
+    if (-not $sys.ok) { throw "dashboard proxy failed after login: $($sys | ConvertTo-Json -Depth 3)" }
+    Write-Host ("      proxy refuses anonymous, login ok, providers={0}" -f $sys.body.providers.Count)
+
+    $out = Invoke-Json "$DashboardUrl/api/gateway/auth/logout" "POST" @{} -WebSession $webSession
+    if (-not $out.ok) { throw "dashboard logout failed: HTTP $($out.status)" }
+
+    $after = Invoke-Json "$DashboardUrl/api/gateway/system" -WebSession $webSession
+    if ($after.status -ne 401) { throw "the proxy still answered after logout (HTTP $($after.status))" }
+    Write-Host "      logout revokes the session"
+  } else {
+    Write-Host "      proxy refuses anonymous; set CR_DASHBOARD_PASSWORD to also exercise login"
+  }
 }
 
 Step "phase 3 management cycle (provider/model/tenant/key CRUD)" {

@@ -25,6 +25,7 @@ import (
 
 	"github.com/shadowsafin/corerouter/internal/auth"
 	"github.com/shadowsafin/corerouter/internal/config"
+	"github.com/shadowsafin/corerouter/internal/dashboardauth"
 	"github.com/shadowsafin/corerouter/internal/domain"
 	"github.com/shadowsafin/corerouter/internal/logging"
 	"github.com/shadowsafin/corerouter/internal/policy"
@@ -112,6 +113,11 @@ type Deps struct {
 	// reports the feature as disabled.
 	Tunnels TunnelService
 
+	// DashboardAuth authenticates human operators of the console. Nil means the
+	// login surface is absent. It is optional rather than required because a
+	// gateway deployed only as an inference proxy has no console to protect.
+	DashboardAuth *dashboardauth.Service
+
 	// StartedAt is used to report uptime.
 	StartedAt time.Time
 }
@@ -159,6 +165,9 @@ type Server struct {
 	// tunnels manages temporary public tunnels.
 	tunnels TunnelService
 
+	// dashboardAuth authenticates console operators. Nil disables the surface.
+	dashboardAuth *dashboardauth.Service
+
 	startedAt time.Time
 	// trustedProxies are the networks whose forwarding headers are honoured.
 	trustedProxies []*net.IPNet
@@ -205,6 +214,8 @@ func NewServer(deps Deps) (*Server, error) {
 		reloader:   deps.Reloader,
 		tools:      deps.Tools,
 		tunnels:    deps.Tunnels,
+
+		dashboardAuth: deps.DashboardAuth,
 		startedAt:  deps.StartedAt,
 	}
 
@@ -308,6 +319,26 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/v1/models/{model}", s.handleGetModel)
 	})
 
+	// Dashboard operator authentication.
+	//
+	// Registered before the admin group and outside adminMiddleware, because it is
+	// how an operator obtains a credential in the first place. Gating it would be
+	// circular. The routes are not unauthenticated in the sense that matters: they
+	// can only *create* a session, setup is latched shut after the first operator,
+	// and login is rate limited and locked out.
+	//
+	// The admin key still authenticates the admin API itself, so programmatic
+	// callers and the smoke suite are unaffected. This is a gate on the console.
+	if s.config.Admin.Enabled && s.dashboardAuth != nil {
+		r.Route("/admin/v1/auth", func(r chi.Router) {
+			r.Get("/state", s.handleAuthState)
+			r.Post("/setup", s.handleAuthSetup)
+			r.Post("/login", s.handleAuthLogin)
+			r.Post("/logout", s.handleAuthLogout)
+			r.Get("/me", s.handleAuthMe)
+		})
+	}
+
 	// Administrative surface, mounted only when enabled.
 	if s.config.Admin.Enabled {
 		r.Route("/admin/v1", func(r chi.Router) {
@@ -380,6 +411,9 @@ func (s *Server) buildRouter() http.Handler {
 
 			r.Get("/usage/summary", s.handleAdminUsageSummary)
 			r.Get("/usage/series", s.handleAdminUsageSeries)
+			// The composed analytics report the console is built on: one request,
+			// every breakdown, all describing the same window.
+			r.Get("/analytics/report", s.handleAdminAnalyticsReport)
 			r.Get("/requests", s.handleAdminListRequests)
 			r.Get("/requests/{requestID}", s.handleAdminGetRequest)
 			r.Get("/errors", s.handleAdminListErrors)

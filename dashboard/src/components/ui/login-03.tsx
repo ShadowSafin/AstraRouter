@@ -1,0 +1,213 @@
+// Login 3 from Hirael <https://hirael.com/blocks/auth/login-03>
+// MIT · Mohammad Shehadeh · https://github.com/MohammadShehadeh/hirael
+//
+// Adapted for CoreRouter: the tokens are HSL triplets wrapped in hsl() so the
+// gradients resolve, the Tailwind v4 dynamic spacing values (h-320, w-140,
+// -translate-y-88) are written as arbitrary values for this v3 project, and the
+// GitHub-only action is replaced by the real username/password form the gateway
+// accepts. The client is presentational — the form itself is passed in.
+'use client';
+
+import { ChevronLeft } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
+import * as React from 'react';
+
+import { cn } from '@/lib/utils';
+
+const ENTER =
+  'animate-in fade-in slide-in-from-bottom-4 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] fill-mode-both motion-reduce:animate-none';
+
+const stagger = (index: number, step = 60): React.CSSProperties => ({
+  animationDelay: `${index * step}ms`,
+});
+
+const BrandMark = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <path d="M2.3 12h2.4v10.95h6.2V14.6h4.6v8.35h6.2V12h-2.4V1.05h-6.2V9.4H8.5V1.05H2.3Z" />
+  </svg>
+);
+
+const jitter = (i: number) => {
+  const value = Math.sin(i + 1) * 10_000;
+  return value - Math.floor(value);
+};
+
+const FloatingPaths = ({ position }: { position: number }) => {
+  const reduceMotion = useReducedMotion();
+  const paths = Array.from({ length: 36 }, (_, i) => ({
+    id: i,
+    d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
+      380 - i * 5 * position
+    } -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${
+      152 - i * 5 * position
+    } ${343 - i * 6}C${616 - i * 5 * position} ${470 - i * 6} ${
+      684 - i * 5 * position
+    } ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
+    width: 0.5 + i * 0.03,
+  }));
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <svg className="h-full w-full text-primary" fill="none" viewBox="0 0 696 316">
+        {paths.map((path) => (
+          <motion.path
+            key={path.id}
+            d={path.d}
+            initial={{ pathLength: 0.3 }}
+            animate={reduceMotion ? undefined : { pathLength: 1, pathOffset: [0, 1, 0] }}
+            stroke="currentColor"
+            className="opacity-60"
+            strokeOpacity={0.1 + path.id * 0.03}
+            strokeWidth={path.width}
+            transition={{
+              duration: 20 + jitter(path.id) * 10,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: 'linear',
+            }}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+export interface Login03Props {
+  /** The serif headline, e.g. "Sign in." */
+  title: React.ReactNode;
+  /** The supporting line under the headline. */
+  description: React.ReactNode;
+  /** The form. */
+  children: React.ReactNode;
+  /** Small print below the form, e.g. terms or a security note. */
+  footer?: React.ReactNode;
+  /** Where the top-left back button goes. Omitted, the button is hidden. */
+  backHref?: string;
+  backLabel?: string;
+}
+
+/**
+ * The console's authentication screen: a split layout with the brand and a quote
+ * on one side and the credential panel on the other, collapsing to a single
+ * full-height column below `lg`.
+ */
+export function Login03({
+  title,
+  description,
+  children,
+  footer,
+  backHref = '/',
+  backLabel = 'Home',
+}: Login03Props) {
+  return (
+    <section
+      data-slot="login"
+      className="relative min-h-svh overflow-hidden bg-background lg:grid lg:grid-cols-2"
+    >
+      <aside
+        data-slot="login-aside"
+        className="relative hidden h-full flex-col overflow-hidden border-e border-border bg-card p-10 lg:flex"
+      >
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, transparent, transparent, hsl(var(--background)))',
+          }}
+        />
+
+        <div className="absolute inset-0">
+          <FloatingPaths position={1} />
+          <FloatingPaths position={-1} />
+        </div>
+
+        <div className={cn(ENTER, 'relative z-10 flex items-center gap-2')}>
+          <BrandMark className="size-6 text-foreground" />
+          <span className="text-base font-semibold tracking-[-0.025em]">CoreRouter</span>
+        </div>
+
+        <figure style={stagger(4)} className={cn(ENTER, 'relative z-10 mt-auto flex flex-col gap-3')}>
+          <blockquote className="font-serif text-2xl leading-[1.25] tracking-tight md:text-3xl">
+            One control plane for every provider — routing, spend and health,{' '}
+            <span className="italic text-foreground">without the spreadsheets</span>.
+          </blockquote>
+          <figcaption className="flex items-center gap-2 text-xs uppercase text-muted-foreground">
+            <span>CoreRouter</span>
+            <span aria-hidden className="text-border">
+              |
+            </span>
+            <span>Control plane</span>
+          </figcaption>
+        </figure>
+      </aside>
+
+      <div
+        data-slot="login-main"
+        className="relative flex min-h-svh flex-col justify-center px-8 lg:min-h-0"
+      >
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-0 opacity-60">
+          <div
+            className="absolute end-0 top-0 h-[80rem] w-[35rem] -translate-y-[22rem] rounded-full"
+            style={{
+              background:
+                'radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsl(var(--foreground) / 0.06) 0, hsl(var(--foreground) / 0.02) 50%, hsl(var(--foreground) / 0.01) 80%)',
+            }}
+          />
+          <div
+            className="absolute end-0 top-0 h-[80rem] w-60 translate-x-[5%] -translate-y-1/2 rounded-full"
+            style={{
+              background:
+                'radial-gradient(50% 50% at 50% 50%, hsl(var(--foreground) / 0.04) 0, hsl(var(--foreground) / 0.01) 80%, transparent 100%)',
+            }}
+          />
+        </div>
+
+        {backHref ? (
+          <a
+            href={backHref}
+            className={cn(
+              ENTER,
+              'absolute start-5 top-7 z-10 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
+            )}
+          >
+            <ChevronLeft className="size-4" />
+            {backLabel}
+          </a>
+        ) : null}
+
+        <div
+          data-slot="login-panel"
+          className="relative z-10 mx-auto w-full space-y-6 sm:max-w-sm"
+        >
+          <div className={cn(ENTER, 'flex items-center gap-2 lg:hidden')}>
+            <BrandMark className="size-6 text-foreground" />
+            <span className="text-base font-semibold tracking-[-0.025em]">CoreRouter</span>
+          </div>
+
+          <div data-slot="login-header" className="flex flex-col gap-2">
+            <h1
+              style={stagger(1)}
+              className={cn(ENTER, 'font-serif text-4xl font-medium tracking-tight sm:text-5xl')}
+            >
+              {title}
+            </h1>
+            <p style={stagger(2)} className={cn(ENTER, 'text-sm text-muted-foreground')}>
+              {description}
+            </p>
+          </div>
+
+          <div style={stagger(3)} className={ENTER}>
+            {children}
+          </div>
+
+          {footer ? (
+            <div style={stagger(4)} className={cn(ENTER, 'text-xs text-muted-foreground')}>
+              {footer}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default Login03;

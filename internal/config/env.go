@@ -348,5 +348,19 @@ func (c *Config) applyEnv() error {
 	envInt(&c.Admin.TraceRetentionDays, "CR_ADMIN_TRACE_RETENTION_DAYS")
 	envInt(&c.Admin.LogRetentionDays, "CR_ADMIN_LOG_RETENTION_DAYS")
 
+	// Console operator login. A separate credential type from API keys: an
+	// operator chooses a password, so it is stretched and lockable, while a key is
+	// high-entropy material verified by digest lookup.
+	envBool(&c.Admin.DashboardAuth.Enabled, "CR_ADMIN_DASHBOARD_ENABLED")
+	envString(&c.Admin.DashboardAuth.CookieName, "CR_ADMIN_DASHBOARD_COOKIE_NAME")
+	envBool(&c.Admin.DashboardAuth.CookieSecure, "CR_ADMIN_DASHBOARD_COOKIE_SECURE")
+	envDuration(&c.Admin.DashboardAuth.SessionTTL, "CR_ADMIN_DASHBOARD_SESSION_TTL")
+	envDuration(&c.Admin.DashboardAuth.IdleTTL, "CR_ADMIN_DASHBOARD_IDLE_TTL")
+	envInt(&c.Admin.DashboardAuth.MinPasswordLength, "CR_ADMIN_DASHBOARD_MIN_PASSWORD_LENGTH")
+	envInt(&c.Admin.DashboardAuth.MaxPasswordLength, "CR_ADMIN_DASHBOARD_MAX_PASSWORD_LENGTH")
+	envInt(&c.Admin.DashboardAuth.MaxFailedAttempts, "CR_ADMIN_DASHBOARD_MAX_FAILED_ATTEMPTS")
+	envDuration(&c.Admin.DashboardAuth.LockoutDuration, "CR_ADMIN_DASHBOARD_LOCKOUT_DURATION")
+	envDuration(&c.Admin.DashboardAuth.MaxLockoutDuration, "CR_ADMIN_DASHBOARD_MAX_LOCKOUT_DURATION")
+
 	return nil
 }

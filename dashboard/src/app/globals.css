@@ -96,7 +96,9 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* Geist ships sensible defaults; only the ligatures/contextual alternates
+       are worth pinning so id-like strings stay unambiguous. */
+    font-feature-settings: 'liga' 1, 'calt' 1;
     text-rendering: optimizeLegibility;
   }
 

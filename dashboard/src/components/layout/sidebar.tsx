@@ -15,12 +15,14 @@ import {
   History,
   ListTree,
   Lock,
+  LogOut,
   Network,
   OctagonX,
   Play,
   ScrollText,
   Settings,
   ShieldAlert,
+  Terminal,
   Trophy,
   Users,
   BookKey,
@@ -28,10 +30,10 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { useProviderHealth } from '@/hooks/use-admin';
+import { useCurrentUser, useProviderHealth } from '@/hooks/use-admin';
 import { cn } from '@/lib/utils';
 
 export function SidebarBrand({ compact = false }: { compact?: boolean }) {
@@ -107,6 +109,7 @@ const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/providers', label: 'Providers', icon: Cpu, hint: 'Upstream endpoints and their health' },
       { href: '/models', label: 'Models', icon: Boxes, hint: 'The servable model registry' },
+      { href: '/playground', label: 'Playground', icon: Terminal, hint: 'Send test traffic against the real inference API and read the routing decision' },
     ],
   },
   {
@@ -154,7 +157,7 @@ const MORE_ITEMS: NavItem[] = [
 /**
  * The left rail: brand, curated sections, an overflow group, and the operator.
  *
- * Twelve routes stay visible; the remaining eight live under More, expanded
+ * Fifteen routes stay visible; the remaining eight live under More, expanded
  * automatically when the current page is one of them. The only live number in
  * the rail is the unhealthy-provider count — a rail full of counters is a rail
  * nobody reads. The operator block states the access truthfully: there is no
@@ -240,22 +243,70 @@ export function Sidebar({ onNavigate, inDrawer = false }: { onNavigate?: () => v
         </div>
       </nav>
 
-      <div className="border-t border-border p-3">
-        <Link
-          href="/settings"
-          onClick={onNavigate}
-          title="Operator settings"
-          className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60"
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-            OP
-          </span>
-          <span className="min-w-0 leading-tight">
-            <span className="block truncate text-[13px] font-medium">Operator</span>
-            <span className="block truncate text-[11px] text-muted-foreground">Admin key access</span>
-          </span>
-        </Link>
-      </div>
+      <OperatorBlock onNavigate={onNavigate} />
     </aside>
+  );
+}
+
+/**
+ * The signed-in operator and the way out.
+ *
+ * States who is signed in truthfully: this used to read "Admin key access",
+ * which described the credential rather than the person holding it. Now that a
+ * real identity exists, showing "Admin key access" would be misleading — the
+ * console is gated on the session, not on the key.
+ */
+function OperatorBlock({ onNavigate }: { onNavigate?: () => void }) {
+  const { data: user } = useCurrentUser();
+  const [signingOut, setSigningOut] = React.useState(false);
+  const router = useRouter();
+
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await fetch('/api/gateway/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+    } finally {
+      // Redirect regardless of what the gateway said. The operator asked to leave,
+      // and the cookie is cleared locally either way.
+      onNavigate?.();
+      router.replace('/login');
+      router.refresh();
+    }
+  }
+
+  const username = user?.username ?? 'Operator';
+  const initials = username.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-1 border-t border-border p-3">
+      <Link
+        href="/settings"
+        onClick={onNavigate}
+        title={`Signed in as ${username}`}
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+          {initials}
+        </span>
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-[13px] font-medium">{username}</span>
+          <span className="block truncate text-[11px] text-muted-foreground">Signed in</span>
+        </span>
+      </Link>
+
+      <button
+        type="button"
+        onClick={signOut}
+        disabled={signingOut}
+        title="Sign out"
+        aria-label="Sign out"
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+      >
+        <LogOut className="size-4" />
+      </button>
+    </div>
   );
 }

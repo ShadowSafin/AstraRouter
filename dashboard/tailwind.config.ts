@@ -1,5 +1,6 @@
 import containerQueries from '@tailwindcss/container-queries';
 import type { Config } from 'tailwindcss';
+import animate from 'tailwindcss-animate';
 
 /**
  * Tailwind configuration.
@@ -64,6 +65,7 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        serif: ['var(--font-serif)', 'ui-serif', 'Georgia', 'serif'],
       },
       keyframes: {
         'fade-in': {
@@ -80,7 +82,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [containerQueries],
+  plugins: [containerQueries, animate],
 };
 
 export default config;
