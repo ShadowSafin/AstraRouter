@@ -1,12 +1,12 @@
-// Package payload holds the runtime the desktop app ships inside its own
-// executable: the AstraRouter gateway, a portable Node runtime, the built
-// dashboard, and the config templates. `build.ps1` stages them under files/
-// before compiling cmd/shell, so the deliverable is one self-contained
-// AstraRouter.exe rather than a folder bundle.
+// Package payload holds what the setup program ships inside its own executable:
+// the AstraRouter gateway, a portable Node runtime, the built dashboard, the
+// config templates, and the standalone app executable it installs. `build.ps1`
+// stages them under files/ before compiling cmd/installer, so
+// AstraRouterSetup.exe is self-contained.
 //
-// In a bare checkout the staged tree is only a placeholder, HasRuntime reports
-// false, and the shell runs from files on disk instead — which keeps a plain
-// `go build ./cmd/shell` working for development.
+// Only the installer embeds this. The standalone app (cmd/app) never does: it
+// runs the runtime the installer unpacked. In a bare checkout the staged tree
+// is only a placeholder and HasRuntime reports false.
 package payload
 
 import (
@@ -36,6 +36,24 @@ func HasRuntime() bool {
 	return err == nil
 }
 
+// Template returns one of the embedded config templates (for example
+// "native.env.template" or "config.yaml"). The installer uses these to write a
+// fresh installation's configuration without duplicating the template text.
+func Template(name string) ([]byte, error) {
+	return files.ReadFile("files/templates/" + name)
+}
+
+// appExeName is the standalone runtime executable staged at the root of the
+// payload. It is installed next to the runtime, never extracted as part of it.
+const appExeName = "AstraRouter.exe"
+
+// AppExecutable returns the standalone application executable that this
+// installer installs. The installer owns the copy; the runtime app never
+// embeds or extracts itself.
+func AppExecutable() ([]byte, error) {
+	return files.ReadFile("files/" + appExeName)
+}
+
 // Extract writes the embedded runtime under dest, preserving the bundle
 // layout (bin/, dashboard/, assets/, templates/). Extraction is additive:
 // existing files are overwritten, so it doubles as a repair.
@@ -49,6 +67,11 @@ func Extract(dest string) error {
 			return err
 		}
 		if rel == "." {
+			return nil
+		}
+		// The application executable is installed separately (see
+		// AppExecutable), not unpacked with the runtime.
+		if d.IsDir() == false && rel == appExeName {
 			return nil
 		}
 		target := filepath.Join(dest, rel)

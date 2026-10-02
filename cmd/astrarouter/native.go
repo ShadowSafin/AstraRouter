@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -15,10 +17,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shadowsafin/astrarouter/internal/bootstrap"
 	"github.com/shadowsafin/astrarouter/internal/config"
 	nativecfg "github.com/shadowsafin/astrarouter/internal/config/native"
+	"github.com/shadowsafin/astrarouter/internal/dashboardauth"
 	"github.com/shadowsafin/astrarouter/internal/logging"
 	"github.com/shadowsafin/astrarouter/internal/runtime"
+	"github.com/shadowsafin/astrarouter/internal/storage"
 )
 
 // nativeOptions holds the flags shared by every native subcommand.
@@ -130,8 +135,10 @@ func runNative(cfg *config.Config, logger *slog.Logger, configPath, logLevel, lo
 		return runNativeUp(cfg, logger, configPath, logLevel, logFormat, args[1:])
 	case "doctor":
 		return runNativeDoctor(cfg, logger, configPath, logLevel, logFormat, args[1:])
+	case "admin":
+		return runNativeAdmin(cfg, logger, configPath, logLevel, logFormat, args[1:])
 	default:
-		return &exitError{code: exitUsage, err: fmt.Errorf("unknown native command %q (want install, up or doctor)", args[0])}
+		return &exitError{code: exitUsage, err: fmt.Errorf("unknown native command %q (want install, up, doctor or admin)", args[0])}
 	}
 }
 
@@ -816,4 +823,106 @@ func writeConfigFile(path string, data []byte) error {
 		return fmt.Errorf("create parent of %s: %w", path, err)
 	}
 	return os.WriteFile(path, data, 0o640)
+}
+
+// ---------------------------------------------------------------------------
+// admin
+// ---------------------------------------------------------------------------
+
+// runNativeAdmin seeds console state that the gateway would otherwise only
+// create through its first-run setup screen. It exists so an installer can
+// create the operator account as part of installation rather than leaving the
+// user with a second form to fill in on first launch.
+func runNativeAdmin(cfg *config.Config, logger *slog.Logger, configPath, logLevel, logFormat string, args []string) error {
+	if len(args) == 0 {
+		return &exitError{code: exitUsage, err: fmt.Errorf("usage: astrarouter native admin set --username U --password-file F")}
+	}
+	switch args[0] {
+	case "set":
+		return runNativeAdminSet(cfg, logger, configPath, logLevel, logFormat, args[1:])
+	default:
+		return &exitError{code: exitUsage, err: fmt.Errorf("unknown native admin command %q (want set)", args[0])}
+	}
+}
+
+// runNativeAdminSet creates the single console administrator if none exists.
+//
+// It is idempotent on purpose: re-running the installer, or running this command
+// on an installation that already has an operator, leaves the existing account
+// untouched and exits successfully. Only the first call creates a user.
+func runNativeAdminSet(cfg *config.Config, logger *slog.Logger, configPath, logLevel, logFormat string, args []string) error {
+	fs := flag.NewFlagSet("native admin set", flag.ContinueOnError)
+	var opts nativeOptions
+	addNativeFlags(fs, &opts)
+	username := fs.String("username", "", "administrator username")
+	password := fs.String("password", "", "administrator password (prefer --password-file)")
+	passwordFile := fs.String("password-file", "", "read the administrator password from this file")
+	if err := fs.Parse(args); err != nil {
+		return &exitError{code: exitUsage, err: err}
+	}
+
+	nctx, err := nativeSetup(configPath, logLevel, logFormat, &opts)
+	if err != nil {
+		return err
+	}
+	cfg, logger = nctx.cfg, nctx.logger
+	if nctx.validationErr != nil {
+		return &exitError{code: exitConfig, err: fmt.Errorf("invalid configuration: %w", nctx.validationErr)}
+	}
+
+	user := strings.TrimSpace(*username)
+	if user == "" {
+		return &exitError{code: exitUsage, err: fmt.Errorf("--username is required")}
+	}
+	secret, err := readAdminPassword(*password, *passwordFile)
+	if err != nil {
+		return &exitError{code: exitUsage, err: err}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	postgres, err := storage.NewPostgres(ctx, cfg.Database, logger)
+	if err != nil {
+		return &exitError{code: exitUnavailable, err: err}
+	}
+	defer postgres.Close()
+
+	repos := storage.NewRepositories(postgres.Pool(), logger)
+	service := bootstrap.BuildDashboardAuth(cfg, repos, logger)
+	if service == nil {
+		return &exitError{code: exitConfig, err: fmt.Errorf("dashboard authentication is disabled; enable admin.dashboard_auth or create the account in the dashboard")}
+	}
+
+	client := dashboardauth.ClientInfo{IP: "127.0.0.1", UserAgent: "astrarouter-native-admin"}
+	result, err := service.Setup(ctx, user, secret, secret, client)
+	if err != nil {
+		if errors.Is(err, dashboardauth.ErrSetupClosed) {
+			fmt.Println("admin: an administrator already exists; leaving it unchanged")
+			return nil
+		}
+		return &exitError{code: exitFailure, err: err}
+	}
+	fmt.Printf("admin: created %s\n", result.User.Username)
+	return nil
+}
+
+// readAdminPassword resolves the password from a file or a flag. The file form
+// is preferred because an argument is visible in the process list.
+func readAdminPassword(inline, path string) (string, error) {
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read --password-file: %w", err)
+		}
+		secret := strings.TrimRight(string(data), "\r\n")
+		if secret == "" {
+			return "", fmt.Errorf("--password-file is empty")
+		}
+		return secret, nil
+	}
+	if inline == "" {
+		return "", fmt.Errorf("a password is required (--password-file is preferred over --password)")
+	}
+	return inline, nil
 }

@@ -1,7 +1,13 @@
-// Command shell is the AstraRouter desktop app: a WebView window plus a
-// supervisor that owns the whole local stack (embedded postgres, gateway,
-// dashboard). Closing the window quits the app; everything runs from the
-// install directory, requires no admin rights, and never touches Docker.
+// Command app is the standalone AstraRouter desktop application.
+//
+// It is the product users open every day: a WebView window plus a supervisor
+// that owns the whole local stack (embedded postgres, gateway, dashboard).
+// Closing the window quits the app; everything runs from the install directory,
+// requires no admin rights, and never touches Docker.
+//
+// It contains no installer. Installation (copying files, writing configuration,
+// creating shortcuts, seeding the first administrator) belongs to
+// cmd/installer; this binary only runs what is already installed.
 package main
 
 import (
@@ -28,13 +34,14 @@ import (
 
 	"github.com/shadowsafin/astrarouter/desktop/pkg/dbembed"
 	"github.com/shadowsafin/astrarouter/desktop/pkg/supervisor"
+	"github.com/shadowsafin/astrarouter/desktop/pkg/winproc"
 )
 
 //go:embed splash.html
 var splashHTML string
 
 // trayIcon holds the .ico bytes once loaded; the file lives in assets/ next
-// to the exe (staged by build.ps1), never inside the binary, so re-skinning
+// to the exe (staged by the installer), never inside the binary, so re-skinning
 // never needs a rebuild.
 var trayIcon []byte
 
@@ -57,7 +64,7 @@ func messageBox(title, text string) {
 		mbOK|mbIconError|mbSetForeground|mbTopMost)
 }
 
-// settings is everything the shell needs, resolved from native.env.
+// settings is everything the app needs, resolved from native.env.
 type settings struct {
 	root         string
 	env          map[string]string
@@ -82,15 +89,14 @@ type settings struct {
 
 	// dbLog receives embedded-postgres chatter (first-run download and start
 	// progress). A window launch discards it; a console launch streams it, so
-	// `--smoke` and `--migrate-only` are never silent.
+	// `--smoke` is never silent.
 	dbLog io.Writer
 }
 
 func main() {
 	rootFlag := flag.String("root", "", "app directory holding native.env, config.yaml, data/ and logs/ (default: beside the exe)")
 	smoke := flag.Bool("smoke", false, "no window: start everything, check the dashboard title, shut down, exit 0/1")
-	migrateOnly := flag.Bool("migrate-only", false, "start the database, run migrations, stop, exit (installer prefetch)")
-	smokeTimeout := flag.Duration("smoke-timeout", 10*time.Minute, "bounds --smoke and --migrate-only")
+	smokeTimeout := flag.Duration("smoke-timeout", 10*time.Minute, "bounds --smoke")
 	gatewayBinFlag := flag.String("gateway-bin", "", "astrarouter binary (default: <root>/bin/astrarouter.exe)")
 	nodeBinFlag := flag.String("node-bin", "", "node binary (default: <root>/bin/node.exe, then PATH)")
 	dashboardFlag := flag.String("dashboard-dir", "", "dashboard dir (default: <root>/dashboard)")
@@ -106,12 +112,10 @@ func main() {
 	}
 	bootRoot = root
 
-	// The single-file app carries its runtime inside itself: materialize it on
-	// first launch (or upgrade), then create config from the bundled templates.
-	// Both are no-ops on later launches and on an on-disk development bundle.
-	// Extraction runs before the icon is read so the first launch is branded.
-	if err := ensureRuntime(root); err != nil {
-		fatal(err)
+	// The app runs an installed product. If nothing is installed here, say so
+	// plainly instead of silently building a half-installation.
+	if _, err := os.Stat(filepath.Join(root, "native.env")); os.IsNotExist(err) {
+		fatal(fmt.Errorf("AstraRouter is not installed in %s — run the AstraRouter installer first", root))
 	}
 	if err := ensureFirstRunEnv(root); err != nil {
 		fatal(err)
@@ -124,13 +128,13 @@ func main() {
 	}
 	logger := slog.New(slog.NewTextHandler(logFile(st, "shell.log"), nil))
 
-	if *smoke || *migrateOnly {
+	if *smoke {
 		// Console launches stream database progress; the GUI path shows it on
 		// the splash instead, so it stays quiet here.
 		st.dbLog = os.Stderr
 		ctx, cancel := context.WithTimeout(context.Background(), *smokeTimeout)
 		defer cancel()
-		os.Exit(runHeadless(ctx, st, logger, *migrateOnly))
+		os.Exit(runSmoke(ctx, st, logger))
 	}
 
 	if alreadyRunning() {
@@ -148,7 +152,7 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	envPath := filepath.Join(root, "native.env")
 	env, err := supervisor.LoadEnvFile(envPath)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w (reinstall the app to regenerate it)", envPath, err)
+		return nil, fmt.Errorf("read %s: %w (run the AstraRouter installer to set it up)", envPath, err)
 	}
 	get := func(key, def string) string {
 		if v := strings.TrimSpace(env[key]); v != "" {
@@ -165,24 +169,27 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 		pgUser:       get("AR_POSTGRES_USER", "astrarouter"),
 		pgPassword:   get("AR_POSTGRES_PASSWORD", ""),
 		pgDatabase:   get("AR_POSTGRES_DB", "astrarouter"),
-		logDir:       filepath.Join(root, "logs"),
+		logDir:       get("AR_LOG_DIR", filepath.Join(root, "logs")),
 		dashboardDir: dashboardDir,
 	}
 	if st.pgPassword == "" {
-		return nil, fmt.Errorf("AR_POSTGRES_PASSWORD is empty in %s (reinstall the app to regenerate it)", envPath)
+		return nil, fmt.Errorf("AR_POSTGRES_PASSWORD is empty in %s (run the AstraRouter installer)", envPath)
 	}
 	pgPort, err := strconv.Atoi(get("AR_POSTGRES_PORT", "5433"))
 	if err != nil || pgPort <= 0 || pgPort > 65535 {
 		return nil, fmt.Errorf("AR_POSTGRES_PORT=%q is not a port", env["AR_POSTGRES_PORT"])
 	}
 	st.pgPort = uint32(pgPort)
-	st.pgDir = filepath.Join(root, "data", "postgres")
+	// The database can live outside the install root (the installer offers a
+	// separate data folder); everything else stays under root.
+	dataDir := get("AR_DATA_DIR", filepath.Join(root, "data"))
+	st.pgDir = filepath.Join(dataDir, "postgres")
 	st.gatewayURL = "http://" + st.gatewayAddr
 	st.dashURL = "http://" + st.dashHost + ":" + st.dashPort
 
 	st.configFile = filepath.Join(root, "config.yaml")
 	if _, err := os.Stat(st.configFile); err != nil {
-		return nil, fmt.Errorf("missing %s (reinstall the app to regenerate it)", st.configFile)
+		return nil, fmt.Errorf("missing %s (run the AstraRouter installer)", st.configFile)
 	}
 
 	st.gatewayBin = gatewayBin
@@ -208,7 +215,7 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 	}
 	serverJS := filepath.Join(st.dashboardDir, ".next", "standalone", "server.js")
 	if _, err := os.Stat(serverJS); err != nil {
-		return nil, fmt.Errorf("dashboard not built at %s (reinstall the app)", serverJS)
+		return nil, fmt.Errorf("dashboard not built at %s (run the AstraRouter installer)", serverJS)
 	}
 
 	if err := os.MkdirAll(st.logDir, 0o750); err != nil {
@@ -225,15 +232,14 @@ func loadSettings(root, gatewayBin, nodeBin, dashboardDir string) (*settings, er
 // childEnv is the environment every gateway child gets: file env, config
 // path, and the embedded DSN once the database is up.
 func (st *settings) childEnv() []string {
-	env := os.Environ()
-	return append(env, "AR_POSTGRES_DSN="+st.dsn)
+	return append(os.Environ(), "AR_POSTGRES_DSN="+st.dsn)
 }
 
 // ---------------------------------------------------------------------------
-// lifecycle shared by window, smoke and prefetch
+// lifecycle
 // ---------------------------------------------------------------------------
 
-// stack owns one running stack: database, supervisor, cancel.
+// stack owns one running stack: supervisor, cancel.
 type stack struct {
 	st     *settings
 	logger *slog.Logger
@@ -270,6 +276,7 @@ func (st *settings) runMigrate(ctx context.Context, logger *slog.Logger) error {
 	}
 	defer f.Close()
 	cmd := exec.CommandContext(ctx, st.gatewayBin, "migrate")
+	winproc.Hide(cmd)
 	cmd.Env = st.childEnv()
 	cmd.Stdout = f
 	cmd.Stderr = f
@@ -367,8 +374,8 @@ func (s *stack) shutdown() {
 	}
 }
 
-// runHeadless implements --smoke and --migrate-only without any window.
-func runHeadless(ctx context.Context, st *settings, logger *slog.Logger, migrateOnly bool) int {
+// runSmoke starts everything, checks the dashboard, shuts down and reports.
+func runSmoke(ctx context.Context, st *settings, logger *slog.Logger) int {
 	pg, err := st.startDatabase(ctx, logger)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "database:", err)
@@ -378,10 +385,6 @@ func runHeadless(ctx context.Context, st *settings, logger *slog.Logger, migrate
 	if err := st.runMigrate(ctx, logger); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
-	}
-	if migrateOnly {
-		fmt.Println("migrate-only: database ready and migrations applied")
-		return 0
 	}
 	supCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -623,18 +626,20 @@ func startTray(app *windowApp) {
 	}, func() {})
 }
 
-// loadTrayIcon reads assets/icon.ico beside the app root. A missing icon
-// only costs the tray picture: the app still runs.
 // defaultRoot picks where the app lives. A development or portable bundle keeps
-// its runtime (and therefore its data) beside the executable. The single-file
-// app, which has no files beside it until it extracts, uses a per-user data
-// directory so it works no matter where the .exe is placed.
+// its runtime (and therefore its data) beside the executable; an installed app
+// records a separate data folder in root.txt.
 func defaultRoot() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
 	dir := filepath.Dir(exe)
+	if b, err := os.ReadFile(filepath.Join(dir, "root.txt")); err == nil {
+		if p := strings.TrimSpace(string(b)); p != "" {
+			return p, nil
+		}
+	}
 	if _, err := os.Stat(filepath.Join(dir, "bin", "astrarouter.exe")); err == nil {
 		return dir, nil
 	}
@@ -683,7 +688,7 @@ func fatal(err error) {
 	}
 	// Only a windowless (double-click) launch needs the dialog: a console
 	// launch already saw the message on stderr, and a modal box there would
-	// hang `--smoke` and `--migrate-only` scripts.
+	// hang `--smoke` scripts.
 	if !hasConsole() {
 		detail := msg
 		if logPath != "" {

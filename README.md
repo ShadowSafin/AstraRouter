@@ -169,13 +169,13 @@ Task Scheduler.
 ### Desktop app (Windows)
 
 ```powershell
-# one self-contained AstraRouter.exe plus install.ps1
-.\install.ps1   # per-user install: embedded Postgres, gateway, dashboard, shortcuts
+.\AstraRouterSetup.exe   # setup only: installs the app, then exits
+.\AstraRouter.exe        # the app: dashboard + backend in its own window
 ```
 
-The single `.exe` carries the gateway, a portable Node runtime and the built
-dashboard inside it, extracts them on first launch, and opens AstraRouter in
-its own window with everything supervised. Full walkthrough:
+Two separate programs. The setup executable carries the app and its runtime
+(gateway, portable Node, built dashboard) and installs them; the standalone app
+runs them with everything supervised. Full walkthrough:
 **[Desktop app](documentation/installation/desktop.md)**
 
 Full walkthroughs: **[Docker](documentation/installation/docker.md)** ·

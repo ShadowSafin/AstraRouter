@@ -9,44 +9,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/shadowsafin/astrarouter/desktop/internal/payload"
 )
 
-// payloadMarker records which embedded payload version was last extracted, so
-// a new build re-materializes the runtime and an unchanged one does not.
-const payloadMarker = ".payload-version"
-
-// ensureRuntime writes the embedded runtime into root. It is a no-op when the
-// shell was built without an embedded payload (a development or on-disk
-// bundle) or when the marker already matches, and it repairs a partial
-// extraction by overwriting on every mismatch.
-func ensureRuntime(root string) error {
-	if !payload.HasRuntime() {
-		return nil
-	}
-	marker := filepath.Join(root, payloadMarker)
-	if b, err := os.ReadFile(marker); err == nil && strings.TrimSpace(string(b)) == payload.Version() {
-		return nil
-	}
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", root, err)
-	}
-	fmt.Fprintf(os.Stderr, "astrarouter: extracting runtime to %s (first run)\n", root)
-	if err := payload.Extract(root); err != nil {
-		return err
-	}
-	return os.WriteFile(marker, []byte(payload.Version()+"\n"), 0o644)
-}
-
-// ensureFirstRunEnv makes the bundle runnable the moment it is opened: when
-// native.env is absent it writes native.env and config.yaml from the bundled
-// templates, with fresh secrets and free loopback ports. This is the same set
-// of files install.ps1 writes, so a portable bundle and a per-user install
-// agree, and neither requires the other to have run first.
+// ensureFirstRunEnv is a fallback for a runtime that has templates on disk but
+// no configuration yet (for example a development bundle). A normal install
+// already has native.env written by the installer, so this is a no-op there.
 //
 // It never overwrites existing files: an installed app keeps its ports and
-// secrets, and re-running is a no-op.
+// secrets.
 func ensureFirstRunEnv(root string) error {
 	envPath := filepath.Join(root, "native.env")
 	switch _, err := os.Stat(envPath); {
@@ -58,11 +28,11 @@ func ensureFirstRunEnv(root string) error {
 
 	envTmpl, err := os.ReadFile(filepath.Join(root, "templates", "native.env.template"))
 	if err != nil {
-		return fmt.Errorf("no native.env and no template to create one (run install.ps1): %w", err)
+		return fmt.Errorf("no native.env and no template to create one (run the AstraRouter installer): %w", err)
 	}
 	cfgTmpl, err := os.ReadFile(filepath.Join(root, "templates", "config.yaml"))
 	if err != nil {
-		return fmt.Errorf("no native.env and no config template (run install.ps1): %w", err)
+		return fmt.Errorf("no native.env and no config template (run the AstraRouter installer): %w", err)
 	}
 
 	gwPort, err := freePort(18081)

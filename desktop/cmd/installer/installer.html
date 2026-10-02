@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AstraRouter Setup</title>
+<style>
+  /* Fonts are injected here by the Go program as @font-face data URIs, so the
+     wizard matches the console type exactly and still works offline. */
+  /*__FONT_FACE__*/
+
+  :root {
+    color-scheme: dark;
+    /* Same tokens as the dashboard's dark theme (globals.css). */
+    --background: hsl(0 0% 3.5%);
+    --card: hsl(0 0% 7%);
+    --foreground: hsl(0 0% 96%);
+    --muted-foreground: hsl(0 0% 62%);
+    --border: hsl(0 0% 12%);
+    --input: hsl(0 0% 14%);
+    --accent: hsl(0 0% 10%);
+    --secondary: hsl(0 0% 10%);
+    --primary: hsl(221 83% 58%);
+    --primary-foreground: hsl(0 0% 100%);
+    --ring: hsl(221 83% 62%);
+    --success: hsl(142 60% 52%);
+    --danger: hsl(0 74% 64%);
+
+    --font-sans: "Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+    --font-mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+    --radius: 0.75rem;
+    /* The auth page's entrance easing: a soft, decisive settle. */
+    --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--background);
+    color: var(--foreground);
+    overflow: hidden;
+    font-feature-settings: "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection { background: hsl(221 83% 58% / 0.35); }
+  button { font: inherit; cursor: pointer; }
+  input { font: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+
+  /* The auth page's entrance: fade + rise, staggered by inline delay. */
+  .enter { animation: enter 0.5s var(--ease-enter) both; }
+  @keyframes enter { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: none; } }
+
+  .app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
+
+  /* ---- brand rail (mirrors the auth page's aside) ---- */
+  .rail {
+    position: relative; overflow: hidden;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    padding: 40px 32px;
+    display: flex; flex-direction: column;
+  }
+  .paths { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--primary); pointer-events: none; }
+  .flow {
+    fill: none; stroke: currentColor;
+    stroke-dasharray: 0.3 0.7;
+    animation-name: flowline; animation-timing-function: linear; animation-iteration-count: infinite;
+  }
+  @keyframes flowline { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -1; } }
+  .rail .veil {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom, transparent, transparent, hsl(0 0% 7% / 0.85) 78%, var(--card));
+  }
+
+  .brand { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; }
+  .brand .mark { width: 24px; height: 24px; color: var(--foreground); }
+  .brand .name { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
+  .brand .by {
+    font-size: 11px; color: var(--muted-foreground); letter-spacing: 0.08em;
+    text-transform: uppercase; margin-top: 2px;
+  }
+
+  .steps { position: relative; z-index: 2; margin-top: 44px; display: flex; flex-direction: column; gap: 2px; }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px; border-radius: 10px;
+    color: var(--muted-foreground); font-size: 13.5px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .step .idx {
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: 11px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid var(--border); color: var(--muted-foreground);
+    transition: all 0.25s var(--ease-enter);
+  }
+  .step.active { color: var(--foreground); background: var(--accent); }
+  .step.active .idx { background: var(--primary); border-color: transparent; color: var(--primary-foreground); box-shadow: 0 0 0 4px hsl(221 83% 58% / 0.18); }
+  .step.done { color: var(--muted-foreground); }
+  .step.done .idx { background: hsl(142 60% 52% / 0.14); border-color: hsl(142 60% 52% / 0.5); color: var(--success); }
+  .step.done .idx::after { content: "\2713"; }
+  .step.done .idx span { display: none; }
+
+  .rail .quote {
+    position: relative; z-index: 2; margin-top: auto; padding-top: 28px;
+  }
+  .rail .quote blockquote {
+    font-family: var(--font-serif); font-weight: 400;
+    font-size: 22px; line-height: 1.25; letter-spacing: -0.01em;
+  }
+  .rail .quote blockquote em { font-style: italic; }
+  .rail .quote figcaption {
+    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground);
+  }
+  .rail .quote figcaption .sep { color: var(--border); }
+
+  /* ---- content ---- */
+  .main { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .glow { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.6; overflow: hidden; }
+  .glow .b1 {
+    position: absolute; right: 0; top: 0; height: 80rem; width: 35rem;
+    transform: translate(0, -22rem); border-radius: 9999px;
+    background: radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsl(0 0% 96% / 0.06) 0, hsl(0 0% 96% / 0.02) 50%, hsl(0 0% 96% / 0.01) 80%);
+  }
+  .glow .b2 {
+    position: absolute; right: 0; top: 0; height: 80rem; width: 15rem;
+    transform: translate(5%, -50%); border-radius: 9999px;
+    background: radial-gradient(50% 50% at 50% 50%, hsl(0 0% 96% / 0.04) 0, hsl(0 0% 96% / 0.01) 80%, transparent 100%);
+  }
+
+  .scroll { position: relative; z-index: 1; flex: 1; overflow-y: auto; padding: 64px 60px 28px; }
+  .pane { max-width: 600px; }
+
+  .kicker { color: var(--muted-foreground); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  h2 {
+    font-family: var(--font-serif); font-weight: 400;
+    font-size: clamp(34px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.02em;
+    margin-top: 12px;
+  }
+  h2 em { font-style: italic; }
+  .lede { color: var(--muted-foreground); font-size: 14px; line-height: 1.65; margin-top: 14px; max-width: 52ch; }
+
+  .field { margin-top: 28px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted-foreground); margin-bottom: 8px; font-weight: 500; }
+  .row { display: flex; gap: 10px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 11px 13px; border-radius: 10px;
+    background: var(--input); border: 1px solid var(--border); color: var(--foreground);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px hsl(221 83% 58% / 0.22); }
+  input::placeholder { color: hsl(0 0% 62% / 0.75); }
+  .hint { font-size: 12px; color: var(--muted-foreground); margin-top: 8px; }
+
+  .cards { margin-top: 22px; display: grid; gap: 10px; }
+  .opt {
+    display: flex; align-items: center; gap: 13px;
+    padding: 14px 16px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .opt:hover { border-color: hsl(0 0% 20%); }
+  .opt .txt { flex: 1; }
+  .opt .txt b { font-size: 13.5px; font-weight: 550; }
+  .opt .txt small { display: block; color: var(--muted-foreground); font-size: 12px; margin-top: 3px; }
+  .switch { flex: none; width: 40px; height: 23px; border-radius: 999px; background: hsl(0 0% 16%); border: 1px solid var(--border); position: relative; transition: background 0.2s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: transform 0.22s var(--ease-enter); }
+  .opt.on { border-color: hsl(221 83% 58% / 0.55); background: hsl(221 83% 58% / 0.07); }
+  .opt.on .switch { background: var(--primary); border-color: transparent; }
+  .opt.on .switch::after { transform: translateX(17px); }
+
+  .review { margin-top: 22px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+  .review .r { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .review .r:last-child { border-bottom: none; }
+  .review .r .k { color: var(--muted-foreground); }
+  .review .r .v { color: var(--foreground); text-align: right; word-break: break-all; }
+  .review .r .v.mono { font-family: var(--font-mono); font-size: 12px; }
+
+  /* progress */
+  .bar { margin-top: 30px; height: 8px; border-radius: 999px; background: var(--secondary); overflow: hidden; border: 1px solid var(--border); }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--primary), hsl(221 83% 70%)); transition: width 0.4s var(--ease-enter); }
+  .plabel { display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; color: var(--muted-foreground); }
+  .plabel .pct { font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+  .tasks { margin-top: 22px; display: flex; flex-direction: column; gap: 9px; }
+  .task { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted-foreground); }
+  .task .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border); flex: none; }
+  .task.active { color: var(--foreground); }
+  .task.active .dot { border-color: var(--primary); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+  .task.done { color: var(--muted-foreground); }
+  .task.done .dot { background: var(--success); border-color: var(--success); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* finish */
+  .hero { text-align: center; padding-top: 8px; }
+  .hero .check {
+    width: 76px; height: 76px; margin: 0 auto 24px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 40%, hsl(142 60% 52% / 0.28), hsl(142 60% 52% / 0.06));
+    border: 1px solid hsl(142 60% 52% / 0.45);
+    animation: pop 0.5s var(--ease-enter) both;
+  }
+  @keyframes pop { from { transform: scale(0.7); opacity: 0; } to { transform: none; opacity: 1; } }
+  .hero h2 { margin-top: 0; }
+
+  /* error */
+  .err { margin-top: 22px; border-radius: 12px; padding: 16px 18px; background: hsl(0 74% 64% / 0.08); border: 1px solid hsl(0 74% 64% / 0.35); }
+  .err h3 { font-size: 14px; color: hsl(0 74% 72%); }
+  .err p { color: hsl(0 20% 88%); font-size: 13px; line-height: 1.6; margin-top: 7px; white-space: pre-wrap; }
+
+  /* footer actions */
+  .actions {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 12px;
+    padding: 20px 60px; border-top: 1px solid var(--border);
+    background: hsl(0 0% 3.5% / 0.7);
+    backdrop-filter: blur(8px);
+  }
+  .actions .grow { flex: 1; }
+  .btn {
+    padding: 11px 20px; border-radius: 10px; border: 1px solid transparent;
+    font-size: 13.5px; font-weight: 550; transition: all 0.18s ease;
+  }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); box-shadow: 0 8px 24px hsl(221 83% 58% / 0.3); }
+  .btn.primary:hover { background: hsl(221 83% 63%); transform: translateY(-1px); }
+  .btn.ghost { background: transparent; color: var(--muted-foreground); border-color: var(--border); }
+  .btn.ghost:hover { color: var(--foreground); background: var(--accent); }
+  .btn:disabled { opacity: 0.45; pointer-events: none; }
+  .btn.primary:active { transform: translateY(0); }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; z-index: 5;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card); border: 1px solid var(--border);
+    padding: 10px 16px; border-radius: 10px; font-size: 12.5px; color: var(--muted-foreground);
+    opacity: 0; transition: all 0.25s var(--ease-enter);
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="paths" id="paths" aria-hidden="true"></div>
+    <div class="veil" aria-hidden="true"></div>
+
+    <div class="brand enter">
+      <svg class="mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M2.3 12h2.4v10.95h6.2V14.6h4.6v8.35h6.2V12h-2.4V1.05h-6.2V9.4H8.5V1.05H2.3Z" />
+      </svg>
+      <div>
+        <div class="name">AstraRouter</div>
+        <div class="by">Desktop Installer</div>
+      </div>
+    </div>
+
+    <nav class="steps" id="steps"></nav>
+
+    <figure class="quote enter" style="animation-delay:120ms">
+      <blockquote>One control plane for every provider — routing, spend and health, <em>without the spreadsheets</em>.</blockquote>
+      <figcaption><span>AstraRouter</span><span class="sep">|</span><span>Control plane</span></figcaption>
+    </figure>
+  </aside>
+
+  <main class="main">
+    <div class="glow" aria-hidden="true"><div class="b1"></div><div class="b2"></div></div>
+    <div class="scroll" id="scroll"><div class="pane" id="pane"></div></div>
+    <div class="actions">
+      <div style="font-size:11px;color:var(--muted-foreground)" id="version">Version —</div>
+      <div class="grow"></div>
+      <button class="btn ghost" id="back">Back</button>
+      <button class="btn ghost" id="cancel">Cancel</button>
+      <button class="btn primary" id="next">Continue</button>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ---- floating paths (same figure as the console auth page) ----
+(function initPaths() {
+  const host = $("paths");
+  const NS = "http://www.w3.org/2000/svg";
+  const jitter = (i) => { const v = Math.sin(i + 1) * 10000; return v - Math.floor(v); };
+  const layer = (position) => {
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 696 316");
+    svg.setAttribute("class", "paths");
+    for (let i = 0; i < 36; i++) {
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d",
+        `M-${380 - i * 5 * position} -${189 + i * 6}` +
+        `C-${380 - i * 5 * position} -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${152 - i * 5 * position} ${343 - i * 6}` +
+        `C${616 - i * 5 * position} ${470 - i * 6} ${684 - i * 5 * position} ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`);
+      p.setAttribute("stroke-width", (0.5 + i * 0.03).toFixed(2));
+      p.setAttribute("stroke-opacity", (0.1 + i * 0.03).toFixed(3));
+      p.setAttribute("pathLength", "1");
+      p.setAttribute("class", "flow");
+      p.style.animationDuration = (20 + jitter(i) * 10).toFixed(1) + "s";
+      p.style.animationDelay = (-jitter(i) * 10).toFixed(1) + "s";
+      svg.appendChild(p);
+    }
+    host.appendChild(svg);
+  };
+  layer(1);
+  layer(-1);
+})();
+
+const RAIL = [
+  { key: "welcome",  label: "Welcome" },
+  { key: "location", label: "Install location" },
+  { key: "options",  label: "Options" },
+  { key: "account",  label: "Admin account" },
+  { key: "review",   label: "Review" },
+  { key: "install",  label: "Install" },
+  { key: "finish",   label: "Finish" },
+];
+
+const state = {
+  info: { product: "AstraRouter", version: "dev", source: "", installDir: "", dataDir: "", installed: false, tagline: "" },
+  step: 0,
+  opts: {
+    installDir: "", dataDir: "", sameDataDir: true,
+    desktopShortcut: true, startMenu: true, startup: false, launchAfter: true,
+    adminUser: "admin", adminPassword: "", adminConfirm: "",
+  },
+  installing: false,
+  progress: { pct: 0, label: "" },
+  result: null,
+  error: "",
+  launched: false,
+};
+
+function currentKey() { return RAIL[state.step].key; }
+
+// enter(delay) gives a pane element the auth page's staggered entrance.
+function enter(delay) { return ` class="enter" style="animation-delay:${delay}ms"`; }
+
+function renderRail() {
+  const nav = $("steps");
+  const maxReached = state.maxStep ?? state.step;
+  nav.innerHTML = RAIL.map((s, i) => {
+    const cls = i === state.step ? "active" : (i < maxReached && s.key !== "install" && s.key !== "finish" ? "done" : "");
+    const badge = cls === "done" ? "" : `<span>${i + 1}</span>`;
+    return `<div class="step ${cls}"><div class="idx">${badge}</div>${s.label}</div>`;
+  }).join("");
+}
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("on"), 2200);
+}
+
+function optionCard(key, title, desc) {
+  const on = state.opts[key] ? "on" : "";
+  return `<div class="opt ${on}" data-toggle="${key}" role="switch" aria-checked="${state.opts[key]}" tabindex="0">
+    <div class="txt"><b>${title}</b><small>${desc}</small></div>
+    <div class="switch"></div>
+  </div>`;
+}
+
+function paneWelcome() {
+  return `<div${enter(0)}><div class="kicker">Welcome</div></div>
+    <h2${enter(60)}>Set up ${state.info.product}.</h2>
+    <p class="lede"${enter(120)}>${state.info.tagline || ""} This installer sets everything up locally — a private database, the gateway and the dashboard — and opens the app when it is done.</p>
+    <div class="cards"${enter(180)}>
+      <div class="opt"><div class="txt"><b>Self-contained</b><small>Everything the app needs is bundled. Nothing else to install.</small></div></div>
+      <div class="opt"><div class="txt"><b>Private by default</b><small>Runs on this machine only and listens on loopback.</small></div></div>
+      <div class="opt"><div class="txt"><b>Ready in a moment</b><small>The first launch prepares the local database automatically.</small></div></div>
+    </div>`;
+}
+
+function paneLocation() {
+  return `<div${enter(0)}><div class="kicker">Install location</div></div>
+    <h2${enter(60)}>Where should ${state.info.product} live?</h2>
+    <p class="lede"${enter(120)}>The application and its data stay in your user profile. You can split the data out to a roomier drive if you like.</p>
+    <div class="field"${enter(180)}>
+      <label for="installdir">Install folder</label>
+      <div class="row">
+        <input id="installdir" type="text" value="${esc(state.opts.installDir)}" spellcheck="false" />
+        <button class="btn ghost" data-browse="install">Browse…</button>
+      </div>
+    </div>
+    <div class="field"${enter(240)}>
+      <label>Data folder</label>
+      ${optionCard("sameDataDir", "Use the install folder for data", "Switch off to choose a separate location for the database and logs.")}
+      ${state.opts.sameDataDir ? "" : `<div class="row" style="margin-top:12px">
+        <input id="datadir" type="text" value="${esc(state.opts.dataDir)}" spellcheck="false" />
+        <button class="btn ghost" data-browse="data">Browse…</button>
+      </div>`}
+    </div>`;
+}
+
+function paneOptions() {
+  return `<div${enter(0)}><div class="kicker">Options</div></div>
+    <h2${enter(60)}>How should it appear?</h2>
+    <p class="lede"${enter(120)}>Pick the shortcuts you want. You can change all of this later.</p>
+    <div class="cards"${enter(180)}>
+      ${optionCard("desktopShortcut", "Desktop shortcut", "Open AstraRouter from your desktop.")}
+      ${optionCard("startMenu", "Start Menu entry", "Find it in the Start Menu alongside your other apps.")}
+      ${optionCard("startup", "Start when you sign in", "Keep the gateway running in the background.")}
+      ${optionCard("launchAfter", "Launch when setup finishes", "Open the dashboard as soon as installation completes.")}
+    </div>`;
+}
+
+function paneAccount() {
+  return `<div${enter(0)}><div class="kicker">Admin account</div></div>
+    <h2${enter(60)}>Create your administrator.</h2>
+    <p class="lede"${enter(120)}>This is the only account that can sign in to the console. The password is stored as an Argon2id hash and never leaves this machine.</p>
+    <div class="field"${enter(180)}>
+      <label for="adminuser">Username</label>
+      <input id="adminuser" type="text" value="${esc(state.opts.adminUser)}" spellcheck="false" autocomplete="off" />
+    </div>
+    <div class="field"${enter(240)}>
+      <label for="adminpass">Password</label>
+      <input id="adminpass" type="password" value="${esc(state.opts.adminPassword)}" autocomplete="new-password" />
+      <div class="hint">At least 12 characters, mixing letters with digits or symbols. A passphrase you can remember works well.</div>
+    </div>
+    <div class="field"${enter(300)}>
+      <label for="adminconfirm">Confirm password</label>
+      <input id="adminconfirm" type="password" value="${esc(state.opts.adminConfirm)}" autocomplete="new-password" />
+    </div>
+    <div id="accterr" class="err" style="display:none"><p></p></div>`;
+}
+
+function paneReview() {
+  const o = state.opts;
+  const rows = [
+    ["Application", state.info.product],
+    ["Version", state.info.version],
+    ["Install folder", `<span class="mono">${esc(o.installDir)}</span>`],
+    ["Data folder", `<span class="mono">${esc(o.sameDataDir ? o.installDir : o.dataDir)}</span>`],
+    ["Desktop shortcut", o.desktopShortcut ? "Yes" : "No"],
+    ["Start Menu entry", o.startMenu ? "Yes" : "No"],
+    ["Start at sign-in", o.startup ? "Yes" : "No"],
+    ["Launch after setup", o.launchAfter ? "Yes" : "No"],
+    ["Administrator", esc(o.adminUser || "—")],
+  ];
+  return `<div${enter(0)}><div class="kicker">Review</div></div>
+    <h2${enter(60)}>Ready to install.</h2>
+    <p class="lede"${enter(120)}>Check the details below. Choosing Install copies the app, sets up the local database and creates your account.</p>
+    <div class="review"${enter(180)}>${rows.map(([k, v]) => `<div class="r"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("")}</div>`;
+}
+
+const TASKS = [
+  "Preparing folders", "Copying the application", "Writing configuration",
+  "Setting up the local database", "Creating shortcuts", "Registering the application",
+];
+function paneInstall() {
+  return `<div${enter(0)}><div class="kicker">Installing</div></div>
+    <h2${enter(60)}>Setting up ${state.info.product}…</h2>
+    <p class="lede"${enter(120)}>This takes a few moments. The local database is created on first use.</p>
+    <div class="bar"${enter(180)}><i id="barfill"></i></div>
+    <div class="plabel"${enter(180)}><span id="plabel">${esc(state.progress.label || "Starting…")}</span><span class="pct" id="ppct">${state.progress.pct}%</span></div>
+    <div class="tasks" id="tasks"${enter(240)}>
+      ${TASKS.map((t, i) => `<div class="task" data-task="${i}"><span class="dot"></span>${t}</div>`).join("")}
+    </div>
+    <div id="installerr" class="err" style="display:none"><h3>Something went wrong</h3><p></p><p style="margin-top:10px;color:var(--muted-foreground)">You can go back and try again. Details are in the logs folder.</p></div>`;
+}
+
+function paneFinish() {
+  const r = state.result || {};
+  return `<div class="hero">
+    <div class="check enter" style="animation-delay:0ms">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="hsl(142 60% 52%)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h2 class="enter" style="animation-delay:60ms">${state.info.product} is installed.</h2>
+    <p class="lede enter" style="margin-left:auto;margin-right:auto;animation-delay:120ms">${r.launched ? "The app is opening in its own window. Sign in with the administrator account you created." : "Open it any time from your shortcut, and sign in with the administrator account you created."}</p>
+  </div>
+  <div class="review enter" style="margin-top:28px;animation-delay:180ms">
+    <div class="r"><span class="k">Installed to</span><span class="v mono">${esc(r.installDir || state.opts.installDir)}</span></div>
+    <div class="r"><span class="k">Data folder</span><span class="v mono">${esc(r.dataDir || state.opts.dataDir || state.opts.installDir)}</span></div>
+    <div class="r"><span class="k">Administrator</span><span class="v">${esc(state.opts.adminUser || "—")}</span></div>
+  </div>`;
+}
+
+const PANES = { welcome: paneWelcome, location: paneLocation, options: paneOptions, account: paneAccount, review: paneReview, install: paneInstall, finish: paneFinish };
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function render() {
+  const key = currentKey();
+  $("pane").innerHTML = PANES[key]();
+  renderRail();
+  wirePane(key);
+  updateActions();
+}
+
+function updateActions() {
+  const key = currentKey();
+  const back = $("back"), next = $("next"), cancel = $("cancel");
+  back.style.visibility = (state.step === 0 || key === "install" || key === "finish") ? "hidden" : "visible";
+  cancel.style.visibility = (key === "finish") ? "hidden" : "visible";
+  if (key === "install") { next.style.display = "none"; return; }
+  next.style.display = "inline-block";
+  const labels = { welcome: "Get started", location: "Continue", options: "Continue", account: "Continue", review: "Install", finish: "Open AstraRouter" };
+  next.textContent = labels[key] || "Continue";
+}
+
+function wirePane(key) {
+  $("pane").querySelectorAll("[data-toggle]").forEach((el) => {
+    const toggle = () => {
+      const k = el.dataset.toggle;
+      state.opts[k] = !state.opts[k];
+      if (k === "sameDataDir" && state.opts[k]) state.opts.dataDir = state.opts.installDir;
+      render();
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
+  });
+  $("pane").querySelectorAll("[data-browse]").forEach((el) => {
+    el.addEventListener("click", async () => {
+      const kind = el.dataset.browse;
+      const initial = kind === "install" ? state.opts.installDir : state.opts.dataDir;
+      const chosen = await ar_browse(initial);
+      if (chosen) {
+        if (kind === "install") state.opts.installDir = chosen; else state.opts.dataDir = chosen;
+        render();
+      }
+    });
+  });
+  const bindInput = (id, prop) => {
+    const el = $(id);
+    if (el) el.addEventListener("input", () => { state.opts[prop] = el.value; });
+  };
+  bindInput("installdir", "installDir");
+  bindInput("datadir", "dataDir");
+  bindInput("adminuser", "adminUser");
+  bindInput("adminpass", "adminPassword");
+  bindInput("adminconfirm", "adminConfirm");
+}
+
+// ---- step validation ----
+// The gateway is not running yet during setup, so the wizard mirrors its
+// password and username rules (internal/dashboardauth) to reject bad input
+// before the install starts rather than failing after the database is up.
+const COMMON_PASSWORD_STEMS = [
+  "password", "passwd", "qwerty", "letmein", "welcome", "administrator",
+  "admin", "astrarouter", "changeme", "default", "iloveyou", "trustno",
+  "sunshine", "abc123", "123456", "654321",
+];
+
+function passwordProblem(pw) {
+  const length = [...pw].length;
+  if (length < 12) return "The password must be at least 12 characters.";
+  if (length > 256) return "The password must be at most 256 characters.";
+  if (pw.trim() === "") return "The password must not be only spaces.";
+  const lower = pw.toLowerCase();
+  if (COMMON_PASSWORD_STEMS.some((s) => lower.startsWith(s))) {
+    return "That password is too common — choose something a stranger could not guess.";
+  }
+  let hasLetter = false, hasDigit = false, hasSymbol = false;
+  for (const ch of pw) {
+    if (/\p{L}/u.test(ch)) hasLetter = true;
+    else if (/\p{Nd}/u.test(ch)) hasDigit = true;
+    else hasSymbol = true;
+  }
+  if ([hasLetter, hasDigit, hasSymbol].filter(Boolean).length < 2) {
+    return "Mix letters with digits or symbols — an all-letters password is easy to pad.";
+  }
+  return "";
+}
+
+function usernameProblem(name) {
+  const u = name.trim().toLowerCase();
+  if (u.length < 3 || u.length > 32) return "The username must be 3 to 32 characters.";
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(u)) {
+    return "Use lowercase letters, digits, dot, underscore or hyphen, starting with a letter or digit.";
+  }
+  return "";
+}
+
+function validate(key) {
+  if (key === "account") {
+    const o = state.opts;
+    const err = $("accterr");
+    const show = (m) => { err.style.display = "block"; err.querySelector("p").textContent = m; return false; };
+    if (!o.adminUser.trim()) return show("Choose a username for the administrator.");
+    const up = usernameProblem(o.adminUser);
+    if (up) return show(up);
+    const pp = passwordProblem(o.adminPassword);
+    if (pp) return show(pp);
+    if (o.adminPassword !== o.adminConfirm) return show("The two passwords do not match.");
+    err.style.display = "none";
+  }
+  if (key === "location") {
+    if (!state.opts.installDir.trim()) { toast("Choose an install folder."); return false; }
+    if (state.opts.sameDataDir) state.opts.dataDir = state.opts.installDir;
+    if (!state.opts.dataDir.trim()) { toast("Choose a data folder."); return false; }
+  }
+  return true;
+}
+
+async function next() {
+  const key = currentKey();
+  if (!validate(key)) return;
+  if (key === "review") { startInstall(); return; }
+  if (key === "finish") {
+    const r = state.result || {};
+    if (!r.launched) {
+      const workDir = r.installDir || state.opts.installDir;
+      const rootDir = r.dataDir || state.opts.dataDir || workDir;
+      const appPath = workDir + "\\" + state.info.product + ".exe";
+      const e = await ar_launch(appPath, workDir, rootDir);
+      if (e) toast(e);
+    }
+    return;
+  }
+  state.step = Math.min(state.step + 1, RAIL.length - 1);
+  state.maxStep = Math.max(state.maxStep || 0, state.step);
+  render();
+  $("scroll").scrollTop = 0;
+}
+
+function back() {
+  if (state.step === 0) return;
+  state.step -= 1;
+  render();
+}
+
+function startInstall() {
+  state.step = RAIL.indexOf(RAIL.find((s) => s.key === "install"));
+  state.maxStep = state.step;
+  state.progress = { pct: 0, label: "Preparing…" };
+  state.installing = true;
+  render();
+  const payload = {
+    installDir: state.opts.installDir,
+    dataDir: state.opts.sameDataDir ? state.opts.installDir : state.opts.dataDir,
+    desktopShortcut: state.opts.desktopShortcut,
+    startMenu: state.opts.startMenu,
+    startup: state.opts.startup,
+    launchAfter: state.opts.launchAfter,
+    adminUser: state.opts.adminUser.trim(),
+    adminPassword: state.opts.adminPassword,
+  };
+  ar_install(JSON.stringify(payload));
+}
+
+// ---- callbacks from Go ----
+window.__ar = {
+  onProgress(pct, label) {
+    state.progress = { pct: Math.max(0, Math.min(100, pct | 0)), label };
+    const fill = $("barfill"); if (fill) fill.style.width = state.progress.pct + "%";
+    const pl = $("plabel"); if (pl) pl.textContent = label;
+    const pp = $("ppct"); if (pp) pp.textContent = state.progress.pct + "%";
+    document.querySelectorAll(".task").forEach((t) => {
+      const i = Number(t.dataset.task);
+      // A task is done once the overall progress has moved past its band.
+      const band = TASKS.length;
+      const doneAt = ((i + 1) / band) * 100;
+      t.classList.toggle("done", state.progress.pct >= doneAt);
+      t.classList.toggle("active", state.progress.pct < doneAt && state.progress.pct >= (i / band) * 100);
+    });
+  },
+  onError(message) {
+    state.installing = false;
+    state.error = message;
+    const err = $("installerr");
+    if (err) { err.style.display = "block"; err.querySelector("p").textContent = message; }
+    const next = $("next");
+    if (next) { next.style.display = "inline-block"; next.textContent = "Back to review"; }
+    toast("Installation stopped.");
+  },
+  onDone(result) {
+    state.installing = false;
+    state.result = result || {};
+    state.step = RAIL.indexOf(RAIL.find((s) => s.key === "finish"));
+    state.maxStep = state.step;
+    render();
+    $("scroll").scrollTop = 0;
+  },
+};
+
+// ---- footer wiring ----
+$("next").addEventListener("click", next);
+$("back").addEventListener("click", back);
+$("cancel").addEventListener("click", async () => { await ar_close(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !state.installing && ["INPUT", "BUTTON"].indexOf(document.activeElement.tagName) === -1) { next(); }
+});
+
+(async function boot() {
+  try {
+    const raw = await ar_info();
+    state.info = JSON.parse(raw);
+    state.opts.installDir = state.info.installDir;
+    state.opts.dataDir = state.info.dataDir;
+    state.maxStep = 0;
+    $("version").textContent = "Version " + state.info.version;
+    if (state.info.installed) {
+      toast("An existing installation was found — setup will refresh it.");
+    }
+  } catch (e) {
+    toast("Could not read installer state.");
+  }
+  render();
+})();
+</script>
+</body>
+</html>

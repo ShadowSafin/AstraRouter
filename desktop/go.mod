@@ -2,6 +2,12 @@ module github.com/shadowsafin/astrarouter/desktop
 
 go 1.27.1
 
+// The embedded-postgres library spawns pg_ctl and initdb with exec.Command
+// and gives no hook for Windows child-creation flags, so those processes open
+// a console window. third_party/embedded-postgres is a pinned copy (v1.34.0)
+// patched to pass CREATE_NO_WINDOW; see its hide_windows.go.
+replace github.com/fergusstrange/embedded-postgres => ./third_party/embedded-postgres
+
 require (
 	github.com/fergusstrange/embedded-postgres v1.34.0
 	github.com/getlantern/systray v1.2.2

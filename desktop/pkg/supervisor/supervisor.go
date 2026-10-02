@@ -17,6 +17,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/shadowsafin/astrarouter/desktop/pkg/winproc"
 )
 
 // Child is one supervised process.
@@ -144,6 +146,9 @@ func startProc(p *proc, logger *slog.Logger) error {
 		return fmt.Errorf("no command")
 	}
 	cmd := exec.Command(p.child.Argv[0], p.child.Argv[1:]...)
+	// The app is a GUI process, so a console child would flash a terminal. Every
+	// supervised process is a console program (gateway, node), so hide them all.
+	winproc.Hide(cmd)
 	if p.child.Dir != "" {
 		cmd.Dir = p.child.Dir
 	}

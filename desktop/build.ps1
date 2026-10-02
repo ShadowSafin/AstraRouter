@@ -1,20 +1,21 @@
 <#
 .SYNOPSIS
-  Builds the single-file AstraRouter desktop app into desktop/dist/.
+  Builds the AstraRouter desktop executables into desktop/dist/.
 
 .DESCRIPTION
-  Produces ONE self-contained executable, desktop/dist/AstraRouter.exe, with
-  the gateway binary, a portable Node runtime, the built dashboard and the
-  config templates embedded inside it via go:embed. Nothing needs to sit
-  beside the .exe: it extracts its runtime to a per-user data directory on
-  first launch. The installer (install.ps1) ships next to it and installs
-  just that file.
+  Produces TWO separate programs, as different products:
 
-  Docker files are never touched; this only reads the dashboard source and
-  the main Go module to compile what the executable carries.
+    dist/AstraRouter.exe       the standalone app (runtime only)
+    dist/AstraRouterSetup.exe  the setup-only installer
 
-  Requirements: Go 1.24+, Node 20+ with npm, network access (node runtime
-  download, Go modules).
+  The installer embeds the standalone app plus its runtime (gateway, portable
+  Node, built dashboard, templates) and installs them. The app embeds no
+  installer: it only runs what is installed.
+
+  Docker files are never touched; this only reads the dashboard source and the
+  main Go module.
+
+  Requirements: Go 1.24+, Node 20+ with npm, network access.
 #>
 [CmdletBinding()]
 param(
@@ -31,14 +32,29 @@ if (-not (Test-Path $Go)) { $Go = "go" }
 
 function Step($msg) { Write-Host "`n=== $msg === " -ForegroundColor Cyan }
 
-Step "shell exe icon (rsrc)"
-& $Go run github.com/akavel/rsrc@v0.10.2 -ico (Join-Path $Desktop "assets\icon.ico") -o (Join-Path $Desktop "cmd\shell\rsrc.syso")
-if ($LASTEXITCODE -ne 0) { throw "rsrc failed" }
+Step "app + installer icons (rsrc)"
+& $Go run github.com/akavel/rsrc@v0.10.2 -ico (Join-Path $Desktop "assets\icon.ico") -o (Join-Path $Desktop "cmd\app\rsrc.syso")
+if ($LASTEXITCODE -ne 0) { throw "rsrc (app) failed" }
+& $Go run github.com/akavel/rsrc@v0.10.2 -ico (Join-Path $Desktop "assets\icon.ico") -o (Join-Path $Desktop "cmd\installer\rsrc.syso")
+if ($LASTEXITCODE -ne 0) { throw "rsrc (installer) failed" }
 
-Step "gateway binary"
 $Bin = Join-Path ([IO.Path]::GetTempPath()) "astrarouter-build"
 if (Test-Path $Bin) { Remove-Item $Bin -Recurse -Force }
 New-Item -ItemType Directory $Bin -Force | Out-Null
+
+Step "standalone app exe (runtime, no payload)"
+if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
+New-Item -ItemType Directory $Dist -Force | Out-Null
+Push-Location $Desktop
+try {
+  & $Go build ./...
+  if ($LASTEXITCODE -ne 0) { throw "desktop go build failed" }
+  & $Go build -trimpath -ldflags "-H windowsgui" -o (Join-Path $Bin "AstraRouter.exe") ./cmd/app
+  if ($LASTEXITCODE -ne 0) { throw "app build failed" }
+  Copy-Item (Join-Path $Bin "AstraRouter.exe") (Join-Path $Dist "AstraRouter.exe") -Force
+} finally { Pop-Location }
+
+Step "gateway binary"
 Push-Location $Repo
 try {
   & $Go build -trimpath -o (Join-Path $Bin "astrarouter.exe") ./cmd/astrarouter
@@ -66,21 +82,20 @@ $unzip = Join-Path ([IO.Path]::GetTempPath()) "node-unzip"
 if (Test-Path $unzip) { Remove-Item $unzip -Recurse -Force }
 Expand-Archive $zip $unzip -Force
 $NodeExe = Join-Path $unzip "node-$ver-win-x64\node.exe"
-Copy-Item $NodeExe (Join-Path $Bin "node.exe") -Force
-Remove-Item $zip -Force; Remove-Item $unzip -Recurse -Force
+Remove-Item $zip -Force
 
-Step "stage embedded payload"
+Step "stage installer payload"
 if (Test-Path $Payload) { Get-ChildItem $Payload -Force -Exclude ".keep" | Remove-Item -Recurse -Force }
 New-Item -ItemType Directory $Payload -Force | Out-Null
 $pBin = Join-Path $Payload "bin"
-$pDash = Join-Path $Payload "dashboard"
-$pStandalone = Join-Path $pDash ".next\standalone"
+$pStandalone = Join-Path $Payload "dashboard\.next\standalone"
 New-Item -ItemType Directory $pBin -Force | Out-Null
 New-Item -ItemType Directory $pStandalone -Force | Out-Null
-Copy-Item (Join-Path $Bin "astrarouter.exe") $pBin -Force
+Copy-Item (Join-Path $Bin "astrarouter.exe") (Join-Path $pBin "astrarouter.exe") -Force
 Copy-Item $NodeExe (Join-Path $pBin "node.exe") -Force
-# Next resolves static assets relative to server.js, so they must live INSIDE
-# the standalone dir: standalone/.next/static + standalone/public.
+# The standalone app is what the installer installs.
+Copy-Item (Join-Path $Bin "AstraRouter.exe") (Join-Path $Payload "AstraRouter.exe") -Force
+# Next resolves static assets relative to server.js, so they live INSIDE it.
 Copy-Item (Join-Path $Repo "dashboard\.next\standalone\*") $pStandalone -Recurse -Force
 if (-not (Test-Path (Join-Path $pStandalone "server.js"))) { throw "standalone server.js missing after build" }
 $pStatic = Join-Path $pStandalone ".next\static"
@@ -93,29 +108,23 @@ if (Test-Path (Join-Path $Repo "dashboard\public")) {
 }
 Copy-Item (Join-Path $Desktop "assets") (Join-Path $Payload "assets") -Recurse -Force
 Copy-Item (Join-Path $Desktop "templates") (Join-Path $Payload "templates") -Recurse -Force
+Remove-Item $NodeExe -ErrorAction SilentlyContinue
+Remove-Item $unzip -Recurse -Force -ErrorAction SilentlyContinue
 
+Step "setup-only installer exe"
 $stamp = (Get-Date -Format o)
 try { $stamp += " " + (git -C $Repo rev-parse --short HEAD 2>$null) } catch {}
-Write-Host "payload stamp: $stamp"
-
-Step "single-file AstraRouter.exe (payload embedded)"
 Push-Location $Desktop
 try {
-  & $Go build ./...
-  if ($LASTEXITCODE -ne 0) { throw "desktop go build failed" }
-  if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
-  New-Item -ItemType Directory $Dist -Force | Out-Null
   $vetted = "github.com/shadowsafin/astrarouter/desktop/internal/payload.version=$stamp"
-  & $Go build -trimpath -ldflags "-H windowsgui -X `"$vetted`"" -o (Join-Path $Dist "AstraRouter.exe") ./cmd/shell
-  if ($LASTEXITCODE -ne 0) { throw "shell build failed" }
+  & $Go build -trimpath -ldflags "-H windowsgui -X `"$vetted`"" -o (Join-Path $Dist "AstraRouterSetup.exe") ./cmd/installer
+  if ($LASTEXITCODE -ne 0) { throw "installer build failed" }
 } finally { Pop-Location }
 
-Step "installer package"
-foreach ($f in @("install.ps1", "uninstall.ps1", "README.md")) {
-  Copy-Item (Join-Path $Desktop $f) (Join-Path $Dist $f) -Force
-}
-"desktop single-file app built $stamp" | Set-Content (Join-Path $Dist "VERSION.txt")
+Step "package extras"
+Copy-Item (Join-Path $Desktop "README.md") (Join-Path $Dist "README.md") -Force
+"desktop built $stamp" | Set-Content (Join-Path $Dist "VERSION.txt")
 Remove-Item $Bin -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Host "`napp ready: $(Join-Path $Dist 'AstraRouter.exe')" -ForegroundColor Green
+Write-Host "`nbuild ready: $Dist" -ForegroundColor Green
 Get-ChildItem $Dist -File | ForEach-Object { Write-Host ("  {0}  {1:N1} MB" -f $_.Name, ($_.Length / 1MB)) }
