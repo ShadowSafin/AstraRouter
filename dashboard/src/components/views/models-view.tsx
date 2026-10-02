@@ -466,7 +466,10 @@ export function ModelsView() {
       ) : null}
 
       <Card className="mb-4">
-        <CardContent className="flex flex-wrap items-end gap-3 pt-5">
+        {/* `sm:pt-6` is required: CardContent's base ends in `sm:pt-0` (it assumes a
+            CardHeader above it), which would otherwise win over `pt-5` at desktop
+            widths and pull this toolbar flush against the card's top edge. */}
+        <CardContent className="flex flex-wrap items-end gap-3 pt-5 sm:pt-6">
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Provider
             <Select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)} className="w-52">

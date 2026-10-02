@@ -1,6 +1,7 @@
 'use client';
 
-import { AlertTriangle, BookKey, Check, Copy, Pencil, Plus, RefreshCw, RotateCw, Trash2 } from 'lucide-react';
+import { AlertTriangle, BookKey, Check, Copy, Pencil, Plus, RefreshCw, RotateCw, Trash2, X } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import { PageHeader } from '@/components/page-header';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { EmptyState, ErrorState, TableSkeleton } from '@/components/ui/state';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useCreateKey, useKeys, useRevokeKey, useRotateKey, useUpdateKey } from '@/hooks/use-admin';
+import { useCreateKey, useKeys, useRevokeKey, useRotateKey, useTenants, useUpdateKey } from '@/hooks/use-admin';
 import { ApiError } from '@/lib/api';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import type { APIKey } from '@/lib/types';
@@ -205,7 +206,15 @@ function KeyRow({
 }
 
 export function KeysView() {
-  const tenantId = useTenantParam();
+  const tenantParam = useTenantParam();
+  const { data: tenants, isPending: tenantsPending } = useTenants();
+  // The URL selects the tenant. When it is absent we fall back to the first
+  // tenant rather than to nothing: otherwise the picker displays a tenant while
+  // the page treats none as selected, and with a single tenant the operator
+  // cannot change a one-option select to trigger the load. That left the page
+  // looking read-only, with no list and no create form.
+  const tenantId = tenantParam || tenants?.[0]?.id || '';
+  const tenantName = tenants?.find((tenant) => tenant.id === tenantId)?.name;
   const { data: keys, isPending, isError, error, refetch, isFetching } = useKeys(tenantId);
   const createKey = useCreateKey();
   const revokeKey = useRevokeKey();
@@ -213,9 +222,25 @@ export function KeysView() {
   const [name, setName] = React.useState('');
   const [scopes, setScopes] = React.useState<string[]>(['inference']);
   const [expiresInHours, setExpiresInHours] = React.useState('');
-  const [minted, setMinted] = React.useState<{ plaintext: string; name: string; warning?: string } | null>(null);
+  const [minted, setMinted] = React.useState<{
+    plaintext: string;
+    name: string;
+    warning?: string;
+    createdAt?: string;
+    tenantName?: string;
+  } | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [formOpen, setFormOpen] = React.useState(false);
+  const formRef = React.useRef<HTMLDivElement>(null);
+
+  const openForm = React.useCallback(() => {
+    setFormOpen(true);
+    // The form may be below the fold; bring it into view for the operator.
+    window.requestAnimationFrame(() =>
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }, []);
 
   const toggleScope = (scope: string) => {
     setScopes((current) =>
@@ -250,9 +275,16 @@ export function KeysView() {
       { tenantId, name: name.trim(), scopes, expiresInHours: hours },
       {
         onSuccess: (result) => {
-          setMinted({ plaintext: result.plaintext, name: name.trim(), warning: result.warning });
+          setMinted({
+            plaintext: result.plaintext,
+            name: name.trim(),
+            warning: result.warning,
+            createdAt: result.key.created_at,
+            tenantName,
+          });
           setName('');
           setExpiresInHours('');
+          setFormOpen(false);
         },
         onError: (mutationError) => {
           setFormError(mutationError instanceof ApiError ? mutationError.message : 'the key could not be created');
@@ -285,6 +317,15 @@ export function KeysView() {
               <RefreshCw className={isFetching ? 'animate-spin' : undefined} />
               Refresh
             </Button>
+            <Button
+              size="sm"
+              onClick={openForm}
+              disabled={!tenantId}
+              title={!tenantId ? 'Create or select a tenant first — keys cannot be global' : undefined}
+            >
+              <Plus />
+              Create API key
+            </Button>
           </>
         }
       />
@@ -312,7 +353,14 @@ export function KeysView() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              For <span className="font-medium">{minted.name}</span>. Use it as{' '}
+              For <span className="font-medium">{minted.name}</span>
+              {minted.tenantName ? (
+                <>
+                  {' '}
+                  in <span className="font-medium">{minted.tenantName}</span>
+                </>
+              ) : null}
+              {minted.createdAt ? <> · created {formatDateTime(minted.createdAt)}</> : null}. Use it as{' '}
               <code className="font-mono">Authorization: Bearer &lt;key&gt;</code>.
             </p>
             <Button variant="ghost" size="sm" onClick={() => setMinted(null)}>
@@ -322,26 +370,45 @@ export function KeysView() {
         </Card>
       ) : null}
 
-      {!tenantId ? (
+      {!tenantsPending && (tenants ?? []).length === 0 ? (
         <Card className="mb-4">
-          <CardContent className="pt-5 text-sm text-muted-foreground">
-            Select a tenant above. Listing keys across every tenant is deliberately not permitted by the API, so a
-            tenant must be chosen before keys or the creation form can be shown.
+          <CardContent className="space-y-3 pt-5 sm:pt-6 text-sm text-muted-foreground">
+            <p>
+              No tenants exist yet. Every API key belongs to a tenant and there is no global scope, so create a
+              tenant first and its keys can be minted here.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tenants">Go to tenants</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : null}
 
-      {tenantId ? (
-        <Card className="mb-4">
+      {formOpen && tenantId ? (
+        <Card className="mb-4" ref={formRef}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="size-4" />
-              Mint a key
-            </CardTitle>
-            <CardDescription>
-              A key with no scope would be unusable, so at least one is required. Inference is the least-privilege
-              default.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="size-4" />
+                  Create an API key
+                </CardTitle>
+                <CardDescription>
+                  A key with no scope would be unusable, so at least one is required. Inference is the
+                  least-privilege default. It will belong to{' '}
+                  <span className="font-medium text-foreground">{tenantName ?? 'the selected tenant'}</span>.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close the create form"
+                onClick={() => setFormOpen(false)}
+              >
+                <X />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={onCreate} className="space-y-4">
@@ -388,7 +455,7 @@ export function KeysView() {
 
               <Button type="submit" disabled={createKey.isPending}>
                 <BookKey />
-                {createKey.isPending ? 'Minting…' : 'Create key'}
+                {createKey.isPending ? 'Creating…' : 'Create API key'}
               </Button>
             </form>
           </CardContent>
@@ -405,8 +472,14 @@ export function KeysView() {
             ) : (keys ?? []).length === 0 ? (
               <EmptyState
                 title="No keys for this tenant"
-                description="Mint one above. A tenant with no keys cannot call the inference API."
+                description="A tenant with no keys cannot call the inference API. Create one to get started."
                 className="m-5"
+                action={
+                  <Button size="sm" onClick={openForm}>
+                    <Plus />
+                    Create API key
+                  </Button>
+                }
               />
             ) : (
               <Table>

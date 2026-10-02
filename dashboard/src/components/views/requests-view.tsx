@@ -120,7 +120,7 @@ export function RequestsView() {
       />
 
       <Card className="mb-4">
-        <CardContent className="flex flex-wrap items-end gap-3 pt-5">
+        <CardContent className="flex flex-wrap items-end gap-3 pt-5 sm:pt-6">
           <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             Outcome
             <Select value={outcome} onChange={(event) => setOutcome(event.target.value)} className="w-36">

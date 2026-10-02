@@ -554,6 +554,26 @@ func (s *Server) handleAdminCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate the tenant up front. The insert would also reject an unknown id
+	// via its foreign key, but that surfaces as an opaque internal error; a 404
+	// says what actually went wrong. Keys are never global, so this is also the
+	// point where "which tenant" is enforced.
+	if s.repos.Tenants == nil {
+		writeError(w, domain.NewError(domain.ErrCodeInternal, "the tenant store is unavailable"),
+			metaFromContext(rc, nil))
+		return
+	}
+	tenant, err := s.repos.Tenants.GetByID(ctx, body.TenantID)
+	if err != nil {
+		writeError(w, err, metaFromContext(rc, nil))
+		return
+	}
+	if tenant == nil {
+		writeError(w, domain.NewError(domain.ErrCodeNotFound, "the selected tenant does not exist"),
+			metaFromContext(rc, nil))
+		return
+	}
+
 	generated, err := auth.GenerateKey(s.config.Auth.KeyPrefix)
 	if err != nil {
 		writeError(w, err, metaFromContext(rc, nil))
