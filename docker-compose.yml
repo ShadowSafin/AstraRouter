@@ -182,11 +182,12 @@ services:
       # provider endpoint, and is excluded from routing rather than breaking startup.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      # Temporary public tunnels (Cloudflare quick tunnels). Off by default:
-      # nothing is exposed until an operator creates a tunnel from the
-      # dashboard (/tunnels) or POST /admin/v1/tunnels/create. The gateway
-      # image ships cloudflared, so enabling needs no extra installation.
-      AR_TUNNEL_ENABLED: ${AR_TUNNEL_ENABLED:-false}
+      # Temporary public tunnels (Cloudflare quick tunnels). On by default in
+      # Docker: the gateway image ships cloudflared, and enabling exposes
+      # nothing until an operator creates a tunnel from the dashboard
+      # (/tunnels) or POST /admin/v1/tunnels/create. Set false to remove the
+      # capability entirely.
+      AR_TUNNEL_ENABLED: ${AR_TUNNEL_ENABLED:-true}
       # Inside Docker the dashboard target resolves over the compose network.
       AR_TUNNEL_DASHBOARD_TARGET: ${AR_TUNNEL_DASHBOARD_TARGET:-http://dashboard:3000}
     ports:
