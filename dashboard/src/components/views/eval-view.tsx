@@ -104,36 +104,101 @@ export function EvalView() {
 
 export function ReplayView() {
   const tenantId = useTenantParam();
-  const { data, isPending, refetch } = useReplayJobs(tenantId);
+  const { data, isPending, isError, error, refetch } = useReplayJobs(tenantId);
   const create = useCreateReplay();
   const [ids, setIds] = React.useState('');
+  const [name, setName] = React.useState('');
+  const [providers, setProviders] = React.useState('');
+  const [models, setModels] = React.useState('');
+  const [createdId, setCreatedId] = React.useState<string | null>(null);
+
+  const splitList = (value: string) =>
+    value.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 
   const onCreate = () => {
-    const request_ids = ids.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
-    create.mutate({ request_ids, tenant_id: tenantId || undefined });
+    const request_ids = splitList(ids);
+    if (request_ids.length === 0) return;
+    setCreatedId(null);
+    create.mutate(
+      {
+        name: name.trim() || undefined,
+        request_ids,
+        providers: splitList(providers),
+        models: splitList(models),
+        tenant_id: tenantId || undefined,
+      },
+      {
+        onSuccess: (job) => {
+          setIds('');
+          setCreatedId(job.id);
+          void refetch();
+        },
+      },
+    );
+  };
+
+  const targetsOf = (j: { providers?: string[]; models?: string[] }) => {
+    const p = (j.providers ?? []).filter(Boolean);
+    const m = (j.models ?? []).filter(Boolean);
+    if (p.length === 0 && m.length === 0) return 'original targets';
+    return [...p, ...m].join(', ');
   };
 
   return (
     <>
-      <PageHeader title="Replay jobs" description="Re-execute captured traffic against multiple providers for offline comparison. Jobs run asynchronously through NATS workers." />
+      <PageHeader title="Replay jobs" description="Re-execute captured traffic against multiple providers for offline comparison. Jobs run asynchronously in the gateway; this list refreshes every few seconds." />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Play className="size-4" />
             New replay
           </CardTitle>
-          <CardDescription>Paste request IDs from the Requests view, comma or space separated.</CardDescription>
+          <CardDescription>Paste request IDs from the Requests view, comma or space separated. Only requests with a captured prompt can run — older traffic is rejected with the reason.</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <input
-            className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-            placeholder="req_abc123, req_def456"
-            value={ids}
-            onChange={(e) => setIds(e.target.value)}
-          />
-          <Button size="sm" onClick={onCreate} disabled={create.isPending || !ids.trim()}>
-            {create.isPending ? 'Creating…' : 'Create job'}
-          </Button>
+        <CardContent className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              className="h-9 flex-1 rounded-md border border-input bg-background px-3 font-mono text-sm"
+              placeholder="req_abc123, req_def456"
+              value={ids}
+              onChange={(e) => setIds(e.target.value)}
+              spellCheck={false}
+            />
+            <Button size="sm" onClick={onCreate} disabled={create.isPending || !ids.trim()}>
+              {create.isPending ? 'Creating…' : 'Create job'}
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <input
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              placeholder="Job name (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              placeholder="Providers, comma separated (optional)"
+              value={providers}
+              onChange={(e) => setProviders(e.target.value)}
+              spellCheck={false}
+            />
+            <input
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              placeholder="Models, comma separated (optional)"
+              value={models}
+              onChange={(e) => setModels(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Leave providers and models empty to replay each request against the target that originally served it.
+          </p>
+          {create.isError ? <ErrorState error={create.error} onRetry={onCreate} /> : null}
+          {createdId && !create.isError ? (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+              Job {createdId.slice(0, 8)} created — watch its progress below, then inspect per-request outputs on the Evaluations page.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
       <Card className="mt-4">
@@ -143,6 +208,8 @@ export function ReplayView() {
         <CardContent className="p-0">
           {isPending ? (
             <TableSkeleton rows={4} columns={4} />
+          ) : isError ? (
+            <ErrorState error={error} onRetry={() => void refetch()} className="m-5" />
           ) : (data ?? []).length === 0 ? (
             <EmptyState title="No replay jobs" description="Replayed traffic will appear here with progress and status." className="m-5" />
           ) : (
@@ -151,6 +218,7 @@ export function ReplayView() {
                 <TableRow>
                   <TableHead>Job</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Targets</TableHead>
                   <TableHead className="text-right">Progress</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
@@ -163,6 +231,7 @@ export function ReplayView() {
                       <Badge tone={j.status === 'completed' ? 'success' : j.status === 'failed' ? 'danger' : 'info'}>{j.status}</Badge>
                       {j.error ? <p className="text-[11px] text-danger">{j.error}</p> : null}
                     </TableCell>
+                    <TableCell className="max-w-48 truncate text-xs text-muted-foreground" title={targetsOf(j)}>{targetsOf(j)}</TableCell>
                     <TableCell className="text-right tabular-nums">{j.progress ?? 0}/{j.total ?? 0}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(j.created_at).toLocaleString()}</TableCell>
                   </TableRow>

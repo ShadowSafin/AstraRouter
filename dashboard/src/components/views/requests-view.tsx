@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, RefreshCw, Search } from 'lucide-react';
+import { Check, Copy, Download, RefreshCw, Search } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
@@ -21,6 +21,34 @@ import type { RequestLog } from '@/lib/types';
 const PAGE_SIZE = 50;
 
 const OUTCOMES = ['', 'success', 'fallback', 'error', 'rejected', 'canceled'] as const;
+
+/**
+ * Copies the full request id, not the truncated text shown in the table.
+ * The id is what the Replay page accepts, so one click bridges the two views.
+ */
+function CopyRequestId({ requestId }: { requestId: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        void navigator.clipboard
+          .writeText(requestId)
+          .then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          })
+          .catch(() => undefined);
+      }}
+      title={copied ? 'Copied' : 'Copy full request id'}
+      aria-label={copied ? 'Copied request id' : 'Copy full request id'}
+      className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+    </button>
+  );
+}
 
 const EXPORT_COLUMNS: Array<keyof RequestLog> = [
   'created_at',
@@ -207,7 +235,10 @@ export function RequestsView() {
                       {formatDateTime(row.created_at)}
                     </TableCell>
                     <TableCell className="font-mono text-xs" title={row.request_id}>
-                      {truncateMiddle(row.request_id, 20)}
+                      <span className="inline-flex items-center gap-1">
+                        {truncateMiddle(row.request_id, 20)}
+                        <CopyRequestId requestId={row.request_id} />
+                      </span>
                     </TableCell>
                     <TableCell className="text-xs">
                       <div className="font-medium">{row.routed_model || '—'}</div>

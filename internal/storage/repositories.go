@@ -33,6 +33,8 @@ type Repositories struct {
 	Feedback  *FeedbackRepository
 	Overrides *OverrideRepository
 	Endpoints *EndpointRepository
+	// Captured prompts behind request ids, for offline replay.
+	Payloads *PayloadRepository
 	// Phase 3 stores.
 	Credentials *CredentialRepository
 	TestResults *TestResultRepository
@@ -79,6 +81,7 @@ func NewRepositories(pool *pgxpool.Pool, logger *slog.Logger) *Repositories {
 		Feedback:  NewFeedbackRepository(pool, logger),
 		Overrides: NewOverrideRepository(pool, logger),
 		Endpoints: NewEndpointRepository(pool, logger),
+		Payloads:  NewPayloadRepository(pool, logger),
 
 		Credentials: NewCredentialRepository(pool, logger),
 		TestResults: NewTestResultRepository(pool, logger),

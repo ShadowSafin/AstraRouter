@@ -546,9 +546,11 @@ func (s *Server) recordCacheOutcome(ctx context.Context, rc *domain.RequestConte
 		Outcome:        domain.OutcomeSuccess,
 		ClientIP:       rc.ClientIP,
 		UserAgent:      rc.UserAgent,
-		Task:           rc.Task,
-		Shaping:        rc.ShapePlan,
-		PolicyDecision: rc.PolicyDecision,
+		Task:            rc.Task,
+		Shaping:         rc.ShapePlan,
+		PolicyDecision:  rc.PolicyDecision,
+		Messages:        rc.Messages,
+		MaxOutputTokens: rc.MaxOutputTokens,
 	}
 	s.recorder.RecordRequest(ctx, out)
 }
@@ -1081,6 +1083,8 @@ func (s *Server) recordOutcome(
 		PolicyDecision:    rc.PolicyDecision,
 		Decision:          decision,
 		Trace:             trace,
+		Messages:          rc.Messages,
+		MaxOutputTokens:   rc.MaxOutputTokens,
 	}
 	if rc.CacheDecision != nil && !rc.CacheDecision.Cacheable {
 		out.CacheBypassReason = rc.CacheDecision.BypassReason

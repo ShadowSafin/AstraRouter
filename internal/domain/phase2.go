@@ -431,6 +431,20 @@ type ReplayJob struct {
 	Total       int        `json:"total,omitempty"`
 }
 
+// RequestPayload is the captured prompt behind one request id, retained so a
+// pasted request id can be re-executed offline. It stores the normalized
+// messages (roles preserved) rather than the wire body, which is what the
+// provider adapters consume. Payloads are diagnostic, not billing: they carry
+// no cost fields and are pruned with the request logs.
+type RequestPayload struct {
+	RequestID        string        `json:"request_id"`
+	TenantID         string        `json:"tenant_id,omitempty"`
+	Model            string        `json:"model,omitempty"`
+	Messages         []ChatMessage `json:"messages"`
+	MaxOutputTokens  int           `json:"max_output_tokens,omitempty"`
+	CreatedAt        time.Time     `json:"created_at"`
+}
+
 // EvaluationRun groups one eval execution.
 type EvaluationRun struct {
 	ID          string     `json:"id"`

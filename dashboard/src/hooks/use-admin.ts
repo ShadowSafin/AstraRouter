@@ -384,6 +384,9 @@ export function useReplayJobs(tenantId: string) {
       apiFetch<{ jobs: ReplayJob[] | null }>(`replay${buildQuery({ tenant_id: tenantId })}`, {
         signal,
       }).then((d) => d.jobs ?? []),
+    // Jobs run asynchronously in the gateway; poll so queued → running →
+    // completed transitions appear without a manual refresh.
+    refetchInterval: 5_000,
   });
 }
 

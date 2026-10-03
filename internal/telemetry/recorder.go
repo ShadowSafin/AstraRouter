@@ -22,6 +22,10 @@ type Sink interface {
 	WriteRequestLog(ctx context.Context, entry *domain.RequestLog) error
 	// WriteTrace persists the full request trace to the analytical store.
 	WriteTrace(ctx context.Context, trace *domain.RequestTrace) error
+	// WriteRequestPayload persists the captured prompt behind a request id so
+	// it can be re-executed offline. Best-effort: a capture failure is logged
+	// by the recorder and never fails the request it describes.
+	WriteRequestPayload(ctx context.Context, payload *domain.RequestPayload) error
 }
 
 // RequestOutcome is the complete description of a finished request.
@@ -83,6 +87,12 @@ type RequestOutcome struct {
 	Decision *domain.RouteDecision
 	// Trace is the full attempt history.
 	Trace *domain.RequestTrace
+	// Messages is the normalized prompt, retained so a pasted request id can
+	// be re-executed offline. Empty when the path had no messages to keep.
+	Messages []domain.ChatMessage
+	// MaxOutputTokens is the effective completion allowance, reused by replay
+	// to bound re-execution cost to what the original request allowed.
+	MaxOutputTokens int
 }
 
 // RecordKind identifies a queued record's type.
@@ -90,16 +100,18 @@ type RecordKind string
 
 // Record kinds.
 const (
-	KindUsage RecordKind = "usage"
-	KindLog   RecordKind = "log"
-	KindTrace RecordKind = "trace"
+	KindUsage   RecordKind = "usage"
+	KindLog     RecordKind = "log"
+	KindTrace   RecordKind = "trace"
+	KindPayload RecordKind = "payload"
 )
 
 // queuedRecord is one buffered telemetry record.
 type queuedRecord struct {
-	kind  RecordKind
-	usage *domain.UsageRecord
-	log   *domain.RequestLog
+	kind    RecordKind
+	usage   *domain.UsageRecord
+	log     *domain.RequestLog
+	payload *domain.RequestPayload
 	trace *domain.RequestTrace
 }
 
@@ -255,6 +267,20 @@ func (r *Recorder) RecordRequest(ctx context.Context, out RequestOutcome) {
 	}
 	r.enqueue(queuedRecord{kind: KindLog, log: entry})
 
+	// The prompt capture rides the same async path as the log row so it can
+	// never slow the request. Requests without messages (rejections before
+	// parsing, non-chat surfaces) store nothing.
+	if len(out.Messages) > 0 {
+		r.enqueue(queuedRecord{kind: KindPayload, payload: &domain.RequestPayload{
+			RequestID:       out.RequestID.String(),
+			TenantID:        out.TenantID,
+			Model:           out.RequestedModel,
+			Messages:        out.Messages,
+			MaxOutputTokens: out.MaxOutputTokens,
+			CreatedAt:       now,
+		}})
+	}
+
 	if out.Trace != nil {
 		r.enqueue(queuedRecord{kind: KindTrace, trace: out.Trace})
 	}
@@ -405,8 +431,8 @@ func (r *Recorder) run() {
 // usage records in the same batch from reaching the billing table.
 func (r *Recorder) flushBatch(ctx context.Context, batch []queuedRecord) {
 	var (
-		usageCount, logCount, traceCount int
-		failed                           int
+		usageCount, logCount, traceCount, payloadCount int
+		failed                                        int
 	)
 
 	for _, rec := range batch {
@@ -421,6 +447,9 @@ func (r *Recorder) flushBatch(ctx context.Context, batch []queuedRecord) {
 		case KindTrace:
 			err = r.sink.WriteTrace(ctx, rec.trace)
 			traceCount++
+		case KindPayload:
+			err = r.sink.WriteRequestPayload(ctx, rec.payload)
+			payloadCount++
 		}
 		if err != nil {
 			failed++
@@ -437,6 +466,7 @@ func (r *Recorder) flushBatch(ctx context.Context, batch []queuedRecord) {
 		r.metrics.AsyncFlushed(string(KindUsage), usageCount)
 		r.metrics.AsyncFlushed(string(KindLog), logCount)
 		r.metrics.AsyncFlushed(string(KindTrace), traceCount)
+		r.metrics.AsyncFlushed(string(KindPayload), payloadCount)
 		r.metrics.SetAsyncQueueDepth(len(r.queue))
 	}
 }
@@ -546,3 +576,6 @@ func (NopSink) WriteRequestLog(context.Context, *domain.RequestLog) error { retu
 
 // WriteTrace implements Sink.
 func (NopSink) WriteTrace(context.Context, *domain.RequestTrace) error { return nil }
+
+// WriteRequestPayload implements Sink.
+func (NopSink) WriteRequestPayload(context.Context, *domain.RequestPayload) error { return nil }

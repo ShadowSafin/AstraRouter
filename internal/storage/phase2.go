@@ -37,6 +37,18 @@ func (r *ReplayRepository) CreateJob(ctx context.Context, job *domain.ReplayJob)
 	if job.ID == "" {
 		job.ID = domain.NewID()
 	}
+	// The array columns are NOT NULL: a nil slice would insert NULL and
+	// violate the constraint, so normalize to empty arrays up front. This is
+	// the common case — the dashboard only sends request_ids.
+	if job.RequestIDs == nil {
+		job.RequestIDs = []string{}
+	}
+	if job.Providers == nil {
+		job.Providers = []string{}
+	}
+	if job.Models == nil {
+		job.Models = []string{}
+	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO replay_jobs (id, tenant_id, name, status, request_ids, dataset,
 			providers, models, max_requests, created_by, progress, total, error)
@@ -116,7 +128,7 @@ func (r *ReplayRepository) ListJobs(ctx context.Context, tenantID string, limit 
 		SELECT id, COALESCE(tenant_id::text,''), name, status, request_ids, dataset,
 			providers, models, max_requests, created_by, progress, total, error,
 			created_at, updated_at, finished_at
-		FROM replay_jobs WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT $2`, tenantID, limit)
+		FROM replay_jobs WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT $2`, nullableUUID(tenantID), limit)
 	if err != nil {
 		return nil, wrapDBError("list replay jobs", err)
 	}
@@ -191,7 +203,7 @@ func (r *ReplayRepository) ListRuns(ctx context.Context, tenantID string, limit 
 		q = `SELECT id, COALESCE(tenant_id::text,''), COALESCE(replay_job_id::text,''),
 			dataset, status, created_by, error, created_at, finished_at
 			FROM evaluation_runs WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT $2`
-		args = []any{tenantID, limit}
+		args = []any{nullableUUID(tenantID), limit}
 	}
 	rs, err := r.pool.Query(ctx, q, args...)
 	if err != nil {

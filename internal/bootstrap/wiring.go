@@ -214,6 +214,17 @@ func (s *Sink) WriteRequestLog(ctx context.Context, entry *domain.RequestLog) er
 	return s.repos.Logs.Insert(ctx, entry)
 }
 
+// WriteRequestPayload implements telemetry.Sink.
+func (s *Sink) WriteRequestPayload(ctx context.Context, payload *domain.RequestPayload) error {
+	if payload == nil {
+		return nil
+	}
+	if s.repos == nil || s.repos.Payloads == nil {
+		return nil
+	}
+	return s.repos.Payloads.Save(ctx, payload)
+}
+
 // WriteTrace implements telemetry.Sink.
 func (s *Sink) WriteTrace(ctx context.Context, trace *domain.RequestTrace) error {
 	if trace == nil {

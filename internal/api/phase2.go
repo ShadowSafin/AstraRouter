@@ -4,10 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/shadowsafin/synapass/internal/cost"
 	"github.com/shadowsafin/synapass/internal/domain"
 )
+
+// priceReplayUsage costs one replayed execution through the versioned-sheet
+// resolution live traffic uses, degrading to registry rates exactly as the
+// request path does. Wired into the replay runner at server construction.
+func (s *Server) priceReplayUsage(ctx context.Context, tenantID, providerName, modelName string, usage domain.TokenUsage) float64 {
+	price := s.resolvePrice(ctx, tenantID, providerName, modelName,
+		domain.RouteTarget{ProviderName: providerName, Model: modelName})
+	bd := cost.Compute(usage, price, []cost.AttemptUsage{{Label: "replay", Usage: usage}})
+	return bd.TotalUSD
+}
 
 // Phase 2 service contracts. Defined here (consumer side) so the api package
 // does not import classifier/shaping/cache/scoring/guardrails/replay
@@ -287,6 +299,13 @@ func (s *Server) handleAdminCreateReplay(w http.ResponseWriter, r *http.Request)
 	if p := principal(ctx); p != nil {
 		job.CreatedBy = p.Label()
 	}
+	// Fail fast on unreplayable input: a queued job that can never run is
+	// worse than a 400 that says why, and the dashboard surfaces this text
+	// next to the form.
+	if err := s.validateReplayJob(ctx, &job); err != nil {
+		writeError(w, err, metaFromContext(rc, nil))
+		return
+	}
 	created, err := s.replaySvc.CreateReplayJob(ctx, &job)
 	if err != nil {
 		writeError(w, err, metaFromContext(rc, nil))
@@ -296,7 +315,104 @@ func (s *Server) handleAdminCreateReplay(w http.ResponseWriter, r *http.Request)
 		s.metrics.ReplayJobsTotal.WithLabelValues("created").Inc()
 	}
 	s.audit(ctx, rc, domain.AuditCreate, domain.ResourceReplayJob, created.ID, nil, map[string]any{"name": created.Name})
+	s.startReplayJob(created.ID)
 	writeJSON(w, http.StatusCreated, created)
+}
+
+// validateReplayJob normalizes a replay request and proves every id can
+// actually run: the request must exist in the logs and its prompt must have
+// been captured. Traffic that predates prompt capture fails here with the
+// recovery step, not later as a silent empty job.
+func (s *Server) validateReplayJob(ctx context.Context, job *domain.ReplayJob) error {
+	cleaned := make([]string, 0, len(job.RequestIDs))
+	seen := map[string]bool{}
+	for _, id := range job.RequestIDs {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		cleaned = append(cleaned, id)
+	}
+	job.RequestIDs = cleaned
+	if len(job.RequestIDs) == 0 {
+		if strings.TrimSpace(job.Dataset) != "" {
+			return domain.NewError(domain.ErrCodeInvalidRequest,
+				"dataset replay is not supported yet: pass request_ids")
+		}
+		return domain.NewError(domain.ErrCodeInvalidRequest, "request_ids is required")
+	}
+	if job.MaxRequests <= 0 {
+		job.MaxRequests = 100
+	}
+	if job.MaxRequests > 1000 {
+		job.MaxRequests = 1000
+	}
+	if s.repos == nil || s.repos.Logs == nil {
+		return domain.NewError(domain.ErrCodeInternal, "the request log store is unavailable")
+	}
+	if s.repos.Payloads == nil {
+		return domain.NewError(domain.ErrCodeInternal, "prompt capture is unavailable")
+	}
+	for _, id := range job.RequestIDs {
+		entry, err := s.repos.Logs.GetByRequestID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if entry == nil {
+			return domain.Errorf(domain.ErrCodeNotFound, "request %q was not found", id)
+		}
+		payload, err := s.repos.Payloads.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if payload == nil || len(payload.Messages) == 0 {
+			return domain.Errorf(domain.ErrCodeInvalidRequest,
+				"request %q has no captured prompt: it predates prompt capture; send new traffic and retry", id)
+		}
+	}
+	return nil
+}
+
+// startReplayJob runs a created job in the background. The context is
+// detached from the HTTP request so a closed dashboard tab cannot cancel an
+// offline job; per-execution timeouts still bound every provider call.
+func (s *Server) startReplayJob(jobID string) {
+	if s.replayRunner == nil {
+		return
+	}
+	observe := func(status string) {
+		if s.metrics != nil && s.metrics.ReplayJobsTotal != nil {
+			s.metrics.ReplayJobsTotal.WithLabelValues(status).Inc()
+		}
+	}
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.logger.Error("replay job panicked", "job_id", jobID, "panic", rec)
+				observe("failed")
+				if s.repos != nil && s.repos.Replay != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					if job, _ := s.repos.Replay.GetJob(ctx, jobID); job != nil {
+						now := domain.Now()
+						job.Status = "failed"
+						job.Error = "the replay worker panicked; check the gateway log"
+						job.FinishedAt = &now
+						job.UpdatedAt = now
+						_ = s.repos.Replay.UpdateJob(ctx, job)
+					}
+				}
+			}
+		}()
+		run, err := s.replayRunner.Run(context.Background(), jobID)
+		if err != nil {
+			s.logger.Error("replay job failed", "job_id", jobID, "error", err)
+			observe("failed")
+			return
+		}
+		observe(run.Status)
+	}()
 }
 
 func (s *Server) handleAdminListReplay(w http.ResponseWriter, r *http.Request) {

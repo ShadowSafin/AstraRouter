@@ -31,6 +31,7 @@ import (
 	"github.com/shadowsafin/synapass/internal/logging"
 	"github.com/shadowsafin/synapass/internal/policy"
 	"github.com/shadowsafin/synapass/internal/providers"
+	"github.com/shadowsafin/synapass/internal/replay"
 	"github.com/shadowsafin/synapass/internal/routing"
 	"github.com/shadowsafin/synapass/internal/storage"
 	"github.com/shadowsafin/synapass/internal/telemetry"
@@ -156,6 +157,10 @@ type Server struct {
 	scorer     ScoringService
 	guard      GuardrailService
 	replaySvc  ReplayService
+	// replayRunner executes replay jobs in a background goroutine through
+	// the live provider adapters. Nil when the stores are absent; creation
+	// then persists a queued job that never runs, as before.
+	replayRunner *replay.Runner
 
 	// reloader applies catalogue writes immediately (Phase 3).
 	reloader Reloader
@@ -223,6 +228,22 @@ func NewServer(deps Deps) (*Server, error) {
 		dashboardAuth: deps.DashboardAuth,
 		startedAt:  deps.StartedAt,
 		priceCache: cost.NewPriceCache(priceCacheTTL),
+	}
+
+	// The replay runner needs the request logs, the captured prompts, the
+	// job store and the live adapters together; this constructor is the only
+	// place that holds all four. Pricing resolves through the same
+	// versioned-sheet path live traffic uses, so replay costs foot with the
+	// cost views instead of a second price book.
+	if deps.Repositories != nil {
+		s.replayRunner = replay.NewRunner(replay.RunnerDeps{
+			Payloads: deps.Repositories.Payloads,
+			Logs:     deps.Repositories.Logs,
+			Store:    deps.Repositories.Replay,
+			Adapters: deps.Adapters,
+			Pricer:   s.priceReplayUsage,
+			Logger:   logger,
+		})
 	}
 
 	// Parse the trusted proxy list once. A malformed entry is reported at startup
