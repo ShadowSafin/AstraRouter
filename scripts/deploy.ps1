@@ -54,6 +54,25 @@ function Test-PortInUse([int]$Port) {
   } catch { return $false } finally { $Client.Close() }
 }
 
+# Detect the machine's current LAN IPv4: the address on the interface that
+# carries the default route (Wi-Fi on a laptop), skipping loopback, link-local
+# and virtual adapters. Recomputed at every launch so a network change is
+# picked up without editing .env; returns "" when nothing suitable exists.
+function Get-LanIPv4 {
+  try {
+    $Route = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -AddressFamily IPv4 `
+      -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    if ($Route) {
+      $Addr = Get-NetIPAddress -InterfaceIndex $Route.InterfaceIndex -AddressFamily IPv4 `
+        -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -notmatch "^(127\.|169\.254\.)" } |
+        Select-Object -First 1
+      if ($Addr) { return $Addr.IPAddress }
+    }
+  } catch { }
+  return ""
+}
+
 function New-AdminKey {
   $Bytes = New-Object byte[] 24
   [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($Bytes)
@@ -118,6 +137,22 @@ function Invoke-Up {
   if ($Admin -eq $AdminPlaceholder) { Fail "environment bootstrap" "SYNAPASS_ADMIN_KEY still holds the .env.example placeholder, which production validation refuses. Set a real value in .env." }
 
   # 4. Start.
+  # The dashboard shows a LAN URL for other devices; its host part is detected
+  # fresh here and exported for this compose invocation only (process env beats
+  # .env, and .env itself is never rewritten). A pinned GATEWAY_LAN_URL in the
+  # environment keeps working: explicit configuration always wins over detection.
+  if (-not [Environment]::GetEnvironmentVariable("GATEWAY_LAN_URL")) {
+    $LanIP = Get-LanIPv4
+    if ($LanIP) {
+      $GwPort = Get-EnvValue "GATEWAY_PORT" "8080"
+      $env:GATEWAY_LAN_URL = "http://${LanIP}:${GwPort}"
+      Write-Host "  OK  detected LAN address $env:GATEWAY_LAN_URL"
+    } else {
+      Write-Host "  WARN could not detect a LAN address; the dashboard falls back to .env"
+    }
+  } else {
+    Write-Host "  OK  using pinned GATEWAY_LAN_URL from the environment"
+  }
   Write-Host "  Building images if needed (first run takes several minutes -- normal)..."
   docker compose up -d --build
   if ($LASTEXITCODE -ne 0) { Fail "starting the compose stack" "docker compose failed. Inspect the build output above." }

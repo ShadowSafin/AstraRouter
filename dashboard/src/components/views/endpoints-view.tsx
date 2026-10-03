@@ -123,6 +123,20 @@ function formFromEndpoint(e: Endpoint, lookups: CatalogueLookups): EndpointFormS
   return form;
 }
 
+/**
+ * Derive the gateway's LAN address from the hostname the browser used to load
+ * the dashboard. The gateway runs on the same machine, so when the page is
+ * opened via a LAN address that address plus the public gateway port is the
+ * current LAN endpoint — rechecked on every page load, immune to network
+ * changes. localhost (and unresolvable hosts) derive to nothing.
+ */
+function deriveLanUrl(port: number): string | null {
+  if (typeof window === 'undefined') return null;
+  const host = window.location.hostname.trim();
+  if (!host || host === 'localhost' || host === '127.0.0.1' || host === '::1') return null;
+  return `${window.location.protocol}//${host}:${port}`;
+}
+
 function useGatewayUrls(): { local: string; lan: string | null } {
   // The build-time public URL is the address a browser can reach (compose
   // inlines NEXT_PUBLIC_SYNAPASS_API_URL). The server-side gateway address
@@ -139,6 +153,12 @@ function useGatewayUrls(): { local: string; lan: string | null } {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled || !data) return;
+        const port =
+          typeof data.gateway_port === 'number' && data.gateway_port > 0
+            ? data.gateway_port
+            : 18080;
+        const envLan =
+          typeof data.lan_url === 'string' && data.lan_url ? data.lan_url : null;
         setUrls((prev) => ({
           local:
             baked && baked.length > 0
@@ -146,7 +166,10 @@ function useGatewayUrls(): { local: string; lan: string | null } {
               : typeof data.gateway_url === 'string' && data.gateway_url
                 ? data.gateway_url
                 : prev.local,
-          lan: typeof data.lan_url === 'string' && data.lan_url ? data.lan_url : null,
+          // The live hostname wins: a fixed env IP goes stale on every network
+          // change, while the env remains the fallback for localhost browsing
+          // and split-machine deployments.
+          lan: deriveLanUrl(port) ?? envLan,
         }));
       })
       .catch(() => undefined);
@@ -380,8 +403,9 @@ export function EndpointsView() {
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              No LAN address configured, so only this machine&apos;s URL is shown. Set GATEWAY_LAN_URL (e.g.
-              http://192.168.1.20:18080) and bind the gateway to your network to share endpoints with other devices.
+              You opened the dashboard via localhost, so there is no LAN address to derive — open it via your
+              machine&apos;s network address (e.g. http://192.168.1.20:3000) and this section fills itself in on
+              every load. Alternatively set GATEWAY_LAN_URL (e.g. http://192.168.1.20:18080) as a fixed fallback.
             </p>
           )}
         </CardContent>
