@@ -100,6 +100,10 @@ type Config struct {
 	Scoring    ScoringConfig    `yaml:"scoring" json:"scoring"`
 	Guardrails GuardrailsConfig `yaml:"guardrails" json:"guardrails"`
 	Eval       EvalConfig       `yaml:"eval" json:"eval"`
+	// Detection tunes automatic capability detection: asking newly discovered
+	// models what they can do so routing does not have to guess from the
+	// provider kind.
+	Detection DetectionConfig `yaml:"detection" json:"detection"`
 	Telemetry  TelemetryConfig  `yaml:"telemetry" json:"telemetry"`
 	Logging    LoggingConfig    `yaml:"logging" json:"logging"`
 	Admin      AdminConfig      `yaml:"admin" json:"admin"`
@@ -631,6 +635,25 @@ type EvalConfig struct {
 	WorkerPool  int  `yaml:"worker_pool" json:"worker_pool"`
 }
 
+// DetectionConfig tunes automatic capability detection.
+//
+// Probing spends real upstream tokens — four minimal completions per model by
+// default — so everything here is off or capped. The endpoint that runs
+// detection stays available regardless, because an explicit operator action
+// needs no further permission.
+type DetectionConfig struct {
+	// Enabled runs detection automatically after model discovery for models
+	// that declare no capabilities. Off by default: it is the operator's call
+	// whether a discovery run may spend upstream tokens.
+	Enabled bool `yaml:"enabled" json:"enabled"`
+	// MaxModelsPerRun caps how many models one automatic run touches.
+	MaxModelsPerRun int `yaml:"max_models_per_run" json:"max_models_per_run"`
+	// Concurrency caps simultaneous probe calls in one run.
+	Concurrency int `yaml:"concurrency" json:"concurrency"`
+	// TimeoutPerModel bounds all probes for one model, e.g. "90s".
+	TimeoutPerModel Duration `yaml:"timeout_per_model" json:"timeout_per_model"`
+}
+
 // TelemetryConfig configures observability.
 type TelemetryConfig struct {
 	// ServiceName overrides app.name for OTel resource attributes.
@@ -885,6 +908,12 @@ DefaultTimeout: TimeoutConfig{
 			Enabled:     true,
 			MaxRequests: 100,
 			WorkerPool:  4,
+		},
+		Detection: DetectionConfig{
+			Enabled:         false,
+			MaxModelsPerRun: 10,
+			Concurrency:     2,
+			TimeoutPerModel: Duration(90 * time.Second),
 		},
 		Telemetry: TelemetryConfig{
 			TracesEnabled:     true,

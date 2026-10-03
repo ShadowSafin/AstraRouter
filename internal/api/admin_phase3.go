@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	adminsvc "github.com/shadowsafin/synapass/internal/admin"
 	"github.com/shadowsafin/synapass/internal/auth"
+	"github.com/shadowsafin/synapass/internal/config"
 	"github.com/shadowsafin/synapass/internal/domain"
 )
 
@@ -839,7 +841,128 @@ func (s *Server) handleAdminSyncProviderModels(w http.ResponseWriter, r *http.Re
 	})
 	s.reloadRuntime(ctx)
 
+	// When automatic detection is switched on, models this sync just created are
+	// asked what they can do before the response goes out. Only arrivals are
+	// probed here, never the backlog: a sync that created three models can
+	// afford to ask about three, while a provider with sixty silent models
+	// gets its backfill from the explicit endpoint, on the operator's call.
+	// This is opt-in because it spends upstream tokens; an explicit call to
+	// the endpoint below needs no flag.
+	if s.config.Detection.Enabled && len(res.Created) > 0 {
+		dopts := detectionOptionsFromConfig(s.config.Detection)
+		dopts.Only = res.Created
+		if report, derr := adminsvc.DetectMissingCapabilities(ctx, adapter, s.repos.Models, *provider, dopts); derr == nil && report != nil {
+			s.audit(ctx, rc, domain.AuditUpdate, domain.ResourceModel, provider.ID, nil, map[string]any{
+				"action":        "detect-capabilities",
+				"provider":      provider.Name,
+				"attempted":     len(report.Attempted),
+				"proven":        len(report.Proven),
+				"indeterminate": len(report.Indeterminate),
+			})
+			s.reloadRuntime(ctx)
+			writeJSON(w, http.StatusOK, map[string]any{"sync": res, "detection": report})
+			return
+		}
+		// Detection failures must not fail a sync that otherwise succeeded: the
+		// registry is correct, it just learned nothing new. They are audit-logged
+		// by the endpoint when run explicitly.
+	}
+
 	writeJSON(w, http.StatusOK, res)
+}
+
+// handleAdminDetectCapabilities asks a provider's models what they can do.
+//
+// Probing is explicit billable traffic — typically four minimal completions
+// per model — so besides the automatic post-sync run this endpoint is the
+// operator's deliberate way to say "spend the tokens". It never touches a
+// model that already declares capabilities.
+func (s *Server) handleAdminDetectCapabilities(w http.ResponseWriter, r *http.Request) {
+	// Detection is slow on purpose: up to MaxModelsPerRun models, each with
+	// several round trips. Ten minutes bounds the worst case; per-model
+	// timeouts and context cancellation end it sooner.
+	ctx, cancel := timeoutContext(r, 10*time.Minute)
+	defer cancel()
+	rc := requestContext(ctx)
+
+	if s.repos == nil || s.repos.Providers == nil || s.repos.Models == nil {
+		writeError(w, domain.NewError(domain.ErrCodeInternal, "the provider store is unavailable"),
+			metaFromContext(rc, nil))
+		return
+	}
+
+	provider, err := s.repos.Providers.GetByID(ctx, chiURLParam(r, "id"))
+	if err != nil {
+		writeError(w, err, metaFromContext(rc, nil))
+		return
+	}
+	if provider == nil {
+		writeError(w, domain.NewError(domain.ErrCodeNotFound, "provider not found"),
+			metaFromContext(rc, nil))
+		return
+	}
+
+	adapter, err := s.resolveProviderAdapter(ctx, provider)
+	if err != nil {
+		writeError(w, err, metaFromContext(rc, nil))
+		return
+	}
+
+	var body struct {
+		Models          []string `json:"models"`
+		MaxModels       *int     `json:"max_models"`
+		Concurrency     *int     `json:"concurrency"`
+		TimeoutPerModel string   `json:"timeout_per_model"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+
+	opts := detectionOptionsFromConfig(s.config.Detection)
+	opts.Only = body.Models
+	if body.MaxModels != nil {
+		opts.MaxModels = *body.MaxModels
+	}
+	if body.Concurrency != nil {
+		opts.Concurrency = *body.Concurrency
+	}
+	if body.TimeoutPerModel != "" {
+		if d, perr := time.ParseDuration(body.TimeoutPerModel); perr == nil && d > 0 {
+			opts.Timeout = d
+		}
+	}
+
+	report, err := adminsvc.DetectMissingCapabilities(ctx, adapter, s.repos.Models, *provider, opts)
+	if err != nil {
+		writeError(w, err, metaFromContext(rc, nil))
+		return
+	}
+
+	s.audit(ctx, rc, domain.AuditUpdate, domain.ResourceModel, provider.ID, nil, map[string]any{
+		"action":        "detect-capabilities",
+		"provider":      provider.Name,
+		"attempted":     len(report.Attempted),
+		"proven":        len(report.Proven),
+		"indeterminate": len(report.Indeterminate),
+	})
+	s.reloadRuntime(ctx)
+
+	writeJSON(w, http.StatusOK, report)
+}
+
+// detectionOptionsFromConfig translates the configured detection bounds into
+// runner options. The endpoint stays usable when the automatic run is off, so
+// this is shared rather than gated.
+func detectionOptionsFromConfig(c config.DetectionConfig) adminsvc.DetectionOptions {
+	timeout := 90 * time.Second
+	if c.TimeoutPerModel.Std() > 0 {
+		timeout = c.TimeoutPerModel.Std()
+	}
+	return adminsvc.DetectionOptions{
+		Timeout:     timeout,
+		Concurrency: c.Concurrency,
+		MaxModels:   c.MaxModelsPerRun,
+	}
 }
 
 // ---------------------------------------------------------------------------

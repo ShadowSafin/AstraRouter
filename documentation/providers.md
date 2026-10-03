@@ -53,6 +53,34 @@ inheriting the provider's environment. Existing rows are never modified, so your
 pricing, aliases, priorities and disables survive a re-sync. Delete a row to drop
 a model permanently.
 
+A discovered model arrives knowing its name and nothing else — the OpenAI
+`/v1/models` response carries no capability metadata — so it inherits the
+provider kind's defaults until someone says otherwise. Two ways to say otherwise,
+in order of preference:
+
+1. **Declare it** when you add the model, or `PATCH` the row later. What you
+   write is final: nothing automatic ever overwrites a declared list.
+2. **Read it from the provider** (`POST …/sync-models`, or tick **Sync models**
+   on create). Routers that publish it — LiteLLM-style `/model/info` with
+   `supports_function_calling` and friends — have it recorded per model for free.
+3. **Ask the model** (`POST …/detect-capabilities`). It sends each silent model
+   minimal probes — a one-token completion carrying tools, an event-stream
+   attempt, then JSON modes — and records only what a successful call proves.
+   A 400 that names the feature means it cannot do it; auth failures, rate
+   limits and 5xx mean nothing was decided and the row is left alone. Provenance
+   lands in the row metadata as
+   `capabilities_source: provider | probed | declared`. Chat is recorded
+   whenever anything succeeds, because every probe is itself a chat completion —
+   a proven list without it would unroute the model from plain requests.
+
+Detection spends real upstream tokens (four tiny calls per model by default),
+so the automatic post-discovery run is off: set `detection.enabled: true` in the
+config, or call the endpoint with an explicit `{"models": [...]}`. Bounds
+(`max_models_per_run`, `concurrency`, `timeout_per_model`) keep one click from
+becoming a bill, and an explicit model list scopes it further. Vision is never
+probed — it needs an image payload, a different cost class from a one-token
+text probe.
+
 ## Credentials
 
 Two sources, with fixed precedence.
@@ -202,7 +230,8 @@ curl -s "$GATEWAY/admin/v1/providers/health?provider_id=$ID" -H "Authorization: 
 | `PATCH` | `/providers/{id}` | Partial update, including `status`. |
 | `DELETE` | `/providers/{id}` | Delete. Models cascade; returns `{deleted, models_removed}`. |
 | `POST` | `/providers/{id}/kill` | Kill switch (`{"kill":true,"reason":"…"}`) or revive (`{"kill":false}`). |
-| `POST` | `/providers/{id}/sync-models` | Discover remote models. Returns `{created, skipped, total}`. |
+| `POST` | `/providers/{id}/sync-models` | Discover remote models. Returns `{created, skipped, total, capability_source, capabilities_filled}`. |
+| `POST` | `/providers/{id}/detect-capabilities` | Probe silent models (`{"models":[…]}` to scope, plus `max_models`, `concurrency`, `timeout_per_model` overrides). Returns `{attempted, proven, indeterminate, skipped}`. |
 
 `PATCH {"status":"disabled"}` takes a provider out of rotation; re-enabling audits
 `enable` rather than a plain `update`, so the audit log answers who turned it

@@ -317,6 +317,10 @@ func (c *Config) applyEnv() error {
 	envBool(&c.Eval.Enabled, "SYNAPASS_EVAL_ENABLED")
 	envInt(&c.Eval.MaxRequests, "SYNAPASS_EVAL_MAX_REQUESTS")
 	envInt(&c.Eval.WorkerPool, "SYNAPASS_EVAL_WORKER_POOL")
+	envBool(&c.Detection.Enabled, "SYNAPASS_DETECTION_ENABLED")
+	envInt(&c.Detection.MaxModelsPerRun, "SYNAPASS_DETECTION_MAX_MODELS")
+	envInt(&c.Detection.Concurrency, "SYNAPASS_DETECTION_CONCURRENCY")
+	envDuration(&c.Detection.TimeoutPerModel, "SYNAPASS_DETECTION_TIMEOUT_PER_MODEL")
 
 	// ---- telemetry ----
 	envString(&c.Telemetry.ServiceName, "SYNAPASS_OTEL_SERVICE_NAME")

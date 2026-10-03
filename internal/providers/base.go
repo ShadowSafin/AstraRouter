@@ -159,7 +159,16 @@ func DefaultCapabilities(kind domain.ProviderKind) domain.CapabilitySet {
 
 // newRequest builds an authenticated request against the provider.
 func (b *baseAdapter) newRequest(ctx context.Context, method, path string, body []byte) (*http.Request, error) {
-	full := buildURL(b.baseURL, path)
+	// An absolute location passes through untouched. Relative locations are
+	// resolved against the configured base. The pass-through exists for
+	// discovery endpoints that live outside the API mount point — capability
+	// metadata at the server root when the chat API mounts under /v1 — and it
+	// keeps auth and headers applied, because the credential is the account's,
+	// not the path's.
+	full := path
+	if !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") {
+		full = buildURL(b.baseURL, path)
+	}
 
 	var reader *strings.Reader
 	if body != nil {
@@ -281,6 +290,33 @@ func (b *baseAdapter) getJSON(ctx context.Context, path string, v any) (int, err
 		}
 	}
 	return resp.StatusCode, nil
+}
+
+// getRawJSON performs an authenticated GET and returns the undecoded body.
+//
+// getJSON decodes straight into a target, but the capability catalogue needs to
+// be sniffed across several layouts before any of them can be ruled out, and a
+// decode failure there means "this provider does not publish it" rather than an
+// error worth surfacing.
+func (b *baseAdapter) getRawJSON(ctx context.Context, path string) ([]byte, error) {
+	req, err := b.newRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return nil, NormalizeTransportError(b.provider.Name, "", 1, err)
+	}
+	defer closeBody(resp)
+
+	body, err := readLimited(resp.Body, b.opts.MaxResponseBytes)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, NormalizeHTTPError(b.provider.Name, "", 1, resp.StatusCode, body, resp.Header)
+	}
+	return body, nil
 }
 
 // probeResult is the outcome of a health probe.

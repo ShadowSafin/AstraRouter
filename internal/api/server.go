@@ -364,6 +364,10 @@ func (s *Server) buildRouter() http.Handler {
 			r.Post("/providers/{id}/test", s.handleAdminTestProvider)
 			r.Get("/providers/{id}/tests", s.handleAdminListProviderTests)
 			r.Post("/providers/{id}/sync-models", s.handleAdminSyncProviderModels)
+			// Probes a provider's models to learn their capabilities. Explicit
+			// billable traffic, so this is an operator action, never automatic
+			// unless detection is enabled in configuration.
+			r.Post("/providers/{id}/detect-capabilities", s.handleAdminDetectCapabilities)
 
 			r.Get("/models", s.handleAdminListModels)
 			r.Post("/models", s.handleAdminCreateModel)

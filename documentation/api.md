@@ -542,7 +542,8 @@ no adapter and is excluded from routing rather than failing requests.
 | --- | --- | --- |
 | `POST` | `/providers/{id}/test` | Run checks. Returns `{success, results[]}`. |
 | `GET` | `/providers/{id}/tests` | Test history. `limit` defaults to 50. |
-| `POST` | `/providers/{id}/sync-models` | Discover remote models into the registry. Returns `{created, skipped, total}`. |
+| `POST` | `/providers/{id}/sync-models` | Discover remote models into the registry. Returns `{created, skipped, total, capability_source, capabilities_filled}`. |
+| `POST` | `/providers/{id}/detect-capabilities` | Probe models with no declared capabilities (`{"models":[…]}` to scope). Returns `{attempted, proven, indeterminate, skipped}`. |
 
 ```http
 POST /admin/v1/providers/{id}/test

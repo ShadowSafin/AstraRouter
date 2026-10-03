@@ -273,6 +273,18 @@ eval:
   max_requests: 100
   worker_pool: 4
 
+# Automatic capability detection: ask newly discovered models what they can do
+# (tools, streaming, JSON modes) so routing does not guess from the provider
+# kind. Probing spends real upstream tokens — four minimal completions per model
+# by default — so the automatic run is off. The explicit endpoint
+# POST /admin/v1/providers/{id}/detect-capabilities always works regardless:
+# it is an operator's deliberate "spend the tokens".
+detection:
+  enabled: false
+  max_models_per_run: 10
+  concurrency: 2
+  timeout_per_model: 90s
+
 telemetry:
   # Overrides app.name for the OTel resource.
   service_name: ""

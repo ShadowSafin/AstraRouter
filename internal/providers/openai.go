@@ -423,6 +423,9 @@ func (a *openAIAdapter) convertMessage(m *openAIMessage) *domain.ChatMessage {
 }
 
 // ListModels returns the model identifiers the provider reports.
+//
+// The /v1/models response carries an id and nothing else, so this cannot say
+// what a model can do. See ListModelsWithCapabilities for that.
 func (a *openAIAdapter) ListModels(ctx context.Context) ([]string, error) {
 	var parsed struct {
 		Data []struct {
@@ -441,6 +444,50 @@ func (a *openAIAdapter) ListModels(ctx context.Context) ([]string, error) {
 	return out, nil
 }
 
+// ListModelsWithCapabilities returns the catalogue with whatever capability
+// metadata the provider publishes.
+//
+// Routers built on LiteLM and its derivatives expose a per-model capability view
+// at /model/info. When it is there this is free and exact, which is worth a
+// great deal more than a probe: no tokens, no per-model requests, and the
+// answer comes from the provider rather than from inference.
+//
+// The endpoint is optional and commonly absent, so a miss is an ordinary result
+// rather than an error — callers fall back to ListModels and the kind default.
+func (a *openAIAdapter) ListModelsWithCapabilities(ctx context.Context) ([]RemoteModel, error) {
+	// Both spellings are tried because the base URL almost always ends in /v1
+	// while LiteLM serves this view at the server root, so the naive
+	// base-relative path 404s on exactly the platforms most likely to have it.
+	for _, path := range modelInfoPaths(a.baseAdapter.baseURL) {
+		body, err := a.getRawJSON(ctx, path)
+		if err != nil {
+			continue
+		}
+		if models, perr := parseModelInfo(body); perr == nil && len(models) > 0 {
+			return models, nil
+		}
+	}
+	return nil, errModelInfoUnsupported
+}
+
+// modelInfoPaths returns the locations to try for capability metadata, most
+// specific first: relative to the configured base, then at the server root with
+// a trailing API version stripped.
+func modelInfoPaths(baseURL string) []string {
+	paths := []string{"/model/info"}
+	trimmed := baseURL
+	for _, suffix := range []string{"/v1", "/v1beta", "/openai/v1", "/api/v1"} {
+		if strings.HasSuffix(strings.TrimRight(trimmed, "/"), suffix) {
+			trimmed = strings.TrimRight(trimmed, "/")
+			trimmed = trimmed[:len(trimmed)-len(suffix)]
+			break
+		}
+	}
+	if trimmed != "" && trimmed != baseURL {
+		paths = append(paths, trimmed+"/model/info")
+	}
+	return paths
+}
 // convertFinishReason maps the provider's finish reason onto the domain enum.
 func convertFinishReason(raw *string) *domain.FinishReason {
 	if raw == nil {
