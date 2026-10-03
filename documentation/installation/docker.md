@@ -141,6 +141,23 @@ docker compose down                     # stop, keep volumes
 docker compose down -v                  # stop and delete data
 ```
 
+### Starting and restarting (Windows)
+
+Use the wrapper instead of bare `docker compose up` so the Endpoints page keeps
+showing the machine's current LAN address after a network change:
+
+```powershell
+.\scripts\up.ps1           # detect the LAN IPv4, then docker compose up -d
+.\scripts\up.ps1 gateway   # restart one service with a fresh LAN address
+```
+
+The script detects the IPv4 on the default-route interface and exports it as
+`GATEWAY_LAN_URL` for that compose invocation only. `.env` is never rewritten
+— leave `GATEWAY_LAN_URL` empty there for auto-detect, or pin it (in `.env` or
+the shell) to override detection. The dashboard also derives the LAN URL from
+the browser's own address when you open it via a LAN IP, so phones and other
+devices on the same network get a copy-paste URL that works.
+
 ### Upgrading
 
 ```bash

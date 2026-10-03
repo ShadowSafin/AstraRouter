@@ -124,6 +124,15 @@ Truncation is now always reported in `synapass.completion` (`truncated`,
 answer. A stream that has begun is committed: the executor reports a
 stream-started error rather than appending a second attempt's tokens to the first.
 
+## Cost intelligence, compare mode, and offline replay
+
+| Area | Delivered |
+| --- | --- |
+| Cost intelligence | Exact per-request costing (micro-USD rounding, no FX), versioned pricing with tenant → model → provider → global precedence, budgets, anomaly detection, savings plans — see [cost-analysis.md](cost-analysis.md) |
+| Playground compare | One prompt against two models concurrently; lane B inherits lane A's setup and overrides only model/target/policy, answers stay side by side |
+| Offline replay | Request payloads (messages, max tokens) are captured at serve time, so any pasted request ID replays across providers × models with versioned-sheet pricing — no manual prompt reconstruction |
+| LAN address | The Endpoints page derives the gateway's LAN URL from the browser's own address, and `scripts/up.ps1` / `scripts/deploy.ps1` detect the current LAN IPv4 at launch — no hardcoded IP survives a network change |
+
 ## Documentation
 
 This documentation set. The previous phase-by-phase notes were folded into
