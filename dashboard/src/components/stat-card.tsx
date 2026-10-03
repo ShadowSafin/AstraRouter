@@ -5,7 +5,11 @@ import { cn } from '@/lib/utils';
 
 export interface StatCardProps {
   label: string;
-  value: string;
+  /**
+   * The figure. A node rather than a string so a value can be animated or
+   * annotated in place without losing the card's own typography.
+   */
+  value: React.ReactNode;
   /** An optional comparison against the previous window. */
   delta?: {
     /** Signed change as a ratio, e.g. 0.12 for +12%. */

@@ -24,6 +24,7 @@ import { StatCard } from '@/components/stat-card';
 import { TenantPicker, useTenantParam } from '@/components/tenant-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { NumberTicker } from '@/components/ui/number-ticker';
 import { ChartSkeleton, CardsSkeleton, EmptyState, ErrorState, TableSkeleton } from '@/components/ui/state';
 import {
   Table,
@@ -395,7 +396,17 @@ export function AnalyticsView() {
           <StatCard
             label="Requests"
             icon={Activity}
-            value={formatNumber(summary.requests)}
+            value={
+              Number.isFinite(summary.requests) ? (
+                // The headline count is the one figure a change in range moves
+                // most visibly, so it is the one worth animating. The others are
+                // rates, durations and currency, where a counting spring would
+                // fight the formatting rather than help.
+                <NumberTicker value={summary.requests} />
+              ) : (
+                formatNumber(summary.requests)
+              )
+            }
             delta={kpiDelta(deltas, 'requests')}
             hint={`${formatNumber(summary.successes)} succeeded`}
           />
