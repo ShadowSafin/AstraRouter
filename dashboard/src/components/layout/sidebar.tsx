@@ -102,6 +102,7 @@ const SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/', label: 'Dashboard', icon: Gauge, hint: 'Traffic, latency, cost and health at a glance' },
       { href: '/analytics', label: 'Analytics', icon: ChartColumn, hint: 'Traffic volume, latency, cache and spend' },
+      { href: '/cost', label: 'Cost', icon: CircleDollarSign, hint: 'Exact spend, budgets, forecasts and savings' },
       { href: '/requests', label: 'Requests', icon: ScrollText, hint: 'Per-request log with routing detail' },
     ],
   },

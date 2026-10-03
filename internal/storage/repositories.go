@@ -52,6 +52,10 @@ type Repositories struct {
 	// key is high-entropy material verified by digest lookup.
 	DashboardUsers    *DashboardUserRepository
 	DashboardSessions *DashboardSessionRepository
+	// Cost intelligence: versioned pricing, fired budget alerts, anomalies.
+	Pricing      *PricingRepository
+	BudgetAlerts *BudgetAlertRepository
+	Anomalies    *AnomalyRepository
 }
 
 // NewRepositories builds every repository over a pool.
@@ -92,6 +96,10 @@ func NewRepositories(pool *pgxpool.Pool, logger *slog.Logger) *Repositories {
 
 		DashboardUsers:    NewDashboardUserRepository(pool, logger),
 		DashboardSessions: NewDashboardSessionRepository(pool, logger),
+
+		Pricing:      NewPricingRepository(pool, logger),
+		BudgetAlerts: NewBudgetAlertRepository(pool, logger),
+		Anomalies:    NewAnomalyRepository(pool, logger),
 	}
 }
 

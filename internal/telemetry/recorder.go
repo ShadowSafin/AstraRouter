@@ -43,6 +43,11 @@ type RequestOutcome struct {
 
 	Usage             domain.TokenUsage
 	Cost              domain.Cost
+	EstimateCost      domain.Cost
+	PricingVersionID  string
+	PricingSource     string
+	Breakdown         domain.CostBreakdown
+	EndpointID        string
 	LatencyMS         int64
 	ProviderLatencyMS int64
 	FirstTokenMS      int64
@@ -195,8 +200,15 @@ func (r *Recorder) RecordRequest(ctx context.Context, out RequestOutcome) {
 			RequestedModel:    out.RequestedModel,
 			PolicyID:          out.PolicyID,
 			RequestType:       out.RequestType,
-			Usage:             usage,
-			Cost:              out.Cost,
+		Usage:             usage,
+		Cost:              out.Cost,
+		EstimateCost:      out.EstimateCost,
+		PricingVersionID:  out.PricingVersionID,
+		PricingSource:     out.PricingSource,
+		Breakdown:         out.Breakdown,
+		EndpointID:        out.EndpointID,
+		CostBeforeUSD:     out.CostBeforeUSD,
+		CostAfterUSD:      out.CostAfterUSD,
 			LatencyMS:         out.LatencyMS,
 			ProviderLatencyMS: out.ProviderLatencyMS,
 			Attempts:          out.Attempts,

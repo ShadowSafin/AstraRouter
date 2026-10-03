@@ -514,6 +514,12 @@ func (s *Server) recordCacheOutcome(ctx context.Context, rc *domain.RequestConte
 	if lookup.Meta != nil && lookup.Meta.Usage.TotalTokens > 0 {
 		usage = lookup.Meta.Usage
 	}
+	// A cache serve bills nothing, but the estimate records what serving it
+	// would have cost — that standing delta is the measured cache saving.
+	var estimate domain.Cost
+	if rc.Resolution != nil {
+		estimate = rc.Resolution.EstimatedCost
+	}
 	out := telemetry.RequestOutcome{
 		RequestID:      rc.RequestID,
 		TraceID:        rc.TraceID,
@@ -525,6 +531,9 @@ func (s *Server) recordCacheOutcome(ctx context.Context, rc *domain.RequestConte
 		PolicyID:       policyID,
 		RequestType:    rc.RequestType,
 		Usage:          usage,
+		Cost:           domain.Cost{},
+		EstimateCost:   estimate,
+		EndpointID:     rc.EndpointID,
 		LatencyMS:      elapsed.Milliseconds(),
 		CacheHit:       true,
 		CacheKind:      string(lookup.Kind),
@@ -1015,6 +1024,15 @@ func (s *Server) recordOutcome(
 		trace = result.Trace
 	}
 
+	// Exact costing: the billed figure is recomputed here from the attempt
+	// history and the resolved price sheet, replacing the routing estimate
+	// for everything downstream (books, budget charge, scoring). The response
+	// already sent keeps the estimate it was built with; the persisted row is
+	// authoritative, which is why estimate and actual are stored side by side.
+	exactCost, estimateCost, breakdown := s.buildCostBreakdown(
+		ctx, rc, decision, provider, model, usage, trace, requestErr)
+	cost = exactCost
+
 	// Phase 2: feed scoring with every outcome (success and failure both inform
 	// reliability). Scoring is best-effort and never blocks persistence.
 	if s.scorer != nil && provider != "" {
@@ -1038,6 +1056,11 @@ func (s *Server) recordOutcome(
 		RequestType:       rc.RequestType,
 		Usage:             usage,
 		Cost:              cost,
+		EstimateCost:      estimateCost,
+		PricingVersionID:  breakdown.PricingVersionID,
+		PricingSource:     breakdown.PricingSource,
+		Breakdown:         breakdown,
+		EndpointID:        rc.EndpointID,
 		LatencyMS:         elapsed.Milliseconds(),
 		ProviderLatencyMS: providerLatency,
 		FirstTokenMS:      firstToken,

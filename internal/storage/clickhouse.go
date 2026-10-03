@@ -36,7 +36,8 @@ const (
 	insertUsageEvent = `INSERT INTO synapass.usage_events (
 		request_id, tenant_id, api_key_id, provider, model, requested_model, outcome,
 		error_code, fallback_used, cache_hit, estimated, streaming, prompt_tokens,
-		completion_tokens, total_tokens, cost_usd, latency_ms, created_at)`
+		completion_tokens, total_tokens, cost_usd, estimate_cost_usd, pricing_source,
+		endpoint_id, latency_ms, created_at)`
 
 	insertProviderSnapshot = `INSERT INTO synapass.provider_status_snapshots (
 		provider_id, provider_name, provider_kind, state, window_ms, request_count,
@@ -408,6 +409,9 @@ func (c *ClickHouse) WriteUsage(ctx context.Context, rec *domain.UsageRecord) {
 		uint32(clampInt(rec.Usage.CompletionTokens)),
 		uint32(clampInt(rec.Usage.TotalTokens)),
 		rec.Cost.USD,
+		rec.EstimateCost.USD,
+		rec.PricingSource,
+		rec.EndpointID,
 		uint32(clampInt64(rec.LatencyMS)),
 		rec.CreatedAt,
 	)

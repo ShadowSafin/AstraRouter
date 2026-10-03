@@ -30,6 +30,8 @@ type QueryFilter struct {
 	ErrorCode domain.ErrorCode
 	// StatusMin filters to responses at or above a status, used for error views.
 	StatusMin int
+	// EndpointID filters to one admin-managed endpoint scope.
+	EndpointID string
 	// Search matches request id or end user, for support workflows.
 	Search string
 	From   time.Time
@@ -95,6 +97,11 @@ func (f QueryFilter) where(alias string) (string, []any) {
 	if f.PolicyID != "" {
 		add("policy_id", f.PolicyID)
 	}
+	if f.EndpointID != "" && alias == "usage_records" {
+		// Endpoint scope lives on the billing row only; the debug log carries
+		// no endpoint column, so the condition is scoped to its own table.
+		add("endpoint_id", f.EndpointID)
+	}
 	if f.StatusMin > 0 {
 		args = append(args, f.StatusMin)
 		conditions = append(conditions, fmt.Sprintf("%s.status >= $%d", alias, len(args)))
@@ -134,17 +141,21 @@ func (r *UsageRepository) Insert(ctx context.Context, rec *domain.UsageRecord) e
 		INSERT INTO usage_records (
 			id, request_id, trace_id, tenant_id, api_key_id, provider, model, requested_model,
 			policy_id, request_type, prompt_tokens, completion_tokens, total_tokens,
-			cached_prompt_tokens, estimated, cost_usd, latency_ms, provider_latency_ms, attempts,
+			cached_prompt_tokens, estimated, cost_usd, estimate_cost_usd, pricing_version_id,
+			cost_breakdown, pricing_source, cost_before_usd, cost_after_usd, endpoint_id,
+			latency_ms, provider_latency_ms, attempts,
 			fallback_used, cache_hit, outcome, error_code, streaming, status, client_ip,
 			user_agent, end_user, created_at
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-		          $20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+		          $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36)
 		ON CONFLICT (id) DO NOTHING`,
 		rec.ID, rec.RequestID.String(), rec.TraceID, nullableUUID(rec.TenantID),
 		nullableUUID(rec.APIKeyID), rec.Provider, rec.Model, rec.RequestedModel,
 		nullableUUID(rec.PolicyID), string(rec.RequestType), rec.Usage.PromptTokens,
 		rec.Usage.CompletionTokens, rec.Usage.TotalTokens, rec.Usage.CachedPromptTokens,
-		rec.Usage.Estimated, rec.Cost.USD, rec.LatencyMS, rec.ProviderLatencyMS,
+		rec.Usage.Estimated, rec.Cost.USD, rec.EstimateCost.USD, nullableUUID(rec.PricingVersionID),
+		breakdownJSON(rec.Breakdown), rec.PricingSource, rec.CostBeforeUSD, rec.CostAfterUSD,
+		rec.EndpointID, rec.LatencyMS, rec.ProviderLatencyMS,
 		rec.Attempts, rec.FallbackUsed, rec.CacheHit, string(rec.Outcome),
 		string(rec.ErrorCode), rec.Streaming, rec.Status, rec.ClientIP, rec.UserAgent,
 		rec.EndUser, rec.CreatedAt)
@@ -157,7 +168,9 @@ func (r *UsageRepository) Insert(ctx context.Context, rec *domain.UsageRecord) e
 const usageColumns = `id, request_id, trace_id, COALESCE(tenant_id::text,''), COALESCE(api_key_id::text,''),
 	provider, model, requested_model, COALESCE(policy_id::text,''), request_type,
 	prompt_tokens, completion_tokens, total_tokens, cached_prompt_tokens, estimated,
-	cost_usd, latency_ms, provider_latency_ms, attempts, fallback_used, cache_hit,
+	cost_usd, estimate_cost_usd, COALESCE(pricing_version_id::text,''), cost_breakdown,
+	pricing_source, cost_before_usd, cost_after_usd, endpoint_id,
+	latency_ms, provider_latency_ms, attempts, fallback_used, cache_hit,
 	outcome, error_code, streaming, status, client_ip, user_agent, end_user, created_at`
 
 // List returns usage records matching a filter.
@@ -195,16 +208,20 @@ func (r *UsageRepository) List(ctx context.Context, filter QueryFilter) ([]domai
 
 func scanUsage(row pgx.Row) (*domain.UsageRecord, error) {
 	var (
-		rec     domain.UsageRecord
-		reqID   string
-		outcome string
-		errCode string
-		reqType string
+		rec      domain.UsageRecord
+		reqID    string
+		outcome  string
+		errCode  string
+		reqType  string
+		rawBreak []byte
 	)
 	if err := row.Scan(&rec.ID, &reqID, &rec.TraceID, &rec.TenantID, &rec.APIKeyID,
 		&rec.Provider, &rec.Model, &rec.RequestedModel, &rec.PolicyID, &reqType,
 		&rec.Usage.PromptTokens, &rec.Usage.CompletionTokens, &rec.Usage.TotalTokens,
-		&rec.Usage.CachedPromptTokens, &rec.Usage.Estimated, &rec.Cost.USD, &rec.LatencyMS,
+		&rec.Usage.CachedPromptTokens, &rec.Usage.Estimated, &rec.Cost.USD,
+		&rec.EstimateCost.USD, &rec.PricingVersionID, &rawBreak,
+		&rec.PricingSource, &rec.CostBeforeUSD, &rec.CostAfterUSD, &rec.EndpointID,
+		&rec.LatencyMS,
 		&rec.ProviderLatencyMS, &rec.Attempts, &rec.FallbackUsed, &rec.CacheHit,
 		&outcome, &errCode, &rec.Streaming, &rec.Status, &rec.ClientIP, &rec.UserAgent,
 		&rec.EndUser, &rec.CreatedAt); err != nil {
@@ -214,7 +231,21 @@ func scanUsage(row pgx.Row) (*domain.UsageRecord, error) {
 	rec.Outcome = domain.UsageOutcome(outcome)
 	rec.ErrorCode = domain.ErrorCode(errCode)
 	rec.RequestType = domain.RequestType(reqType)
+	if len(rawBreak) > 0 {
+		_ = json.Unmarshal(rawBreak, &rec.Breakdown)
+	}
 	return &rec, nil
+}
+
+// breakdownJSON renders a cost breakdown for storage. An empty breakdown is
+// stored as '{}' rather than NULL so every cost report can aggregate the
+// column without null handling.
+func breakdownJSON(bd domain.CostBreakdown) any {
+	raw, err := json.Marshal(bd)
+	if err != nil || string(raw) == "null" {
+		return "{}"
+	}
+	return string(raw)
 }
 
 // Summary aggregates usage over a filter's range, ignoring pagination.

@@ -25,6 +25,7 @@ import (
 
 	"github.com/shadowsafin/synapass/internal/auth"
 	"github.com/shadowsafin/synapass/internal/config"
+	"github.com/shadowsafin/synapass/internal/cost"
 	"github.com/shadowsafin/synapass/internal/dashboardauth"
 	"github.com/shadowsafin/synapass/internal/domain"
 	"github.com/shadowsafin/synapass/internal/logging"
@@ -168,6 +169,10 @@ type Server struct {
 	// dashboardAuth authenticates console operators. Nil disables the surface.
 	dashboardAuth *dashboardauth.Service
 
+	// priceCache memoizes resolved versioned price sheets on the request
+	// path so exact costing costs a map lookup, not a query.
+	priceCache *cost.PriceCache
+
 	startedAt time.Time
 	// trustedProxies are the networks whose forwarding headers are honoured.
 	trustedProxies []*net.IPNet
@@ -217,6 +222,7 @@ func NewServer(deps Deps) (*Server, error) {
 
 		dashboardAuth: deps.DashboardAuth,
 		startedAt:  deps.StartedAt,
+		priceCache: cost.NewPriceCache(priceCacheTTL),
 	}
 
 	// Parse the trusted proxy list once. A malformed entry is reported at startup
@@ -425,6 +431,23 @@ func (s *Server) buildRouter() http.Handler {
 			r.Get("/audit", s.handleAdminListAudit)
 			r.Get("/budgets", s.handleAdminListBudgets)
 			r.Put("/budgets", s.handleAdminUpdateTenantBudget)
+
+			// Cost intelligence: exact per-request accounting, versioned
+			// pricing, budgets with burn rates, anomalies, forecasting,
+			// savings and finance exports over the usage records.
+			r.Get("/cost/overview", s.handleAdminCostOverview)
+			r.Get("/cost/by", s.handleAdminCostGrouped)
+			r.Get("/cost/series", s.handleAdminCostSeries)
+			r.Get("/cost/requests/top", s.handleAdminCostTop)
+			r.Get("/cost/requests/{requestID}", s.handleAdminCostRequest)
+			r.Get("/cost/pricing", s.handleAdminPricingList)
+			r.Post("/cost/pricing", s.handleAdminPricingCreate)
+			r.Get("/cost/budgets", s.handleAdminBudgetsStatus)
+			r.Get("/cost/anomalies", s.handleAdminCostAnomalies)
+			r.Post("/cost/anomalies/{id}/resolve", s.handleAdminCostAnomalyResolve)
+			r.Get("/cost/forecast", s.handleAdminCostForecast)
+			r.Get("/cost/savings", s.handleAdminCostSavings)
+			r.Get("/cost/export", s.handleAdminCostExport)
 
 			// Phase 2: intelligence and control plane.
 			r.Get("/requests/{requestID}/explain", s.handleAdminExplain)

@@ -32,6 +32,30 @@ type UsageRecord struct {
 	RequestType    RequestType `json:"request_type"`
 	Usage          TokenUsage  `json:"usage"`
 	Cost           Cost        `json:"cost"`
+	// EstimateCost is the routing-time projection for this request. Comparing
+	// it with Cost measures estimate quality; on cache hits Cost is zero while
+	// EstimateCost records what serving it would have cost, which is how cache
+	// savings are computed without a second query.
+	EstimateCost Cost `json:"estimate_cost"`
+	// PricingVersionID is the versioned sheet the final cost was computed
+	// from, empty when the static registry price applied. Together with
+	// Breakdown it makes every row re-auditable after price changes.
+	PricingVersionID string `json:"pricing_version_id,omitempty"`
+	// PricingSource names the winning resolution scope (tenant, model,
+	// provider, global or registry), so "why this price" needs no archaeology.
+	PricingSource string `json:"pricing_source,omitempty"`
+	// Breakdown is the exact line-item account of Cost. Stored per row so a
+	// price change tomorrow cannot rewrite what a request cost yesterday.
+	Breakdown CostBreakdown `json:"breakdown,omitempty"`
+	// CostBeforeUSD/CostAfterUSD bracket routing-time optimization: the
+	// cheapest-eligible cost before shaping versus after. Their difference is
+	// the routing saving, persisted here because the trace store is sampled
+	// and savings must be complete.
+	CostBeforeUSD float64 `json:"cost_before_usd,omitempty"`
+	CostAfterUSD  float64 `json:"cost_after_usd,omitempty"`
+	// EndpointID is the admin-managed endpoint scope, when the request arrived
+	// under one, enabling spend-by-endpoint reporting.
+	EndpointID string `json:"endpoint_id,omitempty"`
 	// LatencyMS is the total server-side latency the client observed.
 	LatencyMS int64 `json:"latency_ms"`
 	// ProviderLatencyMS is the latency of the successful upstream attempt only.
@@ -99,6 +123,10 @@ const (
 	ResourceDashboardUser AuditResource = "dashboard_user"
 	// ResourceDashboardSession is one signed-in console session.
 	ResourceDashboardSession AuditResource = "dashboard_session"
+	// ResourcePricingVersion is one immutable price sheet entry.
+	ResourcePricingVersion AuditResource = "pricing_version"
+	// ResourceCostAnomaly is one flagged spend deviation.
+	ResourceCostAnomaly AuditResource = "cost_anomaly"
 )
 
 // AuditEvent is an immutable record of a control-plane mutation.

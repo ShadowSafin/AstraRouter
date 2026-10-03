@@ -1005,3 +1005,199 @@ export interface TunnelCurrentURL {
   session_id?: string;
   started_at?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Cost intelligence
+// ---------------------------------------------------------------------------
+
+export interface CostOverview {
+  window_from: string;
+  window_to: string;
+  requests: number;
+  actual_usd: number;
+  estimated_usd: number;
+  estimate_accuracy: number;
+  tokens: number;
+  cost_per_kilo_token_usd: number;
+  cache_savings_usd: number;
+  routing_savings_usd: number;
+  generated_at: string;
+}
+
+export interface CostOverviewResponse {
+  overview: CostOverview;
+}
+
+export interface CostDimensionRow {
+  key: string;
+  requests: number;
+  tokens: number;
+  actual_usd: number;
+  estimated_usd: number;
+  share: number;
+}
+
+export interface CostGroupedResponse {
+  dimension: string;
+  rows: CostDimensionRow[];
+}
+
+export interface CostPoint {
+  bucket: string;
+  requests: number;
+  actual_usd: number;
+  estimated_usd: number;
+}
+
+export interface CostSeriesResponse {
+  series: CostPoint[];
+}
+
+export interface CostLineItem {
+  kind: string;
+  label: string;
+  quantity: number;
+  unit_price_usd: number;
+  amount_usd: number;
+}
+
+export interface CostBreakdown {
+  lines: CostLineItem[];
+  total_usd: number;
+  currency: string;
+  pricing_version_id?: string;
+  pricing_source?: string;
+  estimated: boolean;
+}
+
+export interface CostRecord {
+  id: string;
+  request_id: string;
+  tenant_id: string;
+  provider: string;
+  model: string;
+  requested_model?: string;
+  endpoint_id?: string;
+  request_type: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    cached_prompt_tokens: number;
+    estimated: boolean;
+  };
+  cost: { usd: number };
+  estimate_cost: { usd: number };
+  pricing_version_id?: string;
+  pricing_source?: string;
+  breakdown?: CostBreakdown;
+  outcome: string;
+  cache_hit: boolean;
+  fallback_used: boolean;
+  streaming: boolean;
+  status: number;
+  created_at: string;
+}
+
+export interface CostRequestResponse {
+  record: CostRecord;
+  estimate_accuracy: number;
+}
+
+export interface CostTopResponse {
+  requests: CostRecord[];
+}
+
+export interface PricingVersion {
+  id: string;
+  scope: string;
+  scope_id?: string;
+  currency: string;
+  input_cost_per_million: number;
+  output_cost_per_million: number;
+  cached_input_cost_per_million?: number;
+  base_fee_usd?: number;
+  effective_from: string;
+  effective_to?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+export interface PricingListResponse {
+  pricing: PricingVersion[];
+}
+
+export interface BudgetStatus {
+  budget_id: string;
+  tenant_id: string;
+  scope: string;
+  period: string;
+  limit_usd: number;
+  spent_usd: number;
+  remaining_usd: number;
+  utilization: number;
+  burn_rate: number;
+  projected_usd: number;
+  exhausted: boolean;
+  enforced: boolean;
+  reset_at: string;
+}
+
+export interface BudgetAlert {
+  id: string;
+  budget_id: string;
+  tenant_id: string;
+  threshold_usd: number;
+  spent_usd: number;
+  limit_usd: number;
+  period: string;
+  period_start: string;
+  fired_at: string;
+}
+
+export interface CostBudgetsResponse {
+  budgets: BudgetStatus[];
+  alerts: BudgetAlert[];
+}
+
+export interface CostAnomaly {
+  id: string;
+  dimension: string;
+  key: string;
+  window_from: string;
+  window_to: string;
+  observed_usd: number;
+  expected_usd: number;
+  ratio: number;
+  severity: 'info' | 'warning' | 'critical';
+  detected_at: string;
+}
+
+export interface CostAnomaliesResponse {
+  anomalies: CostAnomaly[];
+}
+
+export interface CostForecast {
+  daily_average_usd: number;
+  trend_usd_per_day: number;
+  projected_month_usd: number;
+  projected_month_low_usd: number;
+  projected_month_high_usd: number;
+  days_observed: number;
+  generated_at: string;
+}
+
+export interface CostForecastResponse {
+  forecast: CostForecast;
+}
+
+export interface CostSavings {
+  cache_usd: number;
+  routing_usd: number;
+  fallback_usd: number;
+}
+
+export interface CostSavingsResponse {
+  savings: CostSavings;
+  total_usd: number;
+}

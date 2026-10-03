@@ -15,6 +15,17 @@ import type {
   CachePolicy,
   CachePolicyInput,
   CacheStats,
+  CostAnomaliesResponse,
+  CostBudgetsResponse,
+  CostForecastResponse,
+  CostGroupedResponse,
+  CostOverviewResponse,
+  CostRequestResponse,
+  CostSavingsResponse,
+  CostSeriesResponse,
+  CostTopResponse,
+  PricingListResponse,
+  PricingVersion,
   TunnelSession,
   TunnelStatusResponse,
   CredentialMeta,
@@ -92,6 +103,8 @@ export const queryKeys = {
   explain: (requestId: string) => ['explain', requestId] as const,
   overrides: (limit: number) => ['overrides', limit] as const,
   providerTests: (providerId: string, limit: number) => ['provider-tests', providerId, limit] as const,
+  cost: (filters: Record<string, unknown>) => ['cost', filters] as const,
+  pricing: () => ['pricing'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -1188,5 +1201,181 @@ export function useCurrentUser() {
     // A missing session is a normal state, not an error worth retrying.
     staleTime: 60_000,
     retry: false,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Cost intelligence
+// ---------------------------------------------------------------------------
+
+export interface CostFilters {
+  tenantId: string;
+  /** A Go duration such as "24h"; see windowToFromParam. */
+  from: string;
+  provider?: string;
+  model?: string;
+  endpointId?: string;
+}
+
+function costQuery(filters: CostFilters) {
+  return {
+    tenant_id: filters.tenantId,
+    from: filters.from,
+    provider: filters.provider,
+    model: filters.model,
+    endpoint_id: filters.endpointId,
+  };
+}
+
+/** Window totals: actual vs estimated spend, accuracy, unit rate, savings. */
+export function useCostOverview(filters: CostFilters) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'overview', ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostOverviewResponse>(`cost/overview${buildQuery(costQuery(filters))}`, { signal }),
+  });
+}
+
+/** Spend grouped by one dimension: provider | model | tenant | endpoint | request_type. */
+export function useCostGrouped(filters: CostFilters, dimension: string) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'by', dimension, ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostGroupedResponse>(
+        `cost/by${buildQuery({ ...costQuery(filters), dimension })}`,
+        { signal },
+      ).then((data) => ({ ...data, rows: data.rows ?? [] })),
+  });
+}
+
+/** Actual vs estimated spend over time for the trend chart. */
+export function useCostSeries(filters: CostFilters) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'series', ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostSeriesResponse>(`cost/series${buildQuery(costQuery(filters))}`, { signal }),
+  });
+}
+
+/** The window's most expensive requests, with breakdowns attached. */
+export function useCostTop(filters: CostFilters, limit = 10) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'top', limit, ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostTopResponse>(`cost/requests/top${buildQuery({ ...costQuery(filters), limit })}`, {
+        signal,
+      }),
+  });
+}
+
+/** One request's exact cost trace. */
+export function useCostRequest(requestId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'request', requestId: requestId ?? '' }),
+    enabled: requestId != null && requestId !== '',
+    queryFn: ({ signal }) =>
+      apiFetch<CostRequestResponse>(`cost/requests/${encodeURIComponent(requestId ?? '')}`, {
+        signal,
+      }),
+  });
+}
+
+/** Versioned price sheets, newest first. */
+export function usePricing() {
+  return useQuery({
+    queryKey: queryKeys.pricing(),
+    queryFn: ({ signal }) =>
+      apiFetch<PricingListResponse>('cost/pricing', { signal }).then((data) => data.pricing ?? []),
+  });
+}
+
+export interface CreatePricingInput {
+  scope: string;
+  scopeId?: string;
+  currency?: string;
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+  cachedInputCostPerMillion?: number;
+  baseFeeUsd?: number;
+  effectiveFrom?: string;
+}
+
+/** Mint one immutable price sheet. There is no update: a price change is a new row. */
+export function useCreatePricing() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePricingInput) =>
+      apiFetch<{ pricing: PricingVersion }>('cost/pricing', {
+        method: 'POST',
+        body: {
+          scope: input.scope,
+          scope_id: input.scopeId,
+          currency: input.currency,
+          input_cost_per_million: input.inputCostPerMillion,
+          output_cost_per_million: input.outputCostPerMillion,
+          cached_input_cost_per_million: input.cachedInputCostPerMillion,
+          base_fee_usd: input.baseFeeUsd,
+          effective_from: input.effectiveFrom,
+        },
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.pricing() });
+      void client.invalidateQueries({ queryKey: queryKeys.audit(100) });
+    },
+  });
+}
+
+/** Budgets evaluated against authoritative spend, plus recently fired alerts. */
+export function useCostBudgets(tenantId: string) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'budgets', tenantId }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostBudgetsResponse>(`cost/budgets${buildQuery({ tenant_id: tenantId })}`, {
+        signal,
+      }),
+  });
+}
+
+/** Open spend anomalies. Reading detects fresh spikes as a side effect. */
+export function useCostAnomalies(tenantId: string) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'anomalies', tenantId }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostAnomaliesResponse>(`cost/anomalies${buildQuery({ tenant_id: tenantId })}`, {
+        signal,
+      }).then((data) => ({ anomalies: data.anomalies ?? [] })),
+  });
+}
+
+export function useResolveAnomaly() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ resolved: string }>(`cost/anomalies/${encodeURIComponent(id)}/resolve`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['cost'] });
+    },
+  });
+}
+
+/** Month-end projection from observed daily spend. */
+export function useCostForecast(filters: CostFilters) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'forecast', ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostForecastResponse>(`cost/forecast${buildQuery(costQuery(filters))}`, {
+        signal,
+      }),
+  });
+}
+
+/** Measured avoided spend by source: cache, routing, fallback. */
+export function useCostSavings(filters: CostFilters) {
+  return useQuery({
+    queryKey: queryKeys.cost({ view: 'savings', ...filters }),
+    queryFn: ({ signal }) =>
+      apiFetch<CostSavingsResponse>(`cost/savings${buildQuery(costQuery(filters))}`, { signal }),
   });
 }
