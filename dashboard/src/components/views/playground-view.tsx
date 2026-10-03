@@ -16,7 +16,10 @@
  * send — and each answer shows the routing chips behind it.
  *
  * Compare mode varies only the target, because comparing two answers that
- * differ in both prompt and target tells you nothing about either.
+ * differ in both prompt and target tells you nothing about either. One submit
+ * sends the same prompt to both lanes concurrently; the answers stay in the
+ * lane panels below so the shared thread is not biased toward either lane,
+ * while single-lane answers are appended to the thread as before.
  */
 import {
   ImageOff,
@@ -233,6 +236,23 @@ export function PlaygroundView() {
     setCompareTarget((current) => ({ ...current, ...next }));
   }, []);
 
+  /**
+   * Lane B inherits the whole lane A config and overrides only the target.
+   *
+   * A bare spread of an empty target would wipe the model (and the endpoint /
+   * policy scopes) with empty strings, failing the build and silently skipping
+   * the lane — so every field falls back to lane A when unset.
+   */
+  const withTarget = React.useCallback(
+    (laneA: PlaygroundConfig): PlaygroundConfig => ({
+      ...laneA,
+      model: compareTarget.model.trim() || laneA.model,
+      endpoint: compareTarget.endpoint || laneA.endpoint,
+      policy: compareTarget.policy || laneA.policy,
+    }),
+    [compareTarget],
+  );
+
   // The composer's model menu keeps its selection in local state and reads the
   // first entry on mount, so the config is seeded from the registry. Starting
   // empty would show a selected model in the menu while blocking the run for a
@@ -243,6 +263,35 @@ export function PlaygroundView() {
     const preferred = list.find((item) => item.status === 'active') ?? list[0];
     if (preferred) patch({ model: preferred.name });
   }, [models.data, config.model, patch]);
+
+  // A compare lane with no model runs nothing, so seed lane B from the
+  // registry once it (or compare mode) arrives — a different model than lane A
+  // when there is one, so the first compare is a real comparison.
+  React.useEffect(() => {
+    if (!compareOn || compareTarget.model.trim()) return;
+    const list = models.data ?? [];
+    if (list.length === 0) return;
+    const laneA = config.model.trim();
+    const seed = list.find((item) => item.name !== laneA) ?? list[0];
+    if (seed) setCompareTarget((current) => ({ ...current, model: seed.name }));
+  }, [compareOn, compareTarget.model, models.data, config.model]);
+
+  /** Enabling compare mode with an empty lane B seeds it, for the same reason. */
+  const onCompareChange = React.useCallback(
+    (value: boolean) => {
+      setCompareOn(value);
+      if (!value) return;
+      setCompareTarget((current) => {
+        if (current.model.trim()) return current;
+        const list = models.data ?? [];
+        if (list.length === 0) return current;
+        const laneA = config.model.trim();
+        const seed = list.find((item) => item.name !== laneA) ?? list[0];
+        return seed ? { ...current, model: seed.name } : current;
+      });
+    },
+    [models.data, config.model],
+  );
 
   /**
    * Models offered in the composer's menu, current target first.
@@ -261,17 +310,45 @@ export function PlaygroundView() {
     return current ? [current, ...rest] : rest;
   }, [models.data, providerFilter, config.model]);
 
+  /**
+   * Lane B options for the composer-row picker: the same registry list (and
+   * provider filter) as lane A, current lane B target first so a filtered-out
+   * or custom value is never lost from the menu.
+   */
+  const compareModels = React.useMemo(() => {
+    const list = models.data ?? [];
+    const visible = providerFilter
+      ? list.filter((item) => item.provider_id === providerFilter)
+      : list;
+    const current = compareTarget.model.trim();
+    const rest = visible.map((item) => item.name).filter((name) => name !== current);
+    return current ? [current, ...rest] : rest;
+  }, [models.data, providerFilter, compareTarget.model]);
+
   // Declared here because the callbacks below both read it and list it as a
   // dependency; its value depends only on the key field.
   const missingKey = apiKey.trim().length === 0;
 
   /** Run the conversation exactly as it stands — the fix-up path when a first
-   * attempt was blocked (no key, no model) and the operator has corrected it. */
+   * attempt was blocked (no key, no model) and the operator has corrected it.
+   * In compare mode both lanes run; neither answer joins the thread. */
   const onRunNow = React.useCallback(() => {
-    if (missingKey || running.primary) return;
+    if (missingKey || running.primary || running.compare) return;
     const result = buildChatBody(config, messages);
     if (result.error) {
       setNotice(result.error);
+      return;
+    }
+    if (compareOn) {
+      const laneB = withTarget(config);
+      const other = buildChatBody(laneB, messages);
+      if (other.error) {
+        setNotice(`Lane B cannot run: ${other.error}`);
+        return;
+      }
+      setNotice(null);
+      void run({ lane: 'primary', config, messages, apiKey });
+      void run({ lane: 'compare', config: laneB, messages, apiKey });
       return;
     }
     setNotice(null);
@@ -283,7 +360,7 @@ export function PlaygroundView() {
       setMessages((current) => [...current, assistant]);
       setMetaById((current) => ({ ...current, [assistant.id]: metaFor(entry) }));
     });
-  }, [apiKey, config, messages, missingKey, run, running.primary]);
+  }, [apiKey, compareOn, config, messages, missingKey, run, running.compare, running.primary, withTarget]);
 
   /**
    * Submit from the composer.
@@ -291,15 +368,19 @@ export function PlaygroundView() {
    * The model comes from the composer's own menu rather than from state, so the
    * menu the operator is looking at is the one that decides — and the config is
    * updated from it, keeping the drawer and the next run in agreement. A
-   * completed answer is appended to the thread with its routing facts, so the
-   * next turn carries the full history a real client would send.
+   * completed single-lane answer is appended to the thread with its routing
+   * facts, so the next turn carries the full history a real client would send.
+   * In compare mode the same prompt is sent to both lanes concurrently and both
+   * answers stay in the lane panels, so the thread never favours either lane.
    */
   const onComposerSubmit = React.useCallback(
     (text: string, meta: { model: string; effort: string; attachments: File[] }) => {
       setNotice(null);
+      // In compare mode the lane A picker above the composer owns the model —
+      // the composer's hidden menu keeps a stale copy that must not win.
       const chosen = meta.model.trim();
-      const base = chosen ? { ...config, model: chosen } : config;
-      if (chosen && chosen !== config.model) setConfig(base);
+      const base = compareOn ? config : chosen ? { ...config, model: chosen } : config;
+      if (!compareOn && chosen && chosen !== config.model) setConfig(base);
 
       const nextMessages = [...messages, newMessage('user', text)];
       setMessages(nextMessages);
@@ -321,6 +402,19 @@ export function PlaygroundView() {
         setNotice(result.error);
         return;
       }
+      if (compareOn) {
+        const laneB = withTarget(base);
+        const other = buildChatBody(laneB, nextMessages);
+        if (other.error) {
+          setNotice(
+            `Lane B cannot run: ${other.error} Pick a model for lane B above the composer or in Advanced → Lane B.`,
+          );
+          return;
+        }
+        void run({ lane: 'primary', config: base, messages: nextMessages, apiKey });
+        void run({ lane: 'compare', config: laneB, messages: nextMessages, apiKey });
+        return;
+      }
       const seen = epoch.current;
       void run({ lane: 'primary', config: base, messages: nextMessages, apiKey }).then((entry) => {
         if (seen !== epoch.current) return;
@@ -330,13 +424,10 @@ export function PlaygroundView() {
         setMetaById((current) => ({ ...current, [assistant.id]: metaFor(entry) }));
       });
     },
-    [apiKey, config, messages, missingKey, run],
+    [apiKey, compareOn, config, messages, missingKey, run, withTarget],
   );
 
-  const compareConfig = React.useMemo(
-    () => ({ ...config, ...compareTarget }),
-    [config, compareTarget],
-  );
+  const compareConfig = React.useMemo(() => withTarget(config), [config, withTarget]);
 
   const build = buildChatBody(config, messages);
   // Shown only once the thread exists: an empty composer needs no lecture, and
@@ -350,23 +441,40 @@ export function PlaygroundView() {
 
   const onRunAll = React.useCallback(() => {
     if (!apiKey.trim()) return;
+    const laneBError = buildChatBody(compareConfig, messages).error;
+    if (laneBError) {
+      setNotice(
+        `Lane B cannot run: ${laneBError} Pick a model for lane B above the composer or in Advanced → Lane B.`,
+      );
+      return;
+    }
     if (!buildChatBody(config, messages).error) {
       void run({ lane: 'primary', config, messages, apiKey });
     }
-    if (!buildChatBody(compareConfig, messages).error) {
-      void run({ lane: 'compare', config: compareConfig, messages, apiKey });
-    }
+    void run({ lane: 'compare', config: compareConfig, messages, apiKey });
   }, [apiKey, config, compareConfig, messages, run]);
 
   /** Put a past run's configuration and messages back in the composer. */
   const onLoad = React.useCallback((item: PlaygroundRun) => {
     epoch.current += 1;
-    setConfig(item.config);
     setMessages(item.messages);
     setMetaById({});
     setNotice(null);
     setDrawerOpen(false);
-    if (item.lane === 'compare') setCompareOn(true);
+    if (item.lane === 'compare') {
+      // A compare run's config is lane B's target, not lane A's: restore it
+      // there so re-running compares the same two targets.
+      setCompareTarget({
+        model: item.config.model,
+        endpoint: item.config.endpoint,
+        policy: item.config.policy,
+        temperature: -1,
+        maxTokens: 0,
+      });
+      setCompareOn(true);
+      return;
+    }
+    setConfig(item.config);
   }, []);
 
   const onRerun = React.useCallback(
@@ -454,10 +562,12 @@ export function PlaygroundView() {
         {hasConversation ? (
           <ChatTranscript
             messages={messages}
-            streaming={running.primary}
-            streamContent={partial.primary.content}
-            streamTools={partial.primary.toolCalls}
-            failedRun={failedRun}
+            // In compare mode both answers stream in the lane panels below;
+            // echoing lane A into the thread would duplicate it there.
+            streaming={compareOn ? false : running.primary}
+            streamContent={compareOn ? '' : partial.primary.content}
+            streamTools={compareOn ? [] : partial.primary.toolCalls}
+            failedRun={compareOn ? null : failedRun}
             metaById={metaById}
             onDelete={onDeleteMessage}
             disabled={isBusy}
@@ -470,6 +580,49 @@ export function PlaygroundView() {
             hasConversation ? 'sticky bottom-4 z-20 pb-2' : 'py-2',
           )}
         >
+          {compareOn ? (
+            <div className="flex w-full max-w-[480px] items-center gap-1.5">
+              <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full bg-neutral-950/80 py-1 pl-2.5 pr-1 text-white shadow backdrop-blur">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-white/60">
+                  A
+                </span>
+                <select
+                  value={config.model}
+                  onChange={(event) => patch({ model: event.target.value })}
+                  disabled={isBusy}
+                  title="Lane A model"
+                  className="min-w-0 flex-1 cursor-pointer truncate bg-transparent text-[11px] font-medium outline-none disabled:opacity-50 [&>option]:text-neutral-900"
+                >
+                  {composerModels.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span aria-hidden className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-neutral-800/60">
+                vs
+              </span>
+              <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full bg-neutral-950/80 py-1 pl-2.5 pr-1 text-white shadow backdrop-blur">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-white/60">
+                  B
+                </span>
+                <select
+                  value={compareTarget.model}
+                  onChange={(event) => patchCompareTarget({ model: event.target.value })}
+                  disabled={isBusy}
+                  title="Lane B model — the same prompt runs against both at once"
+                  className="min-w-0 flex-1 cursor-pointer truncate bg-transparent text-[11px] font-medium outline-none disabled:opacity-50 [&>option]:text-neutral-900"
+                >
+                  {compareModels.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
           <PromptInput
             key={config.model || 'no-model'}
             value={draft}
@@ -478,16 +631,20 @@ export function PlaygroundView() {
             models={composerModels}
             placeholder="Ask anything..."
             className="w-full"
+            hideModelSelect={compareOn}
           />
 
-          {running.primary ? (
+          {running.primary || running.compare ? (
             <button
               type="button"
-              onClick={() => cancel('primary')}
+              onClick={() => {
+                cancel('primary');
+                cancel('compare');
+              }}
               className="flex h-7 items-center gap-1.5 rounded-full bg-rose-950/90 px-3 text-[11px] font-medium text-white shadow backdrop-blur transition-colors hover:bg-rose-900"
             >
               <Square className="size-3" />
-              Cancel run
+              {compareOn ? 'Cancel runs' : 'Cancel run'}
             </button>
           ) : messages.length > 0 && !blockedReason ? (
             <button
@@ -519,24 +676,34 @@ export function PlaygroundView() {
       {compareOn ? (
         <div className="mx-auto w-full max-w-5xl space-y-4 px-4 pb-10 sm:px-6">
           <div className="grid gap-4">
-            <ResponsePanel
-              config={config}
-              messages={messages}
-              baseUrl={gatewayUrl}
-              partial={partial.primary}
-              running={running.primary}
-              run={latest.primary}
-              elapsedMs={elapsed}
-            />
-            <ResponsePanel
-              config={compareConfig}
-              messages={messages}
-              baseUrl={gatewayUrl}
-              partial={partial.compare}
-              running={running.compare}
-              run={latest.compare}
-              elapsedMs={elapsed}
-            />
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-800/70">
+                Lane A · {config.model || 'no model'}
+              </p>
+              <ResponsePanel
+                config={config}
+                messages={messages}
+                baseUrl={gatewayUrl}
+                partial={partial.primary}
+                running={running.primary}
+                run={latest.primary}
+                elapsedMs={elapsed}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-800/70">
+                Lane B · {compareConfig.model || 'no model'}
+              </p>
+              <ResponsePanel
+                config={compareConfig}
+                messages={messages}
+                baseUrl={gatewayUrl}
+                partial={partial.compare}
+                running={running.compare}
+                run={latest.compare}
+                elapsedMs={elapsed}
+              />
+            </div>
           </div>
 
           <section className="space-y-2">
@@ -567,13 +734,18 @@ export function PlaygroundView() {
         onProviderFilterChange={setProviderFilter}
         disabled={isBusy}
         compareOn={compareOn}
-        onCompareChange={setCompareOn}
+        onCompareChange={onCompareChange}
         onNewChat={onNewChat}
         newChatDisabled={isBusy || messages.length === 0}
         compareTarget={compareTarget}
         onCompareTarget={patchCompareTarget}
         onRunAll={onRunAll}
-        runAllDisabled={isBusy || missingKey || Boolean(build.error)}
+        runAllDisabled={
+          isBusy ||
+          missingKey ||
+          Boolean(build.error) ||
+          Boolean(buildChatBody(compareConfig, messages).error)
+        }
         latestRun={latest.primary}
         partial={partial.primary}
         running={running.primary}

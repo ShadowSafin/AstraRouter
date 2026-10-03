@@ -311,6 +311,12 @@ export interface PromptInputProps {
   value?: string;
   onChange?: (value: string) => void;
   maxAttachments?: number;
+  /**
+   * Hide the built-in model menu (compare mode: the lane A/B pickers above
+   * the composer are the only model selectors, so a third menu would be a
+   * second source of truth for lane A).
+   */
+  hideModelSelect?: boolean;
 }
 
 export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
@@ -325,6 +331,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
       value: controlledValue,
       onChange,
       maxAttachments = 6,
+      hideModelSelect = false,
     },
     ref
   ) => {
@@ -696,6 +703,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                   : "opacity-0 blur-sm translate-y-2 pointer-events-none"
               )}
             >
+              {hideModelSelect ? null : (
               <div className="relative">
                 <button
                   type="button"
@@ -766,6 +774,7 @@ export const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
                   </div>
                 </div>
               </div>
+              )}
 
               <button
                 type="button"

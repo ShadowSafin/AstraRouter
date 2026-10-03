@@ -189,7 +189,10 @@ export function AdvancedDrawer(props: AdvancedDrawerProps) {
             <section>
               <SectionTitle>Lane B — compare target</SectionTitle>
               <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.015] p-3">
-                <Field label="Model">
+                <Field
+                  label="Model"
+                  hint="Also selectable as lane B above the composer; typing here accepts registry names and aliases."
+                >
                   <Input
                     list="playground-compare-models"
                     placeholder="e.g. another-model"
