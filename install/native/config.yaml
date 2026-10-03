@@ -45,3 +45,10 @@ telemetry:
 
 admin:
   enabled: true
+
+# Temporary public tunnels (Cloudflare quick tunnels). Enabling the feature
+# exposes nothing on its own: a tunnel only exists once an operator creates one
+# from the dashboard (/tunnels) or POST /admin/v1/tunnels/create. Native
+# installs need cloudflared on PATH, or SYNAPASS_TUNNEL_BINARY pointing at it.
+tunnel:
+  enabled: true

@@ -847,7 +847,13 @@ DefaultTimeout: TimeoutConfig{
 			GatewayExecution: false,
 		},
 		Tunnel: TunnelConfig{
-			// Opt-in: nothing is exposed until an operator creates a tunnel.
+			// Conservative floor for a config file that omits the key. Every
+			// template the project ships (config.example.yaml and both native
+			// installers) sets this true, so a stock install is enabled; only a
+			// hand-written config that leaves it out lands here.
+			//
+			// Enabled is not the same as exposed: nothing is public until an
+			// operator creates a tunnel from the dashboard or the admin API.
 			Enabled:            false,
 			Binary:             "cloudflared",
 			DefaultTarget:      "gateway",

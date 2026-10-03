@@ -41,14 +41,14 @@ telemetry:
 # nats:
 #   url: nats://127.0.0.1:4222
 
-# Temporary public tunnels (Cloudflare quick tunnels). Off by default: nothing
-# is exposed until you create one from the dashboard (/tunnels) or
-# POST /admin/v1/tunnels/create. Every request through a tunnel still passes
-# auth, policy and rate limits. Native installs need cloudflared on PATH (or
-# SYNAPASS_TUNNEL_BINARY pointing at it) — unlike the Docker image, this bundle
-# does not ship it.
+# Temporary public tunnels (Cloudflare quick tunnels). Enabling the feature
+# exposes nothing on its own: a tunnel only exists once you create one from the
+# dashboard (/tunnels) or POST /admin/v1/tunnels/create. Every request through a
+# tunnel still passes auth, policy and rate limits. Native installs need
+# cloudflared on PATH (or SYNAPASS_TUNNEL_BINARY pointing at it) — unlike the
+# Docker image, this bundle does not ship it.
 tunnel:
-  enabled: false # or SYNAPASS_TUNNEL_ENABLED=true to allow creation
+  enabled: true # or SYNAPASS_TUNNEL_ENABLED=false to remove the capability
   # Where the "dashboard" target points: this install's dashboard port.
   dashboard_target: http://127.0.0.1:__DASH_PORT__
 

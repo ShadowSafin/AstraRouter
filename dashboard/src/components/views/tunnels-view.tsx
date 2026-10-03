@@ -110,7 +110,7 @@ export function TunnelsView() {
       />
       {isError ? <ErrorState error={error} onRetry={() => void refetch()} /> : null}
 
-      {!enabled && !isPending ? (
+      {!isError && !enabled && !isPending ? (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

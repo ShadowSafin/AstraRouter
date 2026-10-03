@@ -179,8 +179,9 @@ gateway from elsewhere:
 - A reverse proxy (nginx, Caddy, Traefik) terminating TLS in front of the
   published port, for a permanent deployment.
 
-The tunnel feature is disabled by default and needs two opt-ins: the feature flag
-and an explicit create action.
+The tunnel feature ships enabled, but still needs an explicit create action before
+anything is public: set `SYNAPASS_TUNNEL_ENABLED=false` to remove the capability
+entirely.
 
 ---
 

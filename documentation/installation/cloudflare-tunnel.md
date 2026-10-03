@@ -36,11 +36,12 @@ where to go, not look broken.
 ## Docker
 
 The gateway image ships a pinned `cloudflared` binary, so there is nothing to
-install:
+install, and the feature is already enabled. Nothing is public until you create a
+tunnel, so no extra opt-in is needed. To remove the capability instead:
 
 ```dotenv
-# One-time: allow creation. This exposes nothing by itself.
-SYNAPASS_TUNNEL_ENABLED=true
+# Optional: remove the capability entirely.
+SYNAPASS_TUNNEL_ENABLED=false
 ```
 
 ```bash
@@ -73,12 +74,17 @@ gateway container. No inbound ports are required — that is the point.
    # or the .deb / .rpm from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
    ```
 
-2. Enable creation in `/etc/synapass/config.yaml`:
+2. Creation is enabled by default in the shipped templates. If you upgraded from
+   an earlier install, check that `/etc/synapass/config.yaml` does not still carry
+   the old `enabled: false`:
 
    ```yaml
    tunnel:
      enabled: true
    ```
+
+   `SYNAPASS_TUNNEL_ENABLED=true` in `native.env` overrides the file and is the
+   easier place to set it.
 
 3. Restart and create the tunnel from the dashboard or API as above.
 
